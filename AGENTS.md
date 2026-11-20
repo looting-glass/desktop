@@ -32,6 +32,10 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
   `#ifdef`s of `cpp/main.cpp`. QML uses only Qt Quick Controls, with bundled fallback icons in
   `qml/icons/`, so it runs on any platform.
 - Every PR runs the CI workflow (build + tests on Linux and Windows); keep it green.
+- Windows UI: the "UI snapshots" workflow renders the overlay, manual check and settings on a
+  real Windows runner in light and dark mode (runs on PRs touching `qml/`, `cpp/` or
+  `src/bridge.rs`, or `gh workflow run ui-snapshots.yml --ref <branch>`); check its artifact
+  before calling a UI change done on Windows.
 - Windows code can't be built locally. Build any branch for both platforms with
   `gh workflow run build.yml --ref <branch>`; the packages appear as run artifacts.
 
