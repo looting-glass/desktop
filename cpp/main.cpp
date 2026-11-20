@@ -40,7 +40,7 @@ extern "C" int lootlens_qt_main()
 #endif
     app.setApplicationName(QStringLiteral("Loot Lens"));
     app.setDesktopFileName(QStringLiteral("dev.lootlens.LootLens"));
-    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("view-financial-list")));
+    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("dev.lootlens.LootLens")));
     app.setQuitOnLastWindowClosed(false);
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));

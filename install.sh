@@ -6,6 +6,7 @@ command -v cargo >/dev/null || export PATH="$(echo "$HOME"/.rustup/toolchains/st
 cargo build --release
 install -Dm755 target/release/lootlens "$HOME/.local/bin/lootlens"
 install -Dm644 data/dev.lootlens.LootLens.desktop "$HOME/.local/share/applications/dev.lootlens.LootLens.desktop"
+install -Dm644 data/icons/dev.lootlens.LootLens.svg "$HOME/.local/share/icons/hicolor/scalable/apps/dev.lootlens.LootLens.svg"
 sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/lootlens|" "$HOME/.local/share/applications/dev.lootlens.LootLens.desktop"
 update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
 # Remove the install from before the rename (Glimmer).

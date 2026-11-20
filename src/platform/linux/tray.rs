@@ -8,6 +8,31 @@ use ksni::{
 };
 use tokio::sync::OnceCell;
 
+const ICONS: [&[u8]; 5] = [
+    include_bytes!("../../../data/icons/png/16.png"),
+    include_bytes!("../../../data/icons/png/22.png"),
+    include_bytes!("../../../data/icons/png/32.png"),
+    include_bytes!("../../../data/icons/png/48.png"),
+    include_bytes!("../../../data/icons/png/64.png"),
+];
+
+/// PNG (RGBA) -> SNI pixmap (ARGB32, network byte order).
+fn decode(bytes: &[u8]) -> Option<ksni::Icon> {
+    let mut dec = png::Decoder::new(std::io::Cursor::new(bytes));
+    dec.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
+    let mut reader = dec.read_info().ok()?;
+    let mut buf = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buf).ok()?;
+    if info.color_type != png::ColorType::Rgba {
+        return None;
+    }
+    let data = buf[..info.buffer_size()]
+        .chunks_exact(4)
+        .flat_map(|p| [p[3], p[0], p[1], p[2]])
+        .collect();
+    Some(ksni::Icon { width: info.width as i32, height: info.height as i32, data })
+}
+
 pub struct Tray {
     pub game: Game,
 }
@@ -21,8 +46,10 @@ impl ksni::Tray for Tray {
     fn title(&self) -> String {
         format!("Loot Lens — {}", self.game.label())
     }
-    fn icon_name(&self) -> String {
-        "view-financial-list".into()
+    /// The icon is sent as pixels rather than a theme name: Plasma's panel resolves names
+    /// against an icon theme cached at login and fails for freshly installed icons.
+    fn icon_pixmap(&self) -> Vec<ksni::Icon> {
+        ICONS.iter().filter_map(|png| decode(png)).collect()
     }
     fn activate(&mut self, _x: i32, _y: i32) {
         send_event(Event::OpenSettings);

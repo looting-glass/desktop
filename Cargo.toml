@@ -27,6 +27,7 @@ toml = "1.2.1"
 # Linux/KDE platform backend (src/platform/linux)
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = { version = "0.14.1", features = ["global_shortcuts", "remote_desktop", "screencast", "tokio"] }
+png = "0.17"
 ksni = "0.3.7"
 wl-clipboard-rs = "0.9.5"
 
