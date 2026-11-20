@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
 import dev.lootlens
 
 // Settings window: category sidebar (like KDE System Settings) + one short form per page.
@@ -16,6 +15,15 @@ ApplicationWindow {
 
     property var cfg: ({})
     readonly property var statuses: ["online", "any", "securable"]
+    // Only present in the config on platforms where Loot Lens registers hotkeys itself (Windows).
+    readonly property bool ownShortcuts: cfg.shortcuts !== undefined
+    readonly property var shortcutFields: [
+        ["price_check", "Price check:"],
+        ["toggle_game", "Switch game:"],
+        ["manual_check", "Manual check:"],
+        ["settings", "Open settings:"],
+        ["hide_overlay", "Hide overlay:"],
+    ]
 
     function leaguesFor(key) {
         try { return JSON.parse(Backend.leagues || "{}")[key] || [] } catch (e) { return [] }
@@ -39,6 +47,9 @@ ApplicationWindow {
         sideMargin.value = cfg.overlay.margin_side
         maxHeight.value = cfg.overlay.max_height
         contact.text = cfg.contact
+        if (ownShortcuts)
+            for (let i = 0; i < shortcutFields.length; i++)
+                shortcutRows.itemAt(i).value = cfg.shortcuts[shortcutFields[i][0]]
         saveStatus.text = ""
         Backend.refreshLeagues()
         Backend.refreshShortcuts()
@@ -57,6 +68,9 @@ ApplicationWindow {
         c.overlay.margin_side = sideMargin.value
         c.overlay.max_height = maxHeight.value
         c.contact = contact.text
+        if (ownShortcuts)
+            for (let i = 0; i < shortcutFields.length; i++)
+                c.shortcuts[shortcutFields[i][0]] = shortcutRows.itemAt(i).value.trim()
         const err = Backend.saveConfig(JSON.stringify(c))
         saveStatus.text = err === "" ? "Saved." : "Error: " + err
     }
@@ -130,7 +144,7 @@ ApplicationWindow {
                     ListView {
                         id: nav
                         anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
+                        anchors.margins: 4
                         model: win.categories
                         currentIndex: 0
                         spacing: 2
@@ -145,71 +159,76 @@ ApplicationWindow {
                         }
                     }
                 }
-                Kirigami.Separator { Layout.fillHeight: true }
+                Rectangle { Layout.fillHeight: true; implicitWidth: 1; color: win.palette.mid; opacity: 0.5 }
 
                 // ── Pages ────────────────────────────────────────────
                 StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.margins: Kirigami.Units.largeSpacing
+                    Layout.margins: 8
                     currentIndex: nav.currentIndex
 
-                    Kirigami.FormLayout {
+                    FormPage {
+                        FormLabel { text: "Price check against:" }
                         ComboBox {
                             id: game
-                            Kirigami.FormData.label: "Price check against:"
                             model: ["Path of Exile", "Path of Exile 2"]
                         }
+                        FormLabel { text: "PoE 1 league:" }
                         ComboBox {
                             id: league1
-                            Kirigami.FormData.label: "PoE 1 league:"
                             editable: true
                             model: win.leaguesFor("poe1")
                             Layout.preferredWidth: 260
                         }
+                        FormLabel { text: "PoE 2 league:" }
                         ComboBox {
                             id: league2
-                            Kirigami.FormData.label: "PoE 2 league:"
                             editable: true
                             model: win.leaguesFor("poe2")
                             Layout.preferredWidth: 260
                         }
                     }
 
-                    Kirigami.FormLayout {
+                    FormPage {
+                        FormLabel { text: "Listing status:" }
                         ComboBox {
                             id: status
-                            Kirigami.FormData.label: "Listing status:"
                             model: ["Online", "Any", "Instant buyout (PoE 2)"]
                         }
+                        FormLabel { text: "Stat tolerance (%):" }
                         SpinBox {
                             id: tolerance
-                            Kirigami.FormData.label: "Stat tolerance (%):"
                             from: 0; to: 50
                         }
+                        FormLabel { text: "Listings shown:" }
                         SpinBox {
                             id: results
-                            Kirigami.FormData.label: "Listings shown:"
                             from: 1; to: 20
                         }
+                        FormLabel { text: "Contact (User-Agent):" }
                         TextField {
                             id: contact
-                            Kirigami.FormData.label: "Contact (User-Agent):"
                             placeholderText: "Optional, e.g. forum name"
                             Layout.preferredWidth: 260
                         }
                     }
 
-                    Kirigami.FormLayout {
+                    FormPage {
+                        FormLabel { text: "Screen side:" }
                         ComboBox {
                             id: side
-                            Kirigami.FormData.label: "Screen side:"
                             model: ["Left", "Right"]
                         }
-                        SpinBox { id: width_; Kirigami.FormData.label: "Width:"; from: 250; to: 1500; stepSize: 10 }
-                        SpinBox { id: maxHeight; Kirigami.FormData.label: "Height (0 = fit content):"; from: 0; to: 3000; stepSize: 10 }
-                        SpinBox { id: top_; Kirigami.FormData.label: "Top margin:"; from: 0; to: 3000; stepSize: 10 }
-                        SpinBox { id: sideMargin; Kirigami.FormData.label: "Side margin:"; from: 0; to: 3000; stepSize: 10 }
+                        FormLabel { text: "Width:" }
+                        SpinBox { id: width_; from: 250; to: 1500; stepSize: 10 }
+                        FormLabel { text: "Height (0 = fit content):" }
+                        SpinBox { id: maxHeight; from: 0; to: 3000; stepSize: 10 }
+                        FormLabel { text: "Top margin:" }
+                        SpinBox { id: top_; from: 0; to: 3000; stepSize: 10 }
+                        FormLabel { text: "Side margin:" }
+                        SpinBox { id: sideMargin; from: 0; to: 3000; stepSize: 10 }
+                        Item {}
                         Label {
                             text: "Tip: drag the ⠿ handle to move the overlay and its free edges to resize it."
                             opacity: 0.7
@@ -218,23 +237,54 @@ ApplicationWindow {
                         }
                     }
 
-                    Kirigami.FormLayout {
+                    // Linux: shortcuts live in the desktop (portal); show them with a button to edit.
+                    // Windows: Loot Lens registers them itself, so edit them right here.
+                    FormPage {
+                        FormLabel { text: "Current:"; visible: !win.ownShortcuts }
                         Label {
-                            Kirigami.FormData.label: "Current:"
+                            visible: !win.ownShortcuts
                             text: Backend.shortcutsText || "…"
                             wrapMode: Text.Wrap
                             Layout.preferredWidth: 300
                         }
+                        Item { visible: !win.ownShortcuts }
                         Button {
+                            visible: !win.ownShortcuts
                             text: "Change shortcuts…"
                             icon.name: "input-keyboard"
                             onClicked: Backend.configureShortcuts()
                         }
+
+                        Repeater {
+                            id: shortcutRows
+                            model: win.ownShortcuts ? win.shortcutFields : []
+                            delegate: RowLayout {
+                                required property var modelData
+                                property alias value: field.text
+                                Layout.columnSpan: 2
+                                Layout.alignment: Qt.AlignRight
+                                spacing: 12
+                                Label { text: modelData[1] }
+                                TextField {
+                                    id: field
+                                    placeholderText: "unassigned"
+                                    Layout.preferredWidth: 200
+                                }
+                            }
+                        }
+                        Item { visible: win.ownShortcuts }
+                        Label {
+                            visible: win.ownShortcuts
+                            text: "Examples: Ctrl+D, Ctrl+Shift+F7, Alt+W. Leave empty to unassign."
+                            opacity: 0.7
+                            wrapMode: Text.Wrap
+                            Layout.preferredWidth: 200
+                        }
                     }
 
                     ColumnLayout {
-                        spacing: Kirigami.Units.largeSpacing
-                        Kirigami.Heading { text: "Loot Lens"; level: 1 }
+                        spacing: 8
+                        Label { text: "Loot Lens"; font.pointSize: Qt.application.font.pointSize * 1.6 }
                         Label {
                             text: "Wayland-native price checker for Path of Exile 1 and 2."
                             wrapMode: Text.Wrap
@@ -259,10 +309,10 @@ ApplicationWindow {
             }
 
             // ── Footer ───────────────────────────────────────────────
-            Kirigami.Separator { Layout.fillWidth: true }
+            Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: win.palette.mid; opacity: 0.5 }
             RowLayout {
                 Layout.fillWidth: true
-                Layout.margins: Kirigami.Units.largeSpacing
+                Layout.margins: 8
                 Label { id: saveStatus; opacity: 0.8; Layout.fillWidth: true }
                 Button { text: "Save"; icon.name: "document-save"; highlighted: true; onClicked: win.save() }
                 Button { text: "Close"; icon.name: "dialog-close"; onClicked: win.close() }

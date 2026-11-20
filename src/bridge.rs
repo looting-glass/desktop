@@ -168,6 +168,7 @@ impl qobject::Backend {
                 let game = c.game;
                 *crate::CONFIG.lock().unwrap() = c;
                 send_event(Event::SetGame(game));
+                crate::platform::reload_shortcuts();
                 QString::default()
             }
             Err(e) => q(e.to_string()),

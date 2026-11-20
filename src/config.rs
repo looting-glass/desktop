@@ -103,6 +103,35 @@ pub struct Config {
     pub overlay: OverlayConfig,
     /// Optional contact info appended to the User-Agent (GGG asks API clients to identify themselves).
     pub contact: String,
+    /// Global hotkeys, on platforms where Loot Lens registers them itself (Windows). On Linux
+    /// they are bound in the desktop's shortcut settings through the GlobalShortcuts portal.
+    #[cfg(windows)]
+    pub shortcuts: ShortcutsConfig,
+}
+
+/// Hotkeys as "Ctrl+Shift+D"-style strings; empty = unassigned.
+#[cfg(windows)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ShortcutsConfig {
+    pub price_check: String,
+    pub toggle_game: String,
+    pub manual_check: String,
+    pub settings: String,
+    pub hide_overlay: String,
+}
+
+#[cfg(windows)]
+impl Default for ShortcutsConfig {
+    fn default() -> Self {
+        Self {
+            price_check: "Ctrl+D".into(),
+            toggle_game: String::new(),
+            manual_check: String::new(),
+            settings: String::new(),
+            hide_overlay: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,6 +177,8 @@ impl Default for Config {
             trade: TradeConfig::default(),
             overlay: OverlayConfig::default(),
             contact: String::new(),
+            #[cfg(windows)]
+            shortcuts: ShortcutsConfig::default(),
         }
     }
 }

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
 import dev.lootlens
 
 // Manual price check: paste item text copied from the game; results open in the overlay.
@@ -45,19 +44,20 @@ ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: Kirigami.Units.largeSpacing * 2
-            spacing: Kirigami.Units.largeSpacing
+            anchors.margins: 16
+            spacing: 8
 
             RowLayout {
-                spacing: Kirigami.Units.largeSpacing
-                Kirigami.Icon {
-                    source: "dev.lootlens.LootLens"
+                spacing: 8
+                Image {
+                    source: "qrc:/lootlens/icons/lootlens.svg"
+                    sourceSize: Qt.size(40, 40)
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                 }
                 ColumnLayout {
                     spacing: 0
-                    Kirigami.Heading { text: "Manual price check"; level: 2 }
+                    Label { text: "Manual price check"; font.pointSize: Qt.application.font.pointSize * 1.35 }
                     Label {
                         text: "Checking against " + Backend.gameLabel
                         opacity: 0.7
@@ -66,6 +66,7 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
                 ToolButton {
                     icon.name: "configure"
+                    icon.source: "qrc:/lootlens/icons/settings.svg"
                     text: "Settings"
                     display: AbstractButton.IconOnly
                     ToolTip.visible: hovered
@@ -103,7 +104,7 @@ ApplicationWindow {
             Label {
                 id: error
                 visible: text !== ""
-                color: Kirigami.Theme.negativeTextColor
+                color: "#da4453"
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
@@ -125,7 +126,7 @@ ApplicationWindow {
                 Label { text: "Ctrl+Enter"; opacity: 0.5 }
                 Button {
                     text: "Check price"
-                    icon.name: "dev.lootlens.LootLens"
+                    icon.source: "qrc:/lootlens/icons/lootlens.svg"
                     icon.color: "transparent"
                     highlighted: true
                     enabled: input.text.trim() !== ""

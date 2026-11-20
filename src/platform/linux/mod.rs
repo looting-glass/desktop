@@ -25,3 +25,6 @@ pub async fn focus_game() {
         kwin::focus_game().await
     }
 }
+
+/// Shortcuts are bound in the desktop's settings (portal), nothing to reload.
+pub fn reload_shortcuts() {}

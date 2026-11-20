@@ -1,9 +1,9 @@
 // Price-check overlay. Made a layer-shell surface (overlay layer) from cpp/main.cpp.
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.impl
 import QtQuick.Effects
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
 import dev.lootlens
 
 Window {
@@ -182,7 +182,7 @@ Window {
                         color: win.hasSpec && win.spec.corrupted ? "#e06c6c" : pal.windowText
                         opacity: win.hasSpec && win.spec.corrupted ? 1 : 0.55
                     }
-                    ToolButton { icon.name: "window-close"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
+                    ToolButton { icon.name: "window-close"; icon.source: "qrc:/lootlens/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
                 }
                 Label {
                     visible: Backend.overlayState !== "error"
@@ -330,6 +330,7 @@ Window {
                     focusPolicy: Qt.NoFocus
                     text: win.expanded ? "Collapse" : "Show filters"
                     icon.name: win.expanded ? "arrow-up" : "arrow-down"
+                    icon.source: win.expanded ? "qrc:/lootlens/icons/arrow-up.svg" : "qrc:/lootlens/icons/arrow-down.svg"
                     Layout.alignment: Qt.AlignHCenter
                     onClicked: win.expanded = !win.expanded
                 }
@@ -345,6 +346,7 @@ Window {
                     ToolButton {
                         focusPolicy: Qt.NoFocus
                         icon.name: "view-refresh"
+                        icon.source: "qrc:/lootlens/icons/refresh.svg"
                         text: win.hasSpec && win.spec.online ? "Online" : "Any"
                         display: AbstractButton.TextBesideIcon
                         onClicked: { win.spec.online = !win.spec.online; win.edited() }
@@ -364,10 +366,11 @@ Window {
                             spacing: 4
                             opacity: tradeBtn.enabled ? 1 : 0.5
                             Label { text: "Trade"; color: pal.buttonText }
-                            Kirigami.Icon {
-                                source: "external-link-symbolic"
+                            IconImage {
+                                name: "external-link-symbolic"
+                                source: "qrc:/lootlens/icons/external-link.svg"
                                 color: pal.buttonText
-                                isMask: true
+                                sourceSize: Qt.size(14, 14)
                                 Layout.preferredWidth: 14
                                 Layout.preferredHeight: 14
                             }

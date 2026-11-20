@@ -9,8 +9,9 @@ Hover an item in game, press a hotkey, and Loot Lens shows what it is worth: liv
 official trade site, poe.ninja prices for currency and other stackables, and filters you can tweak
 on the spot. One app for both games, with a league per game.
 
-Built for KDE Plasma on Wayland with Rust and Qt 6, with experimental Hyprland support. No Electron, no browser, no XWayland. Global
-hotkeys, the overlay and clipboard access all use the desktop's native mechanisms.
+Built for KDE Plasma on Wayland with Rust and Qt 6, with experimental Hyprland and Windows
+support. No Electron, no browser, no XWayland. Global hotkeys, the overlay and clipboard access
+all use the desktop's native mechanisms.
 
 > Loot Lens is a fan-made tool and is not affiliated with or endorsed by Grinding Gear Games.
 
@@ -68,6 +69,7 @@ hotkeys, the overlay and clipboard access all use the desktop's native mechanism
 
 - KDE Plasma 6 on Wayland (tested). Hyprland support is **experimental and untested**; see [Hyprland](#hyprland-experimental). GNOME isn't supported: it lacks layer-shell and
   background clipboard access. Sway lacks the GlobalShortcuts portal.
+- Windows 10 or 11 is **experimental and untested**; see [Windows](#windows-experimental).
 - On Hyprland: `xdg-desktop-portal-hyprland` and a tray (e.g. Waybar's tray module) for the icon
 - Qt 6 with Qt Quick, plus `layer-shell-qt`, `kirigami` and `qqc2-desktop-style`
 - Building from source also needs a Rust toolchain (edition 2024) and a C++ compiler; see
@@ -107,6 +109,18 @@ launcher entry and icon, and `pacman -R lootlens-bin` removes it cleanly.
 Release binaries are built on Arch Linux. Qt 6 is backward compatible, so they keep working as
 your Qt updates, but they need a Qt at least as new as the one they were built with: a
 rolling distro (Arch, CachyOS, EndeavourOS) is the safe bet. On other distros, build from source.
+
+### Windows (experimental)
+
+> ⚠️ The Windows build compiles and packages in CI, but nobody has run it with the game yet.
+> Bug reports and fixes are very welcome.
+
+Download `lootlens-<version>-windows-x64.zip` from the
+[latest release](https://github.com/rockymontana/loot-lens/releases/latest), extract it anywhere
+and run `lootlens.exe`. Everything it needs is in the folder; it lives in the system tray.
+
+Run Path of Exile in **windowed fullscreen** (borderless): Windows can't draw the overlay above a
+game in exclusive fullscreen. Hotkeys are set in Loot Lens's own *Settings → Shortcuts*.
 
 ### From source
 
@@ -150,7 +164,8 @@ click the tray icon (or use *Manual check…* in its menu). Paste the item text 
 | Open manual price check | unassigned |
 | Hide overlay | unassigned |
 
-Change them in *System Settings → Shortcuts → Loot Lens*, or via *Settings → Shortcuts*.
+Change them in *System Settings → Shortcuts → Loot Lens*, or via *Settings → Shortcuts*. On
+Windows, type them straight into *Settings → Shortcuts* (e.g. `Ctrl+D`, `Ctrl+Shift+F7`).
 
 #### Hyprland (experimental)
 
@@ -171,7 +186,7 @@ Copying and refocusing go through `hyprctl`, so no permission dialog appears.
 
 ## Configuration
 
-Settings live in `~/.config/lootlens/config.toml` and can be edited in the settings window
+Settings live in `~/.config/lootlens/config.toml` (on Windows `%APPDATA%\lootlens\config.toml`) and can be edited in the settings window
 (click the tray icon) or by hand:
 
 ```toml
@@ -195,6 +210,13 @@ margin_top = 80
 margin_side = 24
 width = 380
 max_height = 0           # 0 = fit content
+
+[shortcuts]              # Windows only; on Linux shortcuts belong to the desktop
+price_check = "Ctrl+D"
+toggle_game = ""
+manual_check = ""
+settings = ""
+hide_overlay = ""
 ```
 
 ## Troubleshooting
@@ -238,7 +260,7 @@ LOOTLENS_GAME=poe2 LOOTLENS_DEMO=dev/boots-poe2.txt cargo run       # force a ga
 | `src/ninja.rs` | poe.ninja prices for stackables |
 | `src/platform/` | Desktop integration: hotkeys, copying the item, focus, tray |
 | `src/platform/linux/` | KDE/Wayland backend: portals, data-control clipboard, KWin, SNI tray |
-| `src/platform/windows.rs` | Windows backend stub with the planned approach |
+| `src/platform/windows.rs` | Windows backend (experimental): RegisterHotKey, SendInput, Win32 clipboard |
 | `src/bridge.rs` | cxx-qt `Backend` object the QML binds to |
 | `qml/` | Overlay and settings views |
 | `cpp/main.cpp` | Small Qt bootstrap: QApplication for the Breeze style, layer-shell setup |
@@ -246,15 +268,17 @@ LOOTLENS_GAME=poe2 LOOTLENS_DEMO=dev/boots-poe2.txt cargo run       # force a ga
 ### Making a release
 
 Push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`. The
-[Release workflow](.github/workflows/release.yml) builds and tests in an Arch Linux container,
-runs `packaging/make-release.sh` and publishes the tarball with a SHA-256 checksum. Running the
-workflow manually from the Actions tab is a dry run that only uploads the tarball as an artifact.
+[Release workflow](.github/workflows/release.yml) builds and tests Linux in an Arch Linux
+container (`packaging/make-release.sh`) and Windows on a Windows runner (`windeployqt`), then
+publishes the Linux tarball and Windows zip with SHA-256 checksums. Running the workflow manually
+from the Actions tab is a dry run that only uploads them as artifacts.
 
 ### Porting
 
-Everything outside `src/platform/` and the `LOOTLENS_LAYER_SHELL` parts of `cpp/main.cpp` is
-platform-independent. A new OS needs a module implementing the functions documented in
-`src/platform/mod.rs`. A Windows port is planned; see `src/platform/windows.rs`.
+Everything outside `src/platform/` and the platform `#ifdef`s in `cpp/main.cpp` is
+platform-independent, and the QML uses only Qt Quick Controls (no KDE libraries) with bundled
+fallback icons. A new OS needs a module implementing the functions documented in
+`src/platform/mod.rs`; `src/platform/windows.rs` is the smallest example.
 
 ## Thanks & inspiration
 

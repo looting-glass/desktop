@@ -1,0 +1,12 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+<qresource prefix="/lootlens/icons">
+    <file alias="lootlens.svg">../../data/icons/dev.lootlens.LootLens.svg</file>
+    <file>close.svg</file>
+    <file>arrow-up.svg</file>
+    <file>arrow-down.svg</file>
+    <file>refresh.svg</file>
+    <file>external-link.svg</file>
+    <file>settings.svg</file>
+</qresource>
+</RCC>
