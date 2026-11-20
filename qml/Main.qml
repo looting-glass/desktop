@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 import dev.lootlens
 
 Window {
@@ -343,11 +344,23 @@ Window {
                     Item { Layout.fillWidth: true }
                     BusyIndicator { visible: Backend.overlayState === "loading"; running: visible; implicitWidth: 24; implicitHeight: 24 }
                     Button {
-                        text: "Trade"
-                        icon.name: "internet-web-browser"
+                        id: tradeBtn
                         focusPolicy: Qt.NoFocus
                         enabled: Backend.tradeUrl !== ""
                         onClicked: Qt.openUrlExternally(Backend.tradeUrl)
+                        // Text first, then a small "opens externally" icon with a tight gap.
+                        contentItem: RowLayout {
+                            spacing: 4
+                            opacity: tradeBtn.enabled ? 1 : 0.5
+                            Label { text: "Trade"; color: pal.buttonText }
+                            Kirigami.Icon {
+                                source: "external-link-symbolic"
+                                color: pal.buttonText
+                                isMask: true
+                                Layout.preferredWidth: 14
+                                Layout.preferredHeight: 14
+                            }
+                        }
                     }
                 }
 
