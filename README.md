@@ -58,30 +58,20 @@ hotkeys, the overlay and clipboard access all use the desktop's native mechanism
   <img src="docs/screenshots/settings-trade.png" alt="Settings: trade options" width="420">
 </p>
 
-## How it works on Wayland
+<p align="center">
+  <img src="docs/screenshots/manual-check.png" alt="Manual price check window with pasted item text" width="600">
+</p>
 
-Electron-based tools struggle on Wayland because they rely on X11 tricks for hotkeys, key
-injection and always-on-top windows. Loot Lens uses the native equivalents instead:
+## Install
 
-| Need | How Loot Lens does it |
-|---|---|
-| Hotkeys while the game is focused | XDG **GlobalShortcuts** portal (bound in System Settings) |
-| Make the game copy the hovered item | KDE: XDG **RemoteDesktop** portal, keyboard only (you approve it once). Hyprland: `hyprctl dispatch sendshortcut` |
-| Read the clipboard without focus | Wayland **data-control** protocol |
-| Overlay above a fullscreen game | **wlr-layer-shell** via KDE's LayerShellQt |
-| Give focus back to the game | KDE: a one-shot KWin script. Hyprland: `hyprctl dispatch focuswindow` |
-| Tray icon | StatusNotifierItem |
+### Requirements
 
-## Requirements
-
-- KDE Plasma 6 on Wayland (tested). Hyprland support is **experimental and untested**; see below. GNOME isn't supported: it lacks layer-shell and
+- KDE Plasma 6 on Wayland (tested). Hyprland support is **experimental and untested**; see [Hyprland](#hyprland-experimental). GNOME isn't supported: it lacks layer-shell and
   background clipboard access. Sway lacks the GlobalShortcuts portal.
 - On Hyprland: `xdg-desktop-portal-hyprland` and a tray (e.g. Waybar's tray module) for the icon
 - Qt 6 with Qt Quick, plus `layer-shell-qt`, `kirigami` and `qqc2-desktop-style`
 - Building from source also needs a Rust toolchain (edition 2024) and a C++ compiler; see
-  [Install](#install)
-
-## Install
+  [From source](#from-source)
 
 ### Arch Linux / CachyOS (package)
 
@@ -144,12 +134,11 @@ Start **Loot Lens** from the application launcher. It lives in the system tray.
 3. Adjust the filters if you like. The search updates automatically.
 4. Press **Esc** or **Space**, or click back into the game, to close the overlay.
 
-To check an item without the hotkey, click the tray icon (or use *Manual check…* in its menu),
-paste the item text and press **Check price** (or Ctrl+Enter).
+### Manual price check
 
-<p align="center">
-  <img src="docs/screenshots/manual-check.png" alt="Manual price check window with pasted item text" width="600">
-</p>
+To check an item without the hotkey, for example one a friend sent you or one from a forum post,
+click the tray icon (or use *Manual check…* in its menu). Paste the item text and press
+**Check price** (or Ctrl+Enter). The results open in the overlay as usual.
 
 ### Shortcuts
 
@@ -217,6 +206,20 @@ max_height = 0           # 0 = fit content
   keyboard control when KDE asked. To reset that permission, delete
   `~/.local/state/lootlens/remote-desktop.token` and restart Loot Lens.
 - **Debug output.** Run `RUST_LOG=lootlens=debug QT_FORCE_STDERR_LOGGING=1 lootlens` in a terminal.
+
+## How it works on Wayland
+
+Electron-based tools struggle on Wayland because they rely on X11 tricks for hotkeys, key
+injection and always-on-top windows. Loot Lens uses the native equivalents instead:
+
+| Need | How Loot Lens does it |
+|---|---|
+| Hotkeys while the game is focused | XDG **GlobalShortcuts** portal (bound in System Settings) |
+| Make the game copy the hovered item | KDE: XDG **RemoteDesktop** portal, keyboard only (you approve it once). Hyprland: `hyprctl dispatch sendshortcut` |
+| Read the clipboard without focus | Wayland **data-control** protocol |
+| Overlay above a fullscreen game | **wlr-layer-shell** via KDE's LayerShellQt |
+| Give focus back to the game | KDE: a one-shot KWin script. Hyprland: `hyprctl dispatch focuswindow` |
+| Tray icon | StatusNotifierItem |
 
 ## Development
 
