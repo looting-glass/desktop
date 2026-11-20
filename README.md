@@ -190,6 +190,22 @@ Everything outside `src/platform/` and the `LOOTLENS_LAYER_SHELL` parts of `cpp/
 platform-independent. A new OS needs a module implementing the functions documented in
 `src/platform/mod.rs`. A Windows port is planned; see `src/platform/windows.rs`.
 
+## Thanks & inspiration
+
+Loot Lens stands on the shoulders of the tools the PoE community already loves:
+
+- [**Awakened PoE Trade**](https://github.com/SnosMe/awakened-poe-trade): the overlay that set the
+  standard for in-game price checking, and the model for Loot Lens's filter layout.
+- [**Exiled Exchange 2**](https://github.com/Kvan7/Exiled-Exchange-2): carried that experience over
+  to Path of Exile 2.
+- [**Sidekick**](https://github.com/Sidekick-Poe/Sidekick): showed how nice it is to have one app for
+  both games, with the league picked per game.
+
+Huge thanks to their authors and contributors. Loot Lens exists because they showed what a great
+price checker looks like; it just brings that to a native Wayland desktop. Prices come from
+[poe.ninja](https://poe.ninja) and the official
+[Path of Exile trade site](https://www.pathofexile.com/trade).
+
 ## License
 
 Loot Lens is free software, licensed under the [GNU General Public License v3.0 or later](LICENSE.md).
