@@ -34,6 +34,8 @@ jobs:
 
       # Cache compiled dependencies between runs (keyed on Cargo.lock and the toolchain).
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
 
       - name: Test
         run: cargo test --release --locked
@@ -69,6 +71,8 @@ jobs:
         run: rustup update stable --no-self-update && rustup default stable
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
 
       - name: Test
         run: cargo test --release --locked
