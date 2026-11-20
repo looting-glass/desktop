@@ -1,6 +1,7 @@
 // Price-check overlay. Made a layer-shell surface (overlay layer) from cpp/main.cpp.
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import QtQuick.Layouts
 import dev.lootlens
 
@@ -11,7 +12,7 @@ Window {
     color: "transparent"
     width: Backend.overlayWidth
     // A height set with the bottom resize edge is fixed (content scrolls); otherwise fit the content.
-    height: Math.min(Backend.overlayMaxHeight > 0 ? Backend.overlayMaxHeight : card.implicitHeight,
+    height: Math.min(Backend.overlayMaxHeight > 0 && Backend.snapshotDir === "" ? Backend.overlayMaxHeight : card.implicitHeight,
                      Screen.height - marginTop - 40)
 
     // Read from C++ for layer-shell anchors/margins.
@@ -61,7 +62,7 @@ Window {
             activeSince = Date.now()
         } else if (wasActive && visible) {
             if (Date.now() - activeSince < 600) requestActivate()
-            else Backend.hideOverlay()
+            else if (Backend.snapshotDir === "") Backend.hideOverlay()
         }
     }
     onVisibleChanged: if (!visible) wasActive = false
@@ -378,6 +379,9 @@ Window {
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                                 color: modelData.corrupted ? "#e06c6c" : pal.windowText
+                                // Snapshot mode: blur other players' account names.
+                                layer.enabled: Backend.snapshotDir !== ""
+                                layer.effect: MultiEffect { blurEnabled: true; blurMax: 24; blur: 1.0 }
                             }
                         }
                     }
@@ -420,6 +424,30 @@ Window {
     Settings {
         id: settings
         transientParent: null
+    }
+
+    // Dev aid (LOOTLENS_SNAPSHOT): render the overlay, then the settings window, to PNGs with
+    // transparency — no desktop behind them.
+    Timer {
+        id: snapTimer
+        interval: 1000
+        onTriggered: card.grabToImage(r => {
+            r.saveToFile(Backend.snapshotDir + "/overlay.png")
+            console.warn("snapshot: overlay saved")
+            settings.show()
+            settingsSnap.start()
+        })
+    }
+    Timer {
+        id: settingsSnap
+        interval: 2500
+        onTriggered: settings.snapshot(Backend.snapshotDir + "/settings.png")
+    }
+    Connections {
+        target: Backend
+        function onOverlayStateChanged() {
+            if (Backend.snapshotDir !== "" && Backend.overlayState === "result") snapTimer.restart()
+        }
     }
 
     Connections {

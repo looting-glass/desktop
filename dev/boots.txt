@@ -1,0 +1,17 @@
+Item Class: Boots
+Rarity: Rare
+Havoc Stride
+Slink Boots
+--------
+Evasion Rating: 260 (augmented)
+--------
+Requirements:
+Level: 69
+--------
+Item Level: 82
+--------
++52 to maximum Life
+25% increased Movement Speed
++31% to Cold Resistance
++24% to Lightning Resistance
++18 to Dexterity

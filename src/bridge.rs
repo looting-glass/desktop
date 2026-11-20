@@ -23,6 +23,7 @@ pub mod qobject {
         #[qproperty(QString, ninja)]
         #[qproperty(QString, ninja_detail)]
         #[qproperty(i32, overlay_max_height)]
+        #[qproperty(QString, snapshot_dir)]
         #[qproperty(QString, trade_url)]
         #[qproperty(QString, game_label)]
         #[qproperty(QString, shortcuts_text)]
@@ -81,6 +82,7 @@ pub struct BackendRust {
     ninja: QString,
     ninja_detail: QString,
     overlay_max_height: i32,
+    snapshot_dir: QString,
     trade_url: QString,
     game_label: QString,
     shortcuts_text: QString,
@@ -121,7 +123,11 @@ pub fn apply_config(cfg: &Config) {
 }
 
 impl cxx_qt::Initialize for qobject::Backend {
-    fn initialize(self: Pin<&mut Self>) {
+    fn initialize(mut self: Pin<&mut Self>) {
+        // Dev aid: LOOTLENS_SNAPSHOT=<dir> makes QML save overlay/settings screenshots there.
+        if let Ok(dir) = std::env::var("LOOTLENS_SNAPSHOT") {
+            self.as_mut().set_snapshot_dir(q(dir));
+        }
         let _ = UI.set(Mutex::new(self.qt_thread()));
         apply_config(&config());
         crate::start_background();
