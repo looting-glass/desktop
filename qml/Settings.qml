@@ -275,7 +275,7 @@ ApplicationWindow {
                         Button {
                             visible: !win.ownShortcuts
                             text: "Change shortcuts…"
-                            icon.name: "input-keyboard"
+                            icon.name: Qt.platform.os === "linux" ? "input-keyboard" : ""
                             onClicked: Backend.configureShortcuts()
                         }
 
@@ -338,8 +338,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.margins: 8
                 Label { id: saveStatus; opacity: 0.8; Layout.fillWidth: true }
-                Button { text: "Save"; icon.name: "document-save"; highlighted: true; onClicked: win.save() }
-                Button { text: "Close"; icon.name: "dialog-close"; onClicked: win.close() }
+                Button { text: "Save"; icon.name: Qt.platform.os === "linux" ? "document-save" : ""; highlighted: true; onClicked: win.save() }
+                Button { text: "Close"; icon.name: Qt.platform.os === "linux" ? "dialog-close" : ""; onClicked: win.close() }
             }
         }
     }

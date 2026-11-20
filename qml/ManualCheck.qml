@@ -115,12 +115,12 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Button {
                     text: "Paste"
-                    icon.name: "edit-paste"
+                    icon.name: Qt.platform.os === "linux" ? "edit-paste" : ""
                     onClicked: { input.selectAll(); input.paste() }
                 }
                 Button {
                     text: "Clear"
-                    icon.name: "edit-clear"
+                    icon.name: Qt.platform.os === "linux" ? "edit-clear" : ""
                     enabled: input.text !== ""
                     onClicked: input.clear()
                 }
