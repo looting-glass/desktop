@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/rockymontana/looting-glass/compare/v0.4.0...v0.4.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **windows:** match the KDE look in light and dark mode ([#16](https://github.com/rockymontana/looting-glass/issues/16)) ([25fb0be](https://github.com/rockymontana/looting-glass/commit/25fb0be09803a3b42b45b60683852be790fb9bf3))
+
 ## [0.4.0](https://github.com/rockymontana/looting-glass/compare/v0.3.0...v0.4.0) (2026-11-20)
 
 
