@@ -1,6 +1,7 @@
-<p align="center"><img src="data/icons/dev.lootlens.LootLens.svg" alt="Loot Lens icon" width="96"></p>
-
-<h1 align="center">Loot Lens</h1>
+<h1 align="center">
+  <img src="data/icons/dev.lootlens.LootLens.svg" alt="" width="48" align="center">
+  Loot Lens
+</h1>
 
 **A Wayland-native price checker for Path of Exile 1 and Path of Exile 2.**
 
