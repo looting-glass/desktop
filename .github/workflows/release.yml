@@ -45,14 +45,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # windeployqt's --compiler-runtime finds the MSVC runtime DLLs through VCINSTALLDIR.
-      # (The C++ compiler itself is located by the cc crate.)
-      - name: Locate MSVC
-        shell: pwsh
-        run: |
-          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          "VCINSTALLDIR=$vs\VC\" >> $env:GITHUB_ENV
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -83,6 +75,10 @@ jobs:
           $dir = "dist/$name"
           New-Item -ItemType Directory -Force $dir | Out-Null
           Copy-Item target/release/lootlens.exe $dir/
+          # windeployqt's --compiler-runtime finds the MSVC runtime DLLs through VCINSTALLDIR.
+          # Set it only here: job-wide it makes rustc trust PATH's link.exe (Git's coreutils).
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $env:VCINSTALLDIR = "$vs\VC\"
           windeployqt --release --qmldir qml --no-translations --compiler-runtime "$dir/lootlens.exe"
           if ($LASTEXITCODE) { exit 1 }
           # SVG icons (app icon, fallback UI icons) need the SVG image/icon plugins.
