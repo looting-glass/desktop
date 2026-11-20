@@ -134,3 +134,32 @@ pub async fn lookup(game: Game, league: &str, name: &str, stack: Option<u32>, ua
     }
     Some((main, detail))
 }
+
+#[cfg(test)]
+mod tests {
+    //! Run against `mock.rs` (always on in tests).
+    use super::*;
+
+    fn block<T>(f: impl Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    #[test]
+    fn poe1_price_in_divine_and_chaos_with_stack() {
+        let (main, detail) = block(lookup(Game::Poe1, "Standard", "Divine Orb", Some(10), "test")).unwrap();
+        assert_eq!(main, "≈ 1.00 divine · 182 chaos");
+        assert_eq!(detail, "▲ 2% (7d) · stack of 10: 10.0 divine · 1820 chaos");
+    }
+
+    #[test]
+    fn poe2_prices_small_currency_in_exalted() {
+        let (main, detail) = block(lookup(Game::Poe2, "Standard", "chaos orb", None, "test")).unwrap();
+        assert_eq!(main, "≈ 20.0 exalted");
+        assert_eq!(detail, "▼ 1% (7d)");
+    }
+
+    #[test]
+    fn unknown_item_has_no_price() {
+        assert!(block(lookup(Game::Poe1, "Standard", "Mirror of Kalandra", None, "test")).is_none());
+    }
+}

@@ -4,11 +4,13 @@
 
 use serde_json::{Value, json};
 
+/// Always on in unit tests, so tests never touch the network.
 pub fn enabled() -> bool {
-    std::env::var_os("LOOTLENS_MOCK").is_some()
+    cfg!(test) || std::env::var_os("LOOTLENS_MOCK").is_some()
 }
 
-/// Stat texts as the trade API lists them; " (Local)" marks local mods.
+/// Stat texts as the PoE 1 trade API lists them; " (Local)" marks local mods. The PoE 2 API drops
+/// the leading "+" ("# to maximum Life"), which the mock reproduces.
 const STATS: &[&str] = &[
     "+# to maximum Life",
     "+# to maximum Mana",
@@ -52,13 +54,17 @@ pub fn response(method: &str, url: &str) -> Option<Value> {
         ]}));
     }
     if path.ends_with("/data/stats") {
+        let poe2 = path.contains("/trade2/");
         let groups: Vec<Value> = GROUPS
             .iter()
             .map(|g| {
                 let entries: Vec<Value> = STATS
                     .iter()
                     .enumerate()
-                    .map(|(i, t)| json!({ "id": format!("{g}.stat_mock{i}"), "text": t }))
+                    .map(|(i, t)| {
+                        let text = if poe2 { t.strip_prefix('+').unwrap_or(t) } else { t };
+                        json!({ "id": format!("{g}.stat_mock{i}"), "text": text })
+                    })
                     .collect();
                 json!({ "id": g, "entries": entries })
             })

@@ -321,6 +321,40 @@ mod tests {
     }
 
     #[test]
+    fn parses_weapon_numbers() {
+        let it = parse(include_str!("../dev/axe.txt")).unwrap();
+        let w = it.weapon.expect("weapon stats");
+        assert_eq!((w.phys, w.ele, w.aps, w.crit), (160.0, 30.0, 1.32, 5.0));
+        assert_eq!(it.quality, Some(8));
+        assert_eq!(it.item_level, Some(81));
+    }
+
+    #[test]
+    fn parses_every_dev_sample() {
+        for (name, text) in [
+            ("axe", include_str!("../dev/axe.txt")),
+            ("boots", include_str!("../dev/boots.txt")),
+            ("boots-poe2", include_str!("../dev/boots-poe2.txt")),
+            ("sceptre-poe2", include_str!("../dev/sceptre-poe2.txt")),
+            ("divine", include_str!("../dev/divine.txt")),
+            ("chaos-poe2", include_str!("../dev/chaos-poe2.txt")),
+        ] {
+            let it = parse(text).unwrap_or_else(|| panic!("{name} doesn't parse"));
+            assert!(!it.base.is_empty(), "{name} has no base");
+        }
+        let boots2 = parse(include_str!("../dev/boots-poe2.txt")).unwrap();
+        assert_eq!(boots2.base, "Dragonscale Boots");
+        assert_eq!(boots2.mods.len(), 3);
+        assert_eq!(parse(include_str!("../dev/chaos-poe2.txt")).unwrap().rarity, Rarity::Currency);
+    }
+
+    #[test]
+    fn rejects_non_item_text() {
+        assert!(parse("hello world").is_none());
+        assert!(parse("").is_none());
+    }
+
+    #[test]
     fn parses_gem_and_currency() {
         let gem = parse("Item Class: Skill Gems\nRarity: Gem\nVaal Grace\n--------\nLevel: 20 (Max)\nQuality: +20% (augmented)\n--------\nRequirements:\nLevel: 70\n").unwrap();
         assert_eq!(gem.gem_level, Some(20));

@@ -430,3 +430,127 @@ pub async fn search(spec: &Spec, cfg: &Config) -> Result<PriceResult> {
     }
     Ok(PriceResult { total, listings, url: game.web_search(&spec.league, &id) })
 }
+
+#[cfg(test)]
+mod tests {
+    //! Run against `mock.rs` (always on in tests): no network, deterministic data.
+    use super::*;
+    use crate::item::parse;
+
+    fn block<T>(f: impl Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
+    }
+
+    fn cfg(game: Game) -> Config {
+        Config { game, ..Config::default() }
+    }
+
+    fn spec_for(sample: &str, game: Game) -> Spec {
+        let item = parse(sample).expect("sample parses");
+        block(prepare(&item, &cfg(game))).expect("prepare")
+    }
+
+    fn filter<'a>(spec: &'a Spec, label_part: &str) -> &'a Filter {
+        spec.filters
+            .iter()
+            .find(|f| f.label.contains(label_part))
+            .unwrap_or_else(|| panic!("no filter with {label_part:?} in {:?}", spec.filters))
+    }
+
+    #[test]
+    fn rare_boots_get_category_and_sensible_defaults() {
+        let s = spec_for(include_str!("../dev/boots.txt"), Game::Poe1);
+        assert_eq!(s.category.as_deref(), Some("armour.boots"));
+        assert!(!s.use_base, "rares search the whole category, not the exact base");
+        for on in ["maximum Life", "Movement Speed", "Cold Resistance", "Lightning Resistance"] {
+            assert!(filter(&s, on).enabled, "{on} should be enabled by default");
+        }
+        assert!(!filter(&s, "Dexterity").enabled, "attributes start unchecked");
+        // Minimum = roll minus the 10% default tolerance, rounded down.
+        assert_eq!(filter(&s, "maximum Life").min, Some(46.0));
+    }
+
+    #[test]
+    fn defences_are_compared_at_20_quality() {
+        let s = spec_for(include_str!("../dev/boots.txt"), Game::Poe1);
+        let ev = s.filters.iter().find(|f| f.id == "prop:ev").expect("evasion filter");
+        assert_eq!(ev.label, "Evasion Rating: 260 (Q20: 312)");
+        assert_eq!(ev.min, Some(312.0));
+    }
+
+    #[test]
+    fn weapon_dps_filters() {
+        let s = spec_for(include_str!("../dev/axe.txt"), Game::Poe1);
+        let by_id = |id: &str| s.filters.iter().find(|f| f.id == id).unwrap_or_else(|| panic!("no {id}"));
+        // 120-200 phys at 1.32 APS, 8% quality and 112% increased local physical damage:
+        // 211 now, 223 at 20% quality.
+        assert_eq!(by_id("prop:pdps").label, "Physical DPS: 211 (Q20: 223)");
+        assert!(by_id("prop:pdps").enabled);
+        assert_eq!(by_id("prop:edps").min, Some(40.0));
+        assert!(!by_id("prop:edps").enabled, "elemental DPS is lower than physical");
+        assert_eq!(by_id("prop:dps").min, Some(263.0));
+    }
+
+    #[test]
+    fn poe2_matches_stats_listed_without_plus() {
+        let s = spec_for(include_str!("../dev/sceptre-poe2.txt"), Game::Poe2);
+        // The PoE 2 trade data says "# to maximum Mana"; the item says "+13 to maximum Mana".
+        assert!(filter(&s, "maximum Mana").id.starts_with("explicit."));
+        assert!(filter(&s, "Spirit").id.starts_with("desecrated."), "desecrated mods keep their group");
+        assert!(!s.filters.iter().any(|f| f.label.contains("Onslaught")), "unknown stats are skipped");
+    }
+
+    #[test]
+    fn query_filter_groups_differ_per_game() {
+        let mut s = spec_for(include_str!("../dev/boots.txt"), Game::Poe1);
+        for f in s.filters.iter_mut().filter(|f| f.id == "prop:ev" || f.id == "misc:ilvl") {
+            f.enabled = true;
+        }
+        let q = build_query(&s);
+        let filters = &q["query"]["filters"];
+        assert_eq!(filters["type_filters"]["filters"]["category"]["option"], "armour.boots");
+        assert_eq!(filters["armour_filters"]["filters"]["ev"]["min"], 312.0);
+        assert_eq!(filters["misc_filters"]["filters"]["ilvl"]["min"], 82.0);
+        assert!(q["query"]["type"].is_null(), "category search sends no base type");
+
+        s.game = Game::Poe2;
+        let q = build_query(&s);
+        let filters = &q["query"]["filters"];
+        assert_eq!(filters["equipment_filters"]["filters"]["ev"]["min"], 312.0);
+        assert_eq!(filters["type_filters"]["filters"]["ilvl"]["min"], 82.0);
+        assert!(filters["armour_filters"].is_null());
+    }
+
+    #[test]
+    fn query_uses_exact_base_when_asked() {
+        let mut s = spec_for(include_str!("../dev/boots.txt"), Game::Poe1);
+        s.use_base = true;
+        let q = build_query(&s);
+        assert_eq!(q["query"]["type"], "Slink Boots");
+        assert!(q["query"]["filters"]["type_filters"].is_null());
+    }
+
+    #[test]
+    fn category_table() {
+        assert_eq!(category("Quarterstaves"), Some("weapon.warstaff"));
+        assert_eq!(category("Boots"), Some("armour.boots"));
+        assert_eq!(category("Stackable Currency"), None);
+    }
+
+    #[test]
+    fn search_fetches_listings_in_chunks_of_ten() {
+        let s = spec_for(include_str!("../dev/boots.txt"), Game::Poe1);
+        let r = block(search(&s, &cfg(Game::Poe1))).unwrap();
+        assert_eq!(r.total, 13);
+        assert_eq!(r.listings.len(), 13, "10 + 3 ids over two fetches");
+        assert_eq!(r.listings[0].price, "1 chaos");
+        assert!(r.listings[4].corrupted);
+        assert_eq!(r.url, "https://www.pathofexile.com/trade/search/Standard/mock");
+    }
+
+    #[test]
+    fn leagues_are_filtered_by_realm() {
+        let poe2 = block(leagues(Game::Poe2, "test")).unwrap();
+        assert_eq!(poe2, vec!["Standard", "Mock League"]);
+    }
+}
