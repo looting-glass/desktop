@@ -5,6 +5,7 @@
 mod bridge;
 mod config;
 mod devcache;
+mod mock;
 mod item;
 mod ninja;
 mod platform;
