@@ -145,6 +145,9 @@ ApplicationWindow {
                         id: nav
                         anchors.fill: parent
                         anchors.margins: 4
+                        // Items start further right; their highlight reaches back (leftInset) so the
+                        // accent bar has room before the icon. Breeze ignores leftPadding here.
+                        anchors.leftMargin: 12
                         model: win.categories
                         currentIndex: 0
                         spacing: 2
@@ -156,7 +159,7 @@ ApplicationWindow {
                             text: modelData.name
                             icon.name: modelData.icon
                             // Same selected look as checked filter rows in the overlay.
-                            leftPadding: 14
+                            leftInset: -8
                             background: AccentTint {
                                 palette: win.palette
                                 active: navItem.ListView.isCurrentItem
