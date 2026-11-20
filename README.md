@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="data/icons/dev.lootlens.LootLens.svg" alt="" width="48" align="center">
+  <img src="data/icons/dev.lootlens.LootLens.svg" alt="" width="40" height="40" align="top">
   Loot Lens
 </h1>
 
