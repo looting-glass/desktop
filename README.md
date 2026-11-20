@@ -83,6 +83,20 @@ injection and always-on-top windows. Loot Lens uses the native equivalents inste
 
 ## Install
 
+### Arch Linux / CachyOS (package)
+
+A `lootlens-bin` package for the AUR is on its way. Until it's published, build the same package
+from this repository with `makepkg`:
+
+```bash
+git clone https://github.com/rockymontana/loot-lens.git
+cd loot-lens/packaging/aur/lootlens-bin
+makepkg -si
+```
+
+This installs the prebuilt release binary system-wide through pacman, with its dependencies,
+launcher entry and icon, and `pacman -R lootlens-bin` removes it cleanly.
+
 ### Prebuilt release (no Rust needed)
 
 1. Install the runtime libraries (already present on most Plasma 6 desktops). On Arch / CachyOS:
