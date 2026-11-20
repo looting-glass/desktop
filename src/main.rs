@@ -34,8 +34,8 @@ pub enum Event {
 
 pub static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
     let mut c = Config::load();
-    // Dev aid: LOOTLENS_GAME=poe1|poe2 overrides the game for this run (e.g. for screenshots).
-    match std::env::var("LOOTLENS_GAME").as_deref() {
+    // Dev aid: LOOTINGGLASS_GAME=poe1|poe2 overrides the game for this run (e.g. for screenshots).
+    match std::env::var("LOOTINGGLASS_GAME").as_deref() {
         Ok("poe1") => c.game = Game::Poe1,
         Ok("poe2") => c.game = Game::Poe2,
         _ => {}
@@ -81,14 +81,14 @@ pub fn start_background() {
                 show_error(format!("Global shortcuts unavailable: {e:#}"));
             }
         });
-        // Dev aid: LOOTLENS_DEMO=item.txt price-checks that file's text once at startup.
-        if let Some(path) = std::env::var_os("LOOTLENS_DEMO") {
+        // Dev aid: LOOTINGGLASS_DEMO=item.txt price-checks that file's text once at startup.
+        if let Some(path) = std::env::var_os("LOOTINGGLASS_DEMO") {
             match std::fs::read_to_string(&path) {
                 Ok(text) => {
                     tokio::time::sleep(Duration::from_millis(1500)).await;
                     tokio::spawn(check_text(text));
                 }
-                Err(e) => log::error!("LOOTLENS_DEMO: {e}"),
+                Err(e) => log::error!("LOOTINGGLASS_DEMO: {e}"),
             }
         }
         while let Ok(ev) = rx.recv().await {
@@ -155,7 +155,7 @@ async fn price_check() {
 /// Parse item text, show the overlay with default filters and run the first search.
 async fn check_text(text: String) {
     // Keep the last copied item for troubleshooting parsing/matching problems.
-    if let Some(dir) = dirs::state_dir().or_else(dirs::data_local_dir).map(|d| d.join("lootlens")) {
+    if let Some(dir) = dirs::state_dir().or_else(dirs::data_local_dir).map(|d| d.join("lootingglass")) {
         let _ = std::fs::create_dir_all(&dir);
         let _ = std::fs::write(dir.join("last-item.txt"), &text);
     }
@@ -226,13 +226,13 @@ async fn run_search(spec: trade::Spec) {
 }
 
 unsafe extern "C" {
-    fn lootlens_qt_main() -> i32;
+    fn lootingglass_qt_main() -> i32;
 }
 
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     cxx_qt::init_crate!(cxx_qt_lib);
-    cxx_qt::init_qml_module!("dev.lootlens");
-    let code = unsafe { lootlens_qt_main() };
+    cxx_qt::init_qml_module!("dev.lootingglass");
+    let code = unsafe { lootingglass_qt_main() };
     std::process::exit(code);
 }

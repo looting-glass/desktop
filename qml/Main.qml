@@ -4,7 +4,7 @@ import QtQuick.Controls
 import QtQuick.Controls.impl
 import QtQuick.Effects
 import QtQuick.Layouts
-import dev.lootlens
+import dev.lootingglass
 
 Window {
     id: win
@@ -174,7 +174,7 @@ Window {
                         }
                     }
                     Label {
-                        text: win.hasSpec ? (win.spec.class || "Item") : "Loot Lens"
+                        text: win.hasSpec ? (win.spec.class || "Item") : "Looting Glass"
                         font.bold: true
                         font.capitalization: Font.AllUppercase
                         Layout.fillWidth: true
@@ -183,7 +183,7 @@ Window {
                     ToolButton {
                         id: pinBtn
                         icon.name: "window-pin"
-                        icon.source: "qrc:/lootlens/icons/pin.svg"
+                        icon.source: "qrc:/lootingglass/icons/pin.svg"
                         // The style draws the checked (pinned) state as an active button.
                         checkable: true
                         checked: Backend.pinned
@@ -205,7 +205,7 @@ Window {
                             color: pal.highlight
                         }
                     }
-                    ToolButton { id: closeBtn; icon.name: "window-close"; icon.source: "qrc:/lootlens/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
+                    ToolButton { id: closeBtn; icon.name: "window-close"; icon.source: "qrc:/lootingglass/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
                 }
                 Label {
                     visible: Backend.overlayState !== "error"
@@ -360,7 +360,7 @@ Window {
                     focusPolicy: Qt.NoFocus
                     text: win.expanded ? "Collapse" : "Show filters"
                     icon.name: win.expanded ? "arrow-up" : "arrow-down"
-                    icon.source: win.expanded ? "qrc:/lootlens/icons/arrow-up.svg" : "qrc:/lootlens/icons/arrow-down.svg"
+                    icon.source: win.expanded ? "qrc:/lootingglass/icons/arrow-up.svg" : "qrc:/lootingglass/icons/arrow-down.svg"
                     Layout.alignment: Qt.AlignHCenter
                     onClicked: win.expanded = !win.expanded
                 }
@@ -376,7 +376,7 @@ Window {
                     ToolButton {
                         focusPolicy: Qt.NoFocus
                         icon.name: "view-refresh"
-                        icon.source: "qrc:/lootlens/icons/refresh.svg"
+                        icon.source: "qrc:/lootingglass/icons/refresh.svg"
                         text: win.hasSpec && win.spec.online ? "Online" : "Any"
                         display: AbstractButton.TextBesideIcon
                         onClicked: { win.spec.online = !win.spec.online; win.edited() }
@@ -398,7 +398,7 @@ Window {
                             Label { text: "Trade"; color: pal.buttonText }
                             IconImage {
                                 name: "external-link-symbolic"
-                                source: "qrc:/lootlens/icons/external-link.svg"
+                                source: "qrc:/lootingglass/icons/external-link.svg"
                                 color: pal.buttonText
                                 sourceSize: Qt.size(14, 14)
                                 Layout.preferredWidth: 14
@@ -488,7 +488,7 @@ Window {
         transientParent: null
     }
 
-    // Dev aid (LOOTLENS_SNAPSHOT): render the overlay, then the settings window, to PNGs with
+    // Dev aid (LOOTINGGLASS_SNAPSHOT): render the overlay, then the settings window, to PNGs with
     // transparency — no desktop behind them.
     Timer {
         id: snapTimer

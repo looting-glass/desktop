@@ -1,10 +1,10 @@
 [package]
-name = "lootlens"
+name = "lootingglass"
 version = "0.3.0"
 edition = "2024"
 license = "GPL-3.0-or-later"
 description = "Wayland-native price checker for Path of Exile 1 & 2"
-repository = "https://github.com/rockymontana/loot-lens"
+repository = "https://github.com/rockymontana/looting-glass"
 
 [dependencies]
 anyhow = "1.0.104"

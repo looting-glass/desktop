@@ -1,14 +1,14 @@
 // Minimal Qt bootstrap. Lives in C++ only because KDE's Breeze style for Qt Quick
 // (org.kde.desktop) needs a QApplication, which cxx-qt-lib does not wrap.
-// LOOTLENS_LAYER_SHELL (set by build.rs on Linux) enables the Wayland layer-shell overlay.
-// LOOTLENS_QT_TRAY (set on Windows) adds a QSystemTrayIcon; Linux uses an SNI tray from Rust.
-#ifdef LOOTLENS_LAYER_SHELL
+// LOOTINGGLASS_LAYER_SHELL (set by build.rs on Linux) enables the Wayland layer-shell overlay.
+// LOOTINGGLASS_QT_TRAY (set on Windows) adds a QSystemTrayIcon; Linux uses an SNI tray from Rust.
+#ifdef LOOTINGGLASS_LAYER_SHELL
 #include <LayerShellQt/Window>
 #endif
 #include <QApplication>
 #include <QCursor>
 #include <QScreen>
-#ifdef LOOTLENS_QT_TRAY
+#ifdef LOOTINGGLASS_QT_TRAY
 #include <QActionGroup>
 #include <QMenu>
 #include <QSystemTrayIcon>
@@ -20,18 +20,18 @@
 #include <QTimer>
 #include <QWindow>
 
-#ifdef LOOTLENS_QT_TRAY
+#ifdef LOOTINGGLASS_QT_TRAY
 // Implemented in Rust (src/platform/windows.rs).
-extern "C" void lootlens_tray_action(int action);
-extern "C" int lootlens_tray_game();
+extern "C" void lootingglass_tray_action(int action);
+extern "C" int lootingglass_tray_game();
 
-// Tray actions understood by lootlens_tray_action.
+// Tray actions understood by lootingglass_tray_action.
 enum TrayAction { OpenManual = 0, OpenSettings = 1, Quit = 2, GamePoe1 = 10, GamePoe2 = 11 };
 
 static void setupTray(QApplication &app)
 {
     auto *tray = new QSystemTrayIcon(app.windowIcon(), &app);
-    tray->setToolTip(QStringLiteral("Loot Lens"));
+    tray->setToolTip(QStringLiteral("Looting Glass"));
     auto *menu = new QMenu();
     auto *games = new QActionGroup(menu);
     auto *poe1 = menu->addAction(QStringLiteral("Path of Exile"));
@@ -40,24 +40,24 @@ static void setupTray(QApplication &app)
         a->setCheckable(true);
         games->addAction(a);
     }
-    QObject::connect(poe1, &QAction::triggered, [] { lootlens_tray_action(GamePoe1); });
-    QObject::connect(poe2, &QAction::triggered, [] { lootlens_tray_action(GamePoe2); });
+    QObject::connect(poe1, &QAction::triggered, [] { lootingglass_tray_action(GamePoe1); });
+    QObject::connect(poe2, &QAction::triggered, [] { lootingglass_tray_action(GamePoe2); });
     menu->addSeparator();
     QObject::connect(menu->addAction(QStringLiteral("Manual check…")), &QAction::triggered,
-                     [] { lootlens_tray_action(OpenManual); });
+                     [] { lootingglass_tray_action(OpenManual); });
     QObject::connect(menu->addAction(QStringLiteral("Settings…")), &QAction::triggered,
-                     [] { lootlens_tray_action(OpenSettings); });
+                     [] { lootingglass_tray_action(OpenSettings); });
     menu->addSeparator();
     QObject::connect(menu->addAction(QStringLiteral("Quit")), &QAction::triggered,
-                     [] { lootlens_tray_action(Quit); });
+                     [] { lootingglass_tray_action(Quit); });
     // The game can change from a hotkey or the settings; refresh the radio items on open.
     QObject::connect(menu, &QMenu::aboutToShow, [poe1, poe2] {
-        (lootlens_tray_game() == 2 ? poe2 : poe1)->setChecked(true);
+        (lootingglass_tray_game() == 2 ? poe2 : poe1)->setChecked(true);
     });
     tray->setContextMenu(menu);
     QObject::connect(tray, &QSystemTrayIcon::activated, [](QSystemTrayIcon::ActivationReason r) {
         if (r == QSystemTrayIcon::Trigger)
-            lootlens_tray_action(OpenManual);
+            lootingglass_tray_action(OpenManual);
     });
     tray->show();
 }
@@ -73,18 +73,18 @@ static void useFusion()
         QQuickStyle::setStyle(QStringLiteral("Fusion"));
 }
 
-extern "C" int lootlens_qt_main()
+extern "C" int lootingglass_qt_main()
 {
     static int argc = 1;
-    static char arg0[] = "lootlens";
+    static char arg0[] = "lootingglass";
     static char *argv[] = {arg0, nullptr};
 
-#ifdef LOOTLENS_LAYER_SHELL
+#ifdef LOOTINGGLASS_LAYER_SHELL
     // Layer-shell (overlay, no decorations, always on top) needs native Wayland. Override a
     // session-wide QT_QPA_PLATFORM=xcb for this process only, then restore it for children.
     const QByteArray prevQpa = qgetenv("QT_QPA_PLATFORM");
     const bool forceWayland = !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")
-        && qEnvironmentVariableIsEmpty("LOOTLENS_ALLOW_X11");
+        && qEnvironmentVariableIsEmpty("LOOTINGGLASS_ALLOW_X11");
     if (forceWayland)
         qputenv("QT_QPA_PLATFORM", "wayland");
 
@@ -99,38 +99,38 @@ extern "C" int lootlens_qt_main()
 #else
     QApplication app(argc, argv);
 #endif
-    app.setApplicationName(QStringLiteral("Loot Lens"));
-    app.setDesktopFileName(QStringLiteral("dev.lootlens.LootLens"));
-    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("dev.lootlens.LootLens"),
-                                       QIcon(QStringLiteral(":/lootlens/icons/lootlens.svg"))));
+    app.setApplicationName(QStringLiteral("Looting Glass"));
+    app.setDesktopFileName(QStringLiteral("dev.lootingglass.LootingGlass"));
+    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("dev.lootingglass.LootingGlass"),
+                                       QIcon(QStringLiteral(":/lootingglass/icons/lootingglass.svg"))));
     app.setQuitOnLastWindowClosed(false);
-#ifdef LOOTLENS_LAYER_SHELL
-    // KDE's Breeze style (follows the user's colour scheme). LOOTLENS_FUSION=1 previews the
+#ifdef LOOTINGGLASS_LAYER_SHELL
+    // KDE's Breeze style (follows the user's colour scheme). LOOTINGGLASS_FUSION=1 previews the
     // style other platforms get.
-    if (!qEnvironmentVariableIsEmpty("LOOTLENS_FUSION"))
+    if (!qEnvironmentVariableIsEmpty("LOOTINGGLASS_FUSION"))
         useFusion();
     else if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
 #else
     useFusion();
 #endif
-#ifdef LOOTLENS_QT_TRAY
+#ifdef LOOTINGGLASS_QT_TRAY
     setupTray(app);
 #endif
 
     QQmlApplicationEngine engine;
-    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/dev/lootlens/qml/Main.qml")));
+    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/dev/lootingglass/qml/Main.qml")));
     if (engine.rootObjects().isEmpty())
         return 1;
 
-#ifdef LOOTLENS_LAYER_SHELL
+#ifdef LOOTINGGLASS_LAYER_SHELL
     // Turn the overlay into a layer-shell surface. This must happen before the platform
     // window exists, otherwise it becomes a normal decorated toplevel.
     if (auto *w = qobject_cast<QWindow *>(engine.rootObjects().first())) {
         if (w->handle())
             w->destroy();
         auto *ls = LayerShellQt::Window::get(w);
-        ls->setScope(QStringLiteral("lootlens-overlay"));
+        ls->setScope(QStringLiteral("lootingglass-overlay"));
         ls->setLayer(LayerShellQt::Window::LayerOverlay);
         ls->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
         ls->setActivateOnShow(true);

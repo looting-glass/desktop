@@ -1,10 +1,10 @@
 //! Windows backend — EXPERIMENTAL, not yet tested with the game.
 //!
 //! - hotkeys:   RegisterHotKey on a dedicated thread; bindings live in config.toml
-//!              (`[shortcuts]`) and are edited in Loot Lens's own settings
+//!              (`[shortcuts]`) and are edited in Looting Glass's own settings
 //! - copy_item: SendInput Ctrl+C to the game, then read the Win32 clipboard
 //! - focus:     SetForegroundWindow on the game window (class `POEWindowClass`)
-//! - tray:      QSystemTrayIcon in cpp/main.cpp, calling back into `lootlens_tray_*` below
+//! - tray:      QSystemTrayIcon in cpp/main.cpp, calling back into `lootingglass_tray_*` below
 //! - overlay:   frameless always-on-top Qt::Tool window (cpp/main.cpp); PoE must run in
 //!              windowed fullscreen, exclusive fullscreen can't be overlaid
 
@@ -216,7 +216,7 @@ pub async fn spawn_tray(_game: Game) {}
 pub async fn set_tray_game(_game: Game) {}
 
 #[unsafe(no_mangle)]
-extern "C" fn lootlens_tray_action(action: i32) {
+extern "C" fn lootingglass_tray_action(action: i32) {
     let ev = match action {
         0 => Event::OpenManual,
         1 => Event::OpenSettings,
@@ -229,7 +229,7 @@ extern "C" fn lootlens_tray_action(action: i32) {
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn lootlens_tray_game() -> i32 {
+extern "C" fn lootingglass_tray_game() -> i32 {
     match crate::config().game {
         Game::Poe1 => 1,
         Game::Poe2 => 2,

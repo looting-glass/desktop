@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Loot Lens
+Name=Looting Glass
 Comment=Path of Exile 1 & 2 price checker
-Exec=lootlens
-Icon=dev.lootlens.LootLens
+Exec=lootingglass
+Icon=dev.lootingglass.LootingGlass
 Categories=Game;Utility;

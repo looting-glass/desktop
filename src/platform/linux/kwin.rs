@@ -7,7 +7,7 @@
 use anyhow::{Context, Result};
 use ashpd::zbus::Connection;
 
-const SCRIPT_NAME: &str = "lootlens-focus-game";
+const SCRIPT_NAME: &str = "lootingglass-focus-game";
 const SCRIPT: &str = r#"
 const re = /^Path of Exile/;
 const w = workspace.windowList().find(w => re.test(w.caption) || /pathofexile|steam_app_(238960|2694490)$/i.test(w.resourceClass));
@@ -23,7 +23,7 @@ pub async fn focus_game() {
 async fn run() -> Result<()> {
     let path = dirs::state_dir()
         .unwrap_or_else(std::env::temp_dir)
-        .join("lootlens/focus-game.js");
+        .join("lootingglass/focus-game.js");
     std::fs::create_dir_all(path.parent().unwrap())?;
     std::fs::write(&path, SCRIPT)?;
     let conn = Connection::session().await?;

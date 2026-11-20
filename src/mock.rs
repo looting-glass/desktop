@@ -1,4 +1,4 @@
-//! Dev aid: `LOOTLENS_MOCK=1` answers every trade API and poe.ninja request with canned data,
+//! Dev aid: `LOOTINGGLASS_MOCK=1` answers every trade API and poe.ninja request with canned data,
 //! without touching the network, so UI work can run as often as needed without rate limits.
 //! The stats and bases cover the items in `dev/*.txt`; other mods show up as unmatched.
 
@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 /// Always on in unit tests, so tests never touch the network.
 pub fn enabled() -> bool {
-    cfg!(test) || std::env::var_os("LOOTLENS_MOCK").is_some()
+    cfg!(test) || std::env::var_os("LOOTINGGLASS_MOCK").is_some()
 }
 
 /// Stat texts as the PoE 1 trade API lists them; " (Local)" marks local mods. The PoE 2 API drops
