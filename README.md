@@ -9,7 +9,7 @@ Hover an item in game, press a hotkey, and Loot Lens shows what it is worth: liv
 official trade site, poe.ninja prices for currency and other stackables, and filters you can tweak
 on the spot. One app for both games, with a league per game.
 
-Built for KDE Plasma on Wayland with Rust and Qt 6. No Electron, no browser, no XWayland. Global
+Built for KDE Plasma on Wayland with Rust and Qt 6, with experimental Hyprland support. No Electron, no browser, no XWayland. Global
 hotkeys, the overlay and clipboard access all use the desktop's native mechanisms.
 
 > Loot Lens is a fan-made tool and is not affiliated with or endorsed by Grinding Gear Games.
@@ -54,16 +54,17 @@ injection and always-on-top windows. Loot Lens uses the native equivalents inste
 | Need | How Loot Lens does it |
 |---|---|
 | Hotkeys while the game is focused | XDG **GlobalShortcuts** portal (bound in System Settings) |
-| Make the game copy the hovered item | XDG **RemoteDesktop** portal, keyboard only (you approve it once) |
+| Make the game copy the hovered item | KDE: XDG **RemoteDesktop** portal, keyboard only (you approve it once). Hyprland: `hyprctl dispatch sendshortcut` |
 | Read the clipboard without focus | Wayland **data-control** protocol |
 | Overlay above a fullscreen game | **wlr-layer-shell** via KDE's LayerShellQt |
-| Give focus back to the game | A one-shot KWin script |
+| Give focus back to the game | KDE: a one-shot KWin script. Hyprland: `hyprctl dispatch focuswindow` |
 | Tray icon | StatusNotifierItem |
 
 ## Requirements
 
-- KDE Plasma 6 on Wayland (other compositors with the same portals and layer-shell may work but are
-  untested)
+- KDE Plasma 6 on Wayland (tested). Hyprland support is **experimental and untested**; see below. GNOME isn't supported: it lacks layer-shell and
+  background clipboard access. Sway lacks the GlobalShortcuts portal.
+- On Hyprland: `xdg-desktop-portal-hyprland` and a tray (e.g. Waybar's tray module) for the icon
 - Qt 6 with Qt Quick, plus `layer-shell-qt`, `kirigami` and `qqc2-desktop-style`
 - A Rust toolchain (edition 2024) and a C++ compiler
 
@@ -106,6 +107,23 @@ Start **Loot Lens** from the application launcher. It lives in the system tray.
 | Hide overlay | unassigned |
 
 Change them in *System Settings → Shortcuts → Loot Lens*, or via *Settings → Shortcuts*.
+
+#### Hyprland (experimental)
+
+> ⚠️ Hyprland support is untested: it was written against Hyprland's documented `hyprctl`
+> dispatchers and portal, but nobody has run it on Hyprland yet. Bug reports and fixes are
+> very welcome.
+
+Hyprland doesn't let apps choose their own keys, so bind them in `hyprland.conf`:
+
+```ini
+bind = CTRL, D, global, dev.lootlens.LootLens:price-check
+bind = , F7, global, dev.lootlens.LootLens:toggle-game     # optional
+```
+
+The shortcut ids are `price-check`, `toggle-game`, `settings` and `hide-overlay`. If a bind does
+nothing, run `hyprctl globalshortcuts` to see the exact names your portal registered.
+Copying and refocusing go through `hyprctl`, so no permission dialog appears.
 
 ## Configuration
 

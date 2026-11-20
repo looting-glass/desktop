@@ -95,7 +95,12 @@ pub async fn describe_shortcuts() -> String {
         )
     }
     .await;
-    res.unwrap_or_else(|e| format!("Could not list shortcuts: {e}"))
+    let text = res.unwrap_or_else(|e| format!("Could not list shortcuts: {e}"));
+    if super::hyprland::detected() {
+        format!("{text}\n\nOn Hyprland, bind keys in hyprland.conf, e.g.\n{}", super::hyprland::BIND_HINT)
+    } else {
+        text
+    }
 }
 
 /// Open the compositor's shortcut editor; falls back to KDE's shortcuts KCM.
@@ -105,7 +110,10 @@ pub async fn configure_shortcuts() {
             return;
         }
     }
-    let _ = std::process::Command::new("systemsettings").arg("kcm_keys").spawn();
+    // Hyprland has no shortcut editor: bindings live in hyprland.conf (see describe_shortcuts).
+    if !super::hyprland::detected() {
+        let _ = std::process::Command::new("systemsettings").arg("kcm_keys").spawn();
+    }
 }
 
 fn token_path() -> PathBuf {
@@ -202,9 +210,13 @@ pub async fn copy_item() -> Result<String> {
     })
     .await?;
     // The overlay may have held keyboard focus; make sure Ctrl+C reaches the game.
-    super::kwin::focus_game().await;
+    super::focus_game().await;
     tokio::time::sleep(Duration::from_millis(40)).await;
-    send_copy().await?;
+    if super::hyprland::detected() {
+        super::hyprland::send_copy().await?;
+    } else {
+        send_copy().await?;
+    }
     // Wine/XWayland can take a while to publish the selection; poll for up to 1.5s.
     for _ in 0..30 {
         tokio::time::sleep(Duration::from_millis(50)).await;
