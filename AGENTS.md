@@ -31,6 +31,7 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 - Desktop-specific code lives in `src/platform/` (contract in `src/platform/mod.rs`) and the
   `#ifdef`s of `cpp/main.cpp`. QML uses only Qt Quick Controls, with bundled fallback icons in
   `qml/icons/`, so it runs on any platform.
+- Every PR runs the CI workflow (build + tests on Linux and Windows); keep it green.
 - Windows code can't be built locally. Build any branch for both platforms with
   `gh workflow run build.yml --ref <branch>`; the packages appear as run artifacts.
 
