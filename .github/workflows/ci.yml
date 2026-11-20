@@ -1,8 +1,10 @@
 name: CI
 
 # Build and test both platforms on every pull request (and on main after merges), so problems
-# show up before release time. Packaging is left to build.yml.
+# show up before release time. The Windows job also renders the UI in Windows light and dark
+# mode (the "ui-snapshots" artifact). Packaging is left to build.yml.
 on:
+  workflow_dispatch:
   pull_request:
     paths-ignore: ["**.md", "docs/**", "LICENSE.md"]
   push:
@@ -56,3 +58,39 @@ jobs:
       # Compiles the app and its tests in one go (a separate cargo build would compile twice).
       - name: Test
         run: cargo test --locked
+      # The app binary for the screenshots; dependencies are reused from the test build.
+      - name: Build
+        run: cargo build --locked
+
+      # Real Windows screenshots of the overlay, manual check and settings in light and dark
+      # mode: the app's snapshot mode renders the windows itself (no screen capture), with the
+      # mock API (no game, no network).
+      - name: Take screenshots in light and dark mode
+        shell: pwsh
+        run: |
+          $personalize = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+          New-Item -Path $personalize -Force | Out-Null
+          foreach ($mode in "light", "dark") {
+            # Windows' app colour mode, which Qt reads at startup.
+            $light = [int]($mode -eq "light")
+            Set-ItemProperty -Path $personalize -Name AppsUseLightTheme -Value $light -Type DWord
+            Set-ItemProperty -Path $personalize -Name SystemUsesLightTheme -Value $light -Type DWord
+            $out = (Join-Path $pwd "shots/$mode") -replace '\\', '/'
+            New-Item -ItemType Directory -Force $out | Out-Null
+            $env:LOOTINGGLASS_MOCK = "1"
+            $env:LOOTINGGLASS_DEMO = "dev/boots.txt"
+            $env:LOOTINGGLASS_SNAPSHOT = $out
+            $env:QT_FORCE_STDERR_LOGGING = "1"
+            $p = Start-Process target/debug/lootingglass.exe -PassThru -RedirectStandardError "shots/$mode.log"
+            # Snapshot mode saves the overlay, manual check and settings within ~10 s.
+            for ($i = 0; $i -lt 45 -and (Get-ChildItem $out -Filter *.png).Count -lt 4; $i++) { Start-Sleep 1 }
+            Stop-Process $p -ErrorAction SilentlyContinue
+            "${mode}: $((Get-ChildItem $out -Filter *.png).Name -join ', ')"
+          }
+          if ((Get-ChildItem shots -Recurse -Filter *.png).Count -lt 8) { Get-Content shots/*.log; exit 1 }
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-snapshots
+          path: shots/
