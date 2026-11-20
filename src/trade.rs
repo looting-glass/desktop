@@ -111,7 +111,7 @@ pub async fn leagues(game: Game, ua: &str) -> Result<Vec<String>> {
 async fn data(game: Game, ua: &str) -> Result<&'static GameData> {
     DATA[game as usize]
         .get_or_try_init(|| async {
-            let (stats, items) = tokio::try_join!(
+            let (stats, items) = futures_util::try_join!(
                 send(HTTP.get(format!("{}/data/stats", game.api())), ua),
                 send(HTTP.get(format!("{}/data/items", game.api())), ua),
             )?;
