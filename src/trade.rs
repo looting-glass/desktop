@@ -63,6 +63,8 @@ pub struct Spec {
     pub name: Option<String>,
     pub base: Option<String>,
     pub use_base: bool,
+    /// Trade category for the item class (e.g. "armour.boots"); searched when `use_base` is off.
+    pub category: Option<String>,
     pub corrupted: bool,
     pub filter_corrupted: bool,
     pub class: String,
@@ -163,6 +165,45 @@ const IMPORTANT: &[&str] = &[
 const PROP_LABELS: &[(&str, &str)] = &[
     ("ar", "Armour"), ("ev", "Evasion Rating"), ("es", "Energy Shield"), ("ward", "Ward"), ("block", "Block"),
 ];
+
+/// Trade-site category for an "Item Class:" value (same ids on both trade sites; game-only
+/// classes simply never appear in the other game's item text).
+fn category(class: &str) -> Option<&'static str> {
+    Some(match class {
+        "Boots" => "armour.boots",
+        "Gloves" => "armour.gloves",
+        "Helmets" => "armour.helmet",
+        "Body Armours" => "armour.chest",
+        "Shields" => "armour.shield",
+        "Quivers" => "armour.quiver",
+        "Foci" => "armour.focus",
+        "Bucklers" => "armour.buckler",
+        "Rings" => "accessory.ring",
+        "Amulets" => "accessory.amulet",
+        "Belts" => "accessory.belt",
+        "Claws" => "weapon.claw",
+        "Daggers" => "weapon.dagger",
+        "Rune Daggers" => "weapon.runedagger",
+        "One Hand Swords" => "weapon.onesword",
+        "Thrusting One Hand Swords" => "weapon.rapier",
+        "One Hand Axes" => "weapon.oneaxe",
+        "One Hand Maces" => "weapon.onemace",
+        "Sceptres" => "weapon.sceptre",
+        "Spears" => "weapon.spear",
+        "Flails" => "weapon.flail",
+        "Two Hand Swords" => "weapon.twosword",
+        "Two Hand Axes" => "weapon.twoaxe",
+        "Two Hand Maces" => "weapon.twomace",
+        "Warstaves" | "Quarterstaves" => "weapon.warstaff",
+        "Staves" => "weapon.staff",
+        "Bows" => "weapon.bow",
+        "Crossbows" => "weapon.crossbow",
+        "Wands" => "weapon.wand",
+        "Talismans" => "weapon.talisman",
+        "Jewels" | "Abyss Jewels" => "jewel",
+        _ => return None,
+    })
+}
 
 /// Build the default search for an item.
 pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
@@ -272,7 +313,10 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
         online: cfg.trade.status != "any",
         name: (item.rarity == Rarity::Unique).then(|| item.name.clone()).flatten(),
         base,
-        use_base: true,
+        // Rares are about their mods, not the exact base: search the whole category by
+        // default (like Awakened PoE Trade); exact base stays one click away.
+        use_base: !(item.rarity == Rarity::Rare && category(&item.class).is_some()),
+        category: category(&item.class).map(str::to_string),
         corrupted: item.corrupted,
         filter_corrupted: matches!(item.rarity, Rarity::Unique | Rarity::Gem),
         class: item.class.clone(),
@@ -297,6 +341,7 @@ fn build_query(spec: &Spec) -> Value {
     if let (true, Some(b)) = (spec.use_base, &spec.base) {
         q["type"] = json!(b);
     }
+    let category = spec.category.as_ref().filter(|_| !spec.use_base);
 
     // Filter groups differ between the two trade sites.
     let (def_group, lvl_group) = match spec.game {
@@ -307,6 +352,9 @@ fn build_query(spec: &Spec) -> Value {
     let mut put = |group: &str, key: &str, val: Value| {
         groups.entry(group).or_insert_with(|| json!({ "filters": {} }))["filters"][key] = val;
     };
+    if let Some(c) = category {
+        put("type_filters", "category", json!({ "option": c }));
+    }
     if spec.filter_corrupted {
         put("misc_filters", "corrupted", json!({ "option": spec.corrupted.to_string() }));
     }
@@ -344,6 +392,7 @@ pub async fn search(spec: &Spec, cfg: &Config) -> Result<PriceResult> {
     let res = send(HTTP.post(search_url).json(&body), &ua).await?;
     let id = res["id"].as_str().context("search returned no id")?.to_string();
     let total = res["total"].as_u64().unwrap_or(0);
+    log::info!("search: {total} matches");
     let hashes: Vec<&str> = res["result"]
         .as_array()
         .into_iter()

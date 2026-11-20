@@ -241,8 +241,14 @@ Window {
                     CheckBox {
                         visible: win.hasSpec && win.spec.base != null
                         focusPolicy: Qt.NoFocus
-                        text: "Base: " + (win.hasSpec ? win.spec.base : "")
-                        checked: win.hasSpec && win.spec.use_base
+                        // Off = search the whole item category (default for rares).
+                        text: {
+                            win.rev
+                            if (!win.hasSpec) return ""
+                            if (win.spec.use_base || !win.spec.category) return "Base: " + win.spec.base
+                            return "Any " + win.spec.class + " (tick for " + win.spec.base + " only)"
+                        }
+                        checked: { win.rev; return win.hasSpec && win.spec.use_base }
                         onToggled: { win.spec.use_base = checked; win.edited() }
                     }
                     CheckBox {
