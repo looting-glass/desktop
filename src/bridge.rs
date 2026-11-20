@@ -1,0 +1,218 @@
+//! Qt/QML bridge: a single `Backend` singleton the QML views bind to.
+//! All logic runs on the tokio runtime; UI updates are queued onto the Qt thread.
+
+#[cxx_qt::bridge]
+pub mod qobject {
+    unsafe extern "C++" {
+        include!("cxx-qt-lib/qstring.h");
+        type QString = cxx_qt_lib::QString;
+    }
+
+    #[auto_cxx_name]
+    extern "RustQt" {
+        #[qobject]
+        #[qml_element]
+        #[qml_singleton]
+        #[qproperty(bool, overlay_visible)]
+        #[qproperty(QString, overlay_state)]
+        #[qproperty(QString, title)]
+        #[qproperty(QString, subtitle)]
+        #[qproperty(QString, message)]
+        #[qproperty(QString, listings)]
+        #[qproperty(QString, spec)]
+        #[qproperty(QString, ninja)]
+        #[qproperty(QString, ninja_detail)]
+        #[qproperty(i32, overlay_max_height)]
+        #[qproperty(QString, trade_url)]
+        #[qproperty(QString, game_label)]
+        #[qproperty(QString, shortcuts_text)]
+        #[qproperty(QString, leagues)]
+        #[qproperty(i32, side)]
+        #[qproperty(i32, overlay_width)]
+        #[qproperty(i32, margin_top)]
+        #[qproperty(i32, margin_side)]
+        type Backend = super::BackendRust;
+
+        #[qinvokable]
+        fn config_json(self: &Backend) -> QString;
+        #[qinvokable]
+        fn config_path(self: &Backend) -> QString;
+        #[qinvokable]
+        fn save_config(self: Pin<&mut Backend>, json: &QString) -> QString;
+        #[qinvokable]
+        fn configure_shortcuts(self: &Backend);
+        #[qinvokable]
+        fn refresh_shortcuts(self: &Backend);
+        #[qinvokable]
+        fn refresh_leagues(self: &Backend);
+        #[qinvokable]
+        fn hide_overlay(self: Pin<&mut Backend>);
+        #[qinvokable]
+        fn toggle_game(self: &Backend);
+        #[qinvokable]
+        fn search(self: &Backend, spec: &QString);
+        #[qinvokable]
+        fn save_overlay_size(self: &Backend);
+
+        #[qsignal]
+        fn open_settings(self: Pin<&mut Backend>);
+    }
+
+    impl cxx_qt::Threading for Backend {}
+    impl cxx_qt::Initialize for Backend {}
+}
+
+use crate::config::{Config, Game};
+use crate::{Event, config, rt, send_event};
+use cxx_qt::{CxxQtType, Threading};
+use cxx_qt_lib::QString;
+use std::pin::Pin;
+use std::sync::{Mutex, OnceLock};
+
+#[derive(Default)]
+pub struct BackendRust {
+    overlay_visible: bool,
+    overlay_state: QString,
+    title: QString,
+    subtitle: QString,
+    message: QString,
+    listings: QString,
+    spec: QString,
+    ninja: QString,
+    ninja_detail: QString,
+    overlay_max_height: i32,
+    trade_url: QString,
+    game_label: QString,
+    shortcuts_text: QString,
+    leagues: QString,
+    side: i32,
+    overlay_width: i32,
+    margin_top: i32,
+    margin_side: i32,
+}
+
+type UiFn = Box<dyn FnOnce(Pin<&mut qobject::Backend>) + Send>;
+static UI: OnceLock<Mutex<cxx_qt::CxxQtThread<qobject::Backend>>> = OnceLock::new();
+
+/// Run `f` on the Qt thread with the Backend object.
+pub fn ui(f: impl FnOnce(Pin<&mut qobject::Backend>) + Send + 'static) {
+    if let Some(t) = UI.get() {
+        let f: UiFn = Box::new(f);
+        let _ = t.lock().unwrap().queue(move |b| f(b));
+    }
+}
+
+pub fn q(s: impl AsRef<str>) -> QString {
+    QString::from(s.as_ref())
+}
+
+/// Push config-derived values (game label, overlay geometry) to QML.
+pub fn apply_config(cfg: &Config) {
+    let label = q(format!("{} · {}", cfg.game.short(), cfg.league()));
+    let o = cfg.overlay.clone();
+    ui(move |mut b| {
+        b.as_mut().set_game_label(label);
+        b.as_mut().set_side(o.side as i32);
+        b.as_mut().set_overlay_width(o.width);
+        b.as_mut().set_overlay_max_height(o.max_height);
+        b.as_mut().set_margin_top(o.margin_top);
+        b.as_mut().set_margin_side(o.margin_side);
+    });
+}
+
+impl cxx_qt::Initialize for qobject::Backend {
+    fn initialize(self: Pin<&mut Self>) {
+        let _ = UI.set(Mutex::new(self.qt_thread()));
+        apply_config(&config());
+        crate::start_background();
+    }
+}
+
+impl qobject::Backend {
+    fn config_json(&self) -> QString {
+        q(serde_json::to_string(&config()).unwrap_or_default())
+    }
+
+    fn config_path(&self) -> QString {
+        q(Config::dir().join("config.toml").display().to_string())
+    }
+
+    /// Returns an empty string on success, otherwise an error message.
+    fn save_config(self: Pin<&mut Self>, json: &QString) -> QString {
+        let res = serde_json::from_str::<Config>(&json.to_string())
+            .map_err(anyhow::Error::from)
+            .and_then(|c| {
+                c.save()?;
+                Ok(c)
+            });
+        match res {
+            Ok(c) => {
+                let game = c.game;
+                *crate::CONFIG.lock().unwrap() = c;
+                send_event(Event::SetGame(game));
+                QString::default()
+            }
+            Err(e) => q(e.to_string()),
+        }
+    }
+
+    fn configure_shortcuts(&self) {
+        rt().spawn(crate::platform::configure_shortcuts());
+    }
+
+    fn refresh_shortcuts(&self) {
+        rt().spawn(async {
+            let s = q(crate::platform::describe_shortcuts().await);
+            ui(move |b| b.set_shortcuts_text(s));
+        });
+    }
+
+    fn refresh_leagues(&self) {
+        let ua = config().user_agent();
+        rt().spawn(async move {
+            let mut map = serde_json::Map::new();
+            for g in Game::ALL {
+                let key = serde_json::to_value(g).unwrap().as_str().unwrap().to_string();
+                match crate::trade::leagues(g, &ua).await {
+                    Ok(l) => {
+                        map.insert(key, l.into());
+                    }
+                    Err(e) => log::warn!("leagues for {}: {e}", g.short()),
+                }
+            }
+            let s = q(serde_json::Value::Object(map).to_string());
+            ui(move |b| b.set_leagues(s));
+        });
+    }
+
+    fn hide_overlay(self: Pin<&mut Self>) {
+        self.set_overlay_visible(false);
+        rt().spawn(crate::platform::focus_game());
+    }
+
+    fn toggle_game(&self) {
+        send_event(Event::ToggleGame);
+    }
+
+    /// Persist the size/position chosen with the overlay's resize grip and drag handle.
+    fn save_overlay_size(&self) {
+        let mut c = crate::CONFIG.lock().unwrap();
+        c.overlay.width = *self.overlay_width();
+        c.overlay.max_height = *self.overlay_max_height();
+        c.overlay.margin_top = *self.margin_top();
+        c.overlay.margin_side = *self.margin_side();
+        if let Err(e) = c.save() {
+            log::error!("saving config: {e}");
+        }
+    }
+
+    fn search(&self, spec: &QString) {
+        send_event(Event::Search(spec.to_string()));
+    }
+}
+
+// Silence "unused" for the generated rust() accessor helper trait.
+#[allow(unused)]
+fn _assert(b: &qobject::Backend) -> &BackendRust {
+    b.rust()
+}

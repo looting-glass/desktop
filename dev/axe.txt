@@ -1,0 +1,22 @@
+Item Class: Two Hand Axes
+Rarity: Rare
+Gale Edge
+Ezomyte Axe
+--------
+Two Hand Axe
+Quality: +8% (augmented)
+Physical Damage: 120-200 (augmented)
+Elemental Damage: 20-40 (augmented)
+Critical Strike Chance: 5.00%
+Attacks per Second: 1.32 (augmented)
+--------
+Requirements:
+Level: 62
+--------
+Item Level: 81
+--------
+112% increased Physical Damage
+Adds 20 to 40 Fire Damage
+10% increased Attack Speed
++25 to Strength
++30% to Cold Resistance

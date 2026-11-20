@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Loot Lens
+Comment=Path of Exile 1 & 2 price checker
+Exec=lootlens
+Icon=view-financial-list
+Categories=Game;Utility;
