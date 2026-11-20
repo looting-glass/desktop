@@ -116,12 +116,13 @@ Window {
     component Chip: Rectangle {
         property alias text: lbl.text
         property bool accent: false
+        property bool warn: false
         implicitWidth: lbl.implicitWidth + 14
         implicitHeight: lbl.implicitHeight + 6
         radius: 4
         color: "transparent"
-        border.color: accent ? pal.highlight : pal.mid
-        Label { id: lbl; anchors.centerIn: parent; font.bold: true; font.pointSize: 8 }
+        border.color: warn ? "#e06c6c" : accent ? pal.highlight : pal.mid
+        Label { id: lbl; anchors.centerIn: parent; font.bold: true; font.pointSize: 8; color: warn ? "#e06c6c" : pal.windowText }
     }
 
     Rectangle {
@@ -178,12 +179,6 @@ Window {
                         font.capitalization: Font.AllUppercase
                         Layout.fillWidth: true
                         elide: Text.ElideRight
-                    }
-                    Label {
-                        visible: win.hasSpec
-                        text: win.hasSpec && win.spec.corrupted ? "Corrupted" : "Not corrupted"
-                        color: win.hasSpec && win.spec.corrupted ? "#e06c6c" : pal.windowText
-                        opacity: win.hasSpec && win.spec.corrupted ? 1 : 0.55
                     }
                     ToolButton {
                         id: pinBtn
@@ -251,6 +246,12 @@ Window {
                     spacing: 6
                     Chip { text: Backend.gameLabel }
                     Chip { visible: win.hasSpec && win.spec.item_level != null; text: "Item Level: " + (win.hasSpec ? win.spec.item_level : "") }
+                    Chip {
+                        readonly property bool corrupted: win.hasSpec && win.spec.corrupted
+                        warn: corrupted
+                        opacity: corrupted ? 1 : 0.7
+                        text: corrupted ? "Corrupted" : "Not corrupted"
+                    }
                     Chip { accent: true; text: win.enabledStats + " of " + (win.hasSpec ? win.spec.filters.length : 0) + " filters" }
                 }
                 Label {
