@@ -68,7 +68,9 @@ Window {
     }
     onVisibleChanged: if (!visible) wasActive = false
 
-    SystemPalette { id: pal }
+    // Colours come from the window's palette, the same one its controls inherit, so the card and
+    // the controls always agree (SystemPalette can differ from the Quick Controls palette).
+    readonly property var pal: win.palette
     Shortcut { sequences: ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
     // Window-style resize edge. Height (and width when the overlay is on the left) resize live,

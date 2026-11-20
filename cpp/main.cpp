@@ -63,6 +63,16 @@ static void setupTray(QApplication &app)
 }
 #endif
 
+// Without KDE's Breeze, use Qt Quick's Fusion style: unlike the native Windows controls it
+// draws everything from the system palette, so the overlay follows the system's light or dark
+// mode (and accent colour) consistently. Only the Qt Quick style changes: switching the widget
+// style too would swap the app palette for Fusion's built-in light one.
+static void useFusion()
+{
+    if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
+        QQuickStyle::setStyle(QStringLiteral("Fusion"));
+}
+
 extern "C" int lootlens_qt_main()
 {
     static int argc = 1;
@@ -95,9 +105,14 @@ extern "C" int lootlens_qt_main()
                                        QIcon(QStringLiteral(":/lootlens/icons/lootlens.svg"))));
     app.setQuitOnLastWindowClosed(false);
 #ifdef LOOTLENS_LAYER_SHELL
-    // KDE's Breeze style; elsewhere Qt picks the platform's native style.
-    if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
+    // KDE's Breeze style (follows the user's colour scheme). LOOTLENS_FUSION=1 previews the
+    // style other platforms get.
+    if (!qEnvironmentVariableIsEmpty("LOOTLENS_FUSION"))
+        useFusion();
+    else if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
+#else
+    useFusion();
 #endif
 #ifdef LOOTLENS_QT_TRAY
     setupTray(app);
