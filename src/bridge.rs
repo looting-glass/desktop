@@ -135,11 +135,11 @@ pub fn apply_config(cfg: &Config) {
 
 impl cxx_qt::Initialize for qobject::Backend {
     fn initialize(mut self: Pin<&mut Self>) {
-        // Dev aid: LOOTLENS_SNAPSHOT=<dir> makes QML save overlay/settings screenshots there.
-        if let Ok(dir) = std::env::var("LOOTLENS_SNAPSHOT") {
+        // Dev aid: LOOTINGGLASS_SNAPSHOT=<dir> makes QML save overlay/settings screenshots there.
+        if let Ok(dir) = std::env::var("LOOTINGGLASS_SNAPSHOT") {
             self.as_mut().set_snapshot_dir(q(dir));
             // Sample text for the manual check window screenshot.
-            if let Some(t) = std::env::var_os("LOOTLENS_DEMO").and_then(|p| std::fs::read_to_string(p).ok()) {
+            if let Some(t) = std::env::var_os("LOOTINGGLASS_DEMO").and_then(|p| std::fs::read_to_string(p).ok()) {
                 self.as_mut().set_demo_text(q(t));
             }
         }

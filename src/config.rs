@@ -103,7 +103,7 @@ pub struct Config {
     pub overlay: OverlayConfig,
     /// Optional contact info appended to the User-Agent (GGG asks API clients to identify themselves).
     pub contact: String,
-    /// Global hotkeys, on platforms where Loot Lens registers them itself (Windows). On Linux
+    /// Global hotkeys, on platforms where Looting Glass registers them itself (Windows). On Linux
     /// they are bound in the desktop's shortcut settings through the GlobalShortcuts portal.
     #[cfg(windows)]
     pub shortcuts: ShortcutsConfig,
@@ -187,14 +187,14 @@ impl Default for Config {
 
 impl Config {
     pub fn dir() -> PathBuf {
-        dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("lootlens")
+        dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("lootingglass")
     }
     fn path() -> PathBuf {
         Self::dir().join("config.toml")
     }
 
     pub fn load() -> Self {
-        Self::migrate_from_glimmer();
+        Self::migrate_from_old_names();
         match std::fs::read_to_string(Self::path()) {
             Ok(s) => toml::from_str(&s).unwrap_or_else(|e| {
                 log::error!("invalid config, using defaults: {e}");
@@ -208,12 +208,16 @@ impl Config {
         }
     }
 
-    /// One-time carry-over of settings from the app's previous name.
-    fn migrate_from_glimmer() {
-        let old = dirs::config_dir().map(|d| d.join("glimmer/config.toml"));
-        if let Some(old) = old.filter(|o| o.exists() && !Self::path().exists()) {
+    /// One-time carry-over of settings from the app's previous names (Loot Lens, Glimmer).
+    fn migrate_from_old_names() {
+        if Self::path().exists() {
+            return;
+        }
+        let Some(config) = dirs::config_dir() else { return };
+        let old = ["lootlens", "glimmer"].map(|d| config.join(d).join("config.toml"));
+        if let Some(old) = old.iter().find(|o| o.exists()) {
             let _ = std::fs::create_dir_all(Self::dir());
-            if std::fs::copy(&old, Self::path()).is_ok() {
+            if std::fs::copy(old, Self::path()).is_ok() {
                 log::info!("migrated settings from {}", old.display());
             }
         }
@@ -244,9 +248,9 @@ impl Config {
     pub fn user_agent(&self) -> String {
         let v = env!("CARGO_PKG_VERSION");
         if self.contact.trim().is_empty() {
-            format!("LootLens/{v}")
+            format!("LootingGlass/{v}")
         } else {
-            format!("LootLens/{v} (contact: {})", self.contact.trim())
+            format!("LootingGlass/{v} (contact: {})", self.contact.trim())
         }
     }
 }

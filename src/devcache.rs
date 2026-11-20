@@ -1,6 +1,6 @@
-//! Dev aids for API responses. `LOOTLENS_MOCK=1` answers from canned data (see `mock.rs`);
-//! `LOOTLENS_HTTP_CACHE=<dir>` records every trade API / poe.ninja JSON response in
-//! `<dir>` and replays it on later runs, so UI work (`LOOTLENS_DEMO`, `LOOTLENS_SNAPSHOT`)
+//! Dev aids for API responses. `LOOTINGGLASS_MOCK=1` answers from canned data (see `mock.rs`);
+//! `LOOTINGGLASS_HTTP_CACHE=<dir>` records every trade API / poe.ninja JSON response in
+//! `<dir>` and replays it on later runs, so UI work (`LOOTINGGLASS_DEMO`, `LOOTINGGLASS_SNAPSHOT`)
 //! doesn't hit the APIs or their rate limits. Delete the directory to fetch fresh data.
 
 use anyhow::Result;
@@ -9,7 +9,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 
 fn dir() -> Option<PathBuf> {
-    std::env::var_os("LOOTLENS_HTTP_CACHE").map(PathBuf::from)
+    std::env::var_os("LOOTINGGLASS_HTTP_CACHE").map(PathBuf::from)
 }
 
 /// Cache file for a request: hash of method, URL and body (headers don't matter).
@@ -31,7 +31,7 @@ where
     if crate::mock::enabled() {
         let req = req.build()?;
         return crate::mock::response(req.method().as_str(), req.url().as_str())
-            .ok_or_else(|| anyhow::anyhow!("LOOTLENS_MOCK: no canned response for {}", req.url()));
+            .ok_or_else(|| anyhow::anyhow!("LOOTINGGLASS_MOCK: no canned response for {}", req.url()));
     }
     let Some(path) = dir().and_then(|d| file(&d, &req)) else {
         return fetch(req).await;

@@ -2,12 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.impl
 import QtQuick.Layouts
-import dev.lootlens
+import dev.lootingglass
 
 // Settings window: category sidebar (like KDE System Settings) + one short form per page.
 ApplicationWindow {
     id: win
-    title: "Loot Lens Settings"
+    title: "Looting Glass Settings"
     width: 760
     height: 500
     minimumWidth: 620
@@ -16,7 +16,7 @@ ApplicationWindow {
 
     property var cfg: ({})
     readonly property var statuses: ["online", "any", "securable"]
-    // Only present in the config on platforms where Loot Lens registers hotkeys itself (Windows).
+    // Only present in the config on platforms where Looting Glass registers hotkeys itself (Windows).
     readonly property bool ownShortcuts: cfg.shortcuts !== undefined
     readonly property var shortcutFields: [
         ["price_check", "Price check:"],
@@ -86,7 +86,7 @@ ApplicationWindow {
         }
     }
 
-    // Page background as a real item so it can be captured (LOOTLENS_SNAPSHOT):
+    // Page background as a real item so it can be captured (LOOTINGGLASS_SNAPSHOT):
     // saves the Game and Trade tabs as settings-game.png / settings-trade.png in `dir`.
     function snapshot(dir) {
         win.width = 760
@@ -163,7 +163,7 @@ ApplicationWindow {
                             contentItem: RowLayout {
                                 spacing: 8
                                 IconImage {
-                                    source: "qrc:/lootlens/icons/" + navItem.modelData.icon + ".svg"
+                                    source: "qrc:/lootingglass/icons/" + navItem.modelData.icon + ".svg"
                                     color: win.palette.windowText
                                     sourceSize: Qt.size(16, 16)
                                     Layout.preferredWidth: 16
@@ -261,7 +261,7 @@ ApplicationWindow {
                     }
 
                     // Linux: shortcuts live in the desktop (portal); show them with a button to edit.
-                    // Windows: Loot Lens registers them itself, so edit them right here.
+                    // Windows: Looting Glass registers them itself, so edit them right here.
                     FormPage {
                         FormLabel { text: "Current:"; visible: !win.ownShortcuts }
                         Label {
@@ -307,14 +307,14 @@ ApplicationWindow {
 
                     ColumnLayout {
                         spacing: 8
-                        Label { text: "Loot Lens"; font.pointSize: Qt.application.font.pointSize * 1.6 }
+                        Label { text: "Looting Glass"; font.pointSize: Qt.application.font.pointSize * 1.6 }
                         Label {
                             text: "Wayland-native price checker for Path of Exile 1 and 2."
                             wrapMode: Text.Wrap
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: "Loot Lens is a fan-made tool, not affiliated with or endorsed by Grinding Gear Games. Licensed under GPL-3.0-or-later."
+                            text: "Looting Glass is a fan-made tool, not affiliated with or endorsed by Grinding Gear Games. Licensed under GPL-3.0-or-later."
                             opacity: 0.7
                             wrapMode: Text.Wrap
                             Layout.fillWidth: true

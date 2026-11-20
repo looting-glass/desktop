@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import dev.lootlens
+import dev.lootingglass
 
 // Manual price check: paste item text copied from the game; results open in the overlay.
 ApplicationWindow {
     id: win
-    title: "Loot Lens"
+    title: "Looting Glass"
     width: 560
     height: 460
     minimumWidth: 420
@@ -20,7 +20,7 @@ ApplicationWindow {
 
     onVisibleChanged: if (visible) { error.text = ""; input.forceActiveFocus() }
 
-    // LOOTLENS_SNAPSHOT: save the window with sample item text as manual-check.png.
+    // LOOTINGGLASS_SNAPSHOT: save the window with sample item text as manual-check.png.
     function snapshot(dir) {
         show()
         input.text = Backend.demoText
@@ -50,7 +50,7 @@ ApplicationWindow {
             RowLayout {
                 spacing: 8
                 Image {
-                    source: "qrc:/lootlens/icons/lootlens.svg"
+                    source: "qrc:/lootingglass/icons/lootingglass.svg"
                     sourceSize: Qt.size(40, 40)
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
@@ -66,7 +66,7 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
                 ToolButton {
                     icon.name: "configure"
-                    icon.source: "qrc:/lootlens/icons/settings.svg"
+                    icon.source: "qrc:/lootingglass/icons/settings.svg"
                     text: "Settings"
                     display: AbstractButton.IconOnly
                     ToolTip.visible: hovered
@@ -126,7 +126,7 @@ ApplicationWindow {
                 Label { text: "Ctrl+Enter"; opacity: 0.5 }
                 Button {
                     text: "Check price"
-                    icon.source: "qrc:/lootlens/icons/lootlens.svg"
+                    icon.source: "qrc:/lootingglass/icons/lootingglass.svg"
                     icon.color: "transparent"
                     highlighted: true
                     enabled: input.text.trim() !== ""

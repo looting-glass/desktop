@@ -2,7 +2,7 @@ use cxx_qt_build::{CxxQtBuilder, QmlModule};
 
 fn main() {
     let builder = CxxQtBuilder::new_qml_module(
-        QmlModule::new("dev.lootlens").qml_files([
+        QmlModule::new("dev.lootingglass").qml_files([
             "qml/Main.qml",
             "qml/Settings.qml",
             "qml/ManualCheck.qml",
@@ -25,10 +25,10 @@ fn main() {
         builder.cc_builder(|cc| {
             cc.file("cpp/main.cpp");
             if linux {
-                cc.include("/usr/include").define("LOOTLENS_LAYER_SHELL", None);
+                cc.include("/usr/include").define("LOOTINGGLASS_LAYER_SHELL", None);
             } else {
                 // MSVC reads sources as the ANSI code page unless told otherwise (… in strings).
-                cc.define("LOOTLENS_QT_TRAY", None).flag_if_supported("/utf-8");
+                cc.define("LOOTINGGLASS_QT_TRAY", None).flag_if_supported("/utf-8");
             }
         })
     };
