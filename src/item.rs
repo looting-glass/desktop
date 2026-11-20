@@ -114,7 +114,7 @@ const DEFENCES: &[(&str, &str)] = &[
 const LOCAL_PROPS: &[&str] = &[
     "Armour:", "Evasion Rating:", "Evasion:", "Energy Shield:", "Ward:", "Physical Damage:",
     "Elemental Damage:", "Chaos Damage:", "Attacks per Second:", "Critical Strike Chance:", "Critical Hit Chance:",
-    "Block chance:", "Chance to Block:",
+    "Block chance:", "Chance to Block:", "Spirit:",
 ];
 
 const SUFFIXES: &[(&str, ModKind)] = &[
@@ -171,8 +171,12 @@ pub fn parse(text: &str) -> Option<Item> {
 
     for sec in &sections[1..] {
         let is_requirements = sec[0].starts_with("Requirements");
+        // Advanced descriptions put the mod kind in a `{ … }` header above its line(s).
+        let mut header: Option<ModKind> = None;
         for &line in sec {
-            if let Some(v) = line.strip_prefix("Item Level: ") {
+            if line.starts_with('{') {
+                header = header_kind(line);
+            } else if let Some(v) = line.strip_prefix("Item Level: ") {
                 it.item_level = leading_num(v);
             } else if let Some(v) = line.strip_prefix("Level: ") {
                 if it.rarity == Rarity::Gem && !is_requirements && it.gem_level.is_none() {
@@ -206,15 +210,41 @@ pub fn parse(text: &str) -> Option<Item> {
                     }
                 }
             } else if !line.contains(": ") && !is_requirements {
-                it.mods.push(parse_mod(line));
+                let mut m = parse_mod(line);
+                if let (ModKind::Explicit, Some(k)) = (m.kind, header) {
+                    m.kind = k;
+                }
+                it.mods.push(m);
             }
         }
     }
     Some(it)
 }
 
+fn header_kind(header: &str) -> Option<ModKind> {
+    let h = header.to_lowercase();
+    if h.contains("desecrated") {
+        Some(ModKind::Desecrated)
+    } else if h.contains("fractured") {
+        Some(ModKind::Fractured)
+    } else if h.contains("crafted") {
+        Some(ModKind::Crafted)
+    } else {
+        None
+    }
+}
+
+/// `[Presence|Presence]` / `[Presence]` keyword markup -> plain word.
+static KEYWORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[(?:[^\]|]*\|)?([^\]]*)\]").unwrap());
+/// Roll ranges from advanced descriptions: `13(10-15)` -> `13`.
+static ROLL_RANGE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\d)\(-?\d+(?:\.\d+)?-\d+(?:\.\d+)?\)").unwrap());
+
 fn parse_mod(line: &str) -> Mod {
     let mut kind = ModKind::Explicit;
+    let clean = KEYWORD.replace_all(line, "$1");
+    let clean = ROLL_RANGE.replace_all(&clean, "$1").into_owned();
+    let line = clean.as_str();
     let mut text = line;
     for (suf, k) in SUFFIXES {
         if let Some(t) = line.strip_suffix(suf) {
@@ -256,6 +286,38 @@ mod tests {
         assert_eq!(it.mods[0].template, "+#% to Fire Resistance");
         assert_eq!(it.mods[2].template, "Adds # to # Fire Damage to Attacks");
         assert_eq!(it.mods[2].values, vec![3.0, 7.0]);
+    }
+
+    #[test]
+    fn parses_poe2_advanced_description() {
+        let it = parse(include_str!("../dev/sceptre-poe2.txt")).unwrap();
+        assert!(it.has_local_props, "Spirit: makes increased Spirit local");
+        let t: Vec<(&str, &str)> = it.mods.iter().map(|m| (m.kind.trade_type(), m.template.as_str())).collect();
+        assert_eq!(t, vec![
+            ("rune", "Minions in your Presence have Onslaught while you are on Low Runic Ward"),
+            ("explicit", "Allies in your Presence deal #% increased Damage"),
+            ("explicit", "+# to maximum Mana"),
+            ("desecrated", "#% increased Spirit"),
+            ("explicit", "#% increased Presence Area of Effect"),
+            ("explicit", "Allies in your Presence have #% increased Attack Speed"),
+            ("explicit", "+# to Level of all Minion Skills"),
+        ]);
+        assert_eq!(it.mods[1].values, vec![74.0]);
+    }
+
+    #[test]
+    fn parses_poe1_advanced_description() {
+        let it = parse("Item Class: Boots\nRarity: Rare\nX\nSlink Boots\n--------\nItem Level: 82\n--------\n{ Prefix Modifier \"Virile\" (Tier: 4) — Life }\n+52(50-59) to maximum Life\n{ Master Crafted Suffix Modifier \"of Craft\" (Rank: 1) }\n+29(28-35)% to Lightning Resistance (crafted)\n").unwrap();
+        let t: Vec<(&str, &str)> = it.mods.iter().map(|m| (m.kind.trade_type(), m.template.as_str())).collect();
+        assert_eq!(t, vec![("explicit", "+# to maximum Life"), ("crafted", "+#% to Lightning Resistance")]);
+        assert_eq!(it.mods[0].values, vec![52.0]);
+    }
+
+    #[test]
+    fn strips_poe2_markup() {
+        let m = parse_mod("[Allies|Allies] in your [Presence] deal 74(70-80)% increased Damage");
+        assert_eq!(m.template, "Allies in your Presence deal #% increased Damage");
+        assert_eq!(m.values, vec![74.0]);
     }
 
     #[test]

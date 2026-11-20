@@ -157,6 +157,7 @@ fn age(indexed: &str) -> String {
 const IMPORTANT: &[&str] = &[
     "Resistance", "maximum Life", "Movement Speed", "all Attributes", "Spirit", "Level of all",
     "maximum Energy Shield", "Critical", "increased Physical Damage", "Attack Speed", "Cast Speed",
+    "Allies in your Presence",
 ];
 
 const PROP_LABELS: &[(&str, &str)] = &[
@@ -236,7 +237,18 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
     let tol = 1.0 - cfg.trade.stat_tolerance as f64 / 100.0;
     let mut stats = Vec::new();
     for m in &item.mods {
-        let Some(ids) = d.stats.get(&(m.kind.trade_type().to_string(), m.template.clone())) else { continue };
+        // PoE 2's trade data drops the leading "+" ("# to maximum Mana"); PoE 1 keeps it, so the
+        // fallback is PoE 2-only to avoid matching a different PoE 1 stat.
+        let group = m.kind.trade_type().to_string();
+        let ids = d.stats.get(&(group.clone(), m.template.clone())).or_else(|| {
+            (cfg.game == Game::Poe2)
+                .then(|| d.stats.get(&(group, m.template.replace("+#", "#"))))
+                .flatten()
+        });
+        let Some(ids) = ids else {
+            log::info!("no trade stat for {} mod: {:?}", m.kind.trade_type(), m.template);
+            continue;
+        };
         let id = ids.iter().find(|(_, l)| *l == item.has_local_props).unwrap_or(&ids[0]).0.clone();
         let min = (!m.values.is_empty())
             .then(|| m.values.iter().sum::<f64>() / m.values.len() as f64)

@@ -1,0 +1,30 @@
+Item Class: Sceptres
+Rarity: Rare
+Loath Ram
+Rattling Sceptre
+--------
+Quality: +20% (augmented)
+Spirit: 144 (augmented)
+--------
+Requires: Level 62
+--------
+Sockets: S 
+--------
+Item Level: 79
+--------
+Minions in your Presence have Onslaught while you are on Low Runic Ward (rune)
+--------
+Grants Skill: Level 17 Skeletal Warrior Minion
+--------
+{ Prefix Modifier "Persuasive" (Tier: 4) — Damage }
+Allies in your Presence deal 74(65-74)% increased Damage
+{ Prefix Modifier "Beryl" (Tier: 11) — Mana }
++13(10-14) to maximum Mana
+{ Desecrated Prefix Modifier "Marquess'" (Tier: 5) }
+44(39-44)% increased Spirit
+{ Suffix Modifier "of Influence" (Tier: 1) — Aura }
+70(66-80)% increased Presence Area of Effect
+{ Suffix Modifier "of Skill" (Tier: 4) — Attack, Speed }
+Allies in your Presence have 6(5-7)% increased Attack Speed
+{ Suffix Modifier "of the Slavedriver" (Tier: 1) — Minion, Gem }
++4 to Level of all Minion Skills

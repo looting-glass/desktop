@@ -134,6 +134,11 @@ async fn price_check() {
 
 /// Parse item text, show the overlay with default filters and run the first search.
 async fn check_text(text: String) {
+    // Keep the last copied item for troubleshooting parsing/matching problems.
+    if let Some(dir) = dirs::state_dir().map(|d| d.join("lootlens")) {
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = std::fs::write(dir.join("last-item.txt"), &text);
+    }
     let Some(item) = item::parse(&text) else {
         return show_error("The clipboard does not contain a Path of Exile item.".into());
     };
