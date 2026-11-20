@@ -75,6 +75,10 @@ Window {
     // the text colour (Windows' own icons don't follow its dark mode in tool buttons).
     readonly property bool themeIcons: Qt.platform.os === "linux"
     readonly property var iconTint: themeIcons ? undefined : pal.windowText
+    // KDE colour schemes tint the background to match the accent, so the accent can decorate
+    // (title, chips). Elsewhere (Windows' neutral greys) it only marks state: checked rows,
+    // checkboxes, hover, pin.
+    readonly property bool decorativeAccent: Qt.platform.os === "linux"
     // Pinned: only Esc (or ✕) closes, so Space and clicking the game leave it open.
     Shortcut { sequences: Backend.pinned ? ["Escape"] : ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
@@ -217,7 +221,7 @@ Window {
                     text: Backend.title
                     font.pointSize: 11
                     font.bold: true
-                    color: pal.highlight
+                    color: win.decorativeAccent ? pal.highlight : pal.windowText
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
@@ -227,8 +231,9 @@ Window {
                     Layout.fillWidth: true
                     implicitHeight: ninjaCol.implicitHeight + 12
                     radius: 6
-                    color: Qt.rgba(pal.highlight.r, pal.highlight.g, pal.highlight.b, 0.18)
-                    border.color: pal.highlight
+                    readonly property color tone: win.decorativeAccent ? pal.highlight : pal.windowText
+                    color: Qt.rgba(tone.r, tone.g, tone.b, win.decorativeAccent ? 0.18 : 0.06)
+                    border.color: win.decorativeAccent ? pal.highlight : pal.mid
                     ColumnLayout {
                         id: ninjaCol
                         anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 8 }
@@ -257,7 +262,7 @@ Window {
                         opacity: corrupted ? 1 : 0.7
                         text: corrupted ? "Corrupted" : "Not corrupted"
                     }
-                    Chip { accent: true; text: win.enabledStats + " of " + (win.hasSpec ? win.spec.filters.length : 0) + " filters" }
+                    Chip { accent: win.decorativeAccent; text: win.enabledStats + " of " + (win.hasSpec ? win.spec.filters.length : 0) + " filters" }
                 }
                 Label {
                     visible: Backend.overlayState === "error" || Backend.overlayState === "searchError"
@@ -272,7 +277,7 @@ Window {
                     visible: win.hasSpec && win.expanded
                     Layout.fillWidth: true
                     spacing: 10
-                    CheckBox {
+                    LgCheckBox {
                         visible: win.hasSpec && win.spec.base != null
                         focusPolicy: Qt.NoFocus
                         // Off = search the whole item category (default for rares).
@@ -285,7 +290,7 @@ Window {
                         checked: { win.rev; return win.hasSpec && win.spec.use_base }
                         onToggled: { win.spec.use_base = checked; win.edited() }
                     }
-                    CheckBox {
+                    LgCheckBox {
                         visible: win.hasSpec
                         focusPolicy: Qt.NoFocus
                         text: "Corrupted: " + (win.hasSpec && win.spec.corrupted ? "yes" : "no")
@@ -313,7 +318,7 @@ Window {
                             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter
                                       leftMargin: 12; rightMargin: 6 }
                             spacing: 4
-                            CheckBox {
+                            LgCheckBox {
                                 focusPolicy: Qt.NoFocus
                                 checked: frow.modelData.enabled
                                 onToggled: { win.spec.filters[frow.index].enabled = checked; win.edited() }
