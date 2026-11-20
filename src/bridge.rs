@@ -33,6 +33,7 @@ pub mod qobject {
         #[qproperty(i32, overlay_width)]
         #[qproperty(i32, margin_top)]
         #[qproperty(i32, margin_side)]
+        #[qproperty(bool, pinned)]
         type Backend = super::BackendRust;
 
         #[qinvokable]
@@ -99,6 +100,7 @@ pub struct BackendRust {
     overlay_width: i32,
     margin_top: i32,
     margin_side: i32,
+    pinned: bool,
 }
 
 type UiFn = Box<dyn FnOnce(Pin<&mut qobject::Backend>) + Send>;
@@ -127,6 +129,7 @@ pub fn apply_config(cfg: &Config) {
         b.as_mut().set_overlay_max_height(o.max_height);
         b.as_mut().set_margin_top(o.margin_top);
         b.as_mut().set_margin_side(o.margin_side);
+        b.as_mut().set_pinned(o.pinned);
     });
 }
 
@@ -220,6 +223,7 @@ impl qobject::Backend {
         c.overlay.max_height = *self.overlay_max_height();
         c.overlay.margin_top = *self.margin_top();
         c.overlay.margin_side = *self.margin_side();
+        c.overlay.pinned = *self.pinned();
         if let Err(e) = c.save() {
             log::error!("saving config: {e}");
         }

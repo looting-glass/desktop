@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.impl
 import QtQuick.Layouts
 import dev.lootlens
 
@@ -114,11 +115,11 @@ ApplicationWindow {
     }
 
     readonly property var categories: [
-        { name: "Game", icon: "applications-games" },
-        { name: "Trade", icon: "view-financial-list" },
-        { name: "Overlay", icon: "window" },
-        { name: "Shortcuts", icon: "input-keyboard" },
-        { name: "About", icon: "help-about" },
+        { name: "Game", icon: "nav-game" },
+        { name: "Trade", icon: "nav-trade" },
+        { name: "Overlay", icon: "nav-overlay" },
+        { name: "Shortcuts", icon: "nav-shortcuts" },
+        { name: "About", icon: "nav-about" },
     ]
 
     Rectangle {
@@ -145,16 +146,38 @@ ApplicationWindow {
                         id: nav
                         anchors.fill: parent
                         anchors.margins: 4
+                        // Items start further right; their highlight reaches back (leftInset) so the
+                        // accent bar has room before the icon. Breeze ignores leftPadding here.
+                        anchors.leftMargin: 12
                         model: win.categories
                         currentIndex: 0
                         spacing: 2
                         delegate: ItemDelegate {
+                            id: navItem
                             required property var modelData
                             required property int index
                             width: ListView.view.width
                             text: modelData.name
-                            icon.name: modelData.icon
-                            highlighted: ListView.isCurrentItem
+                            // Bundled monochrome icons, tinted with the text colour. Drawn here rather
+                            // than via icon.source: Breeze doesn't recolour bundled icons.
+                            contentItem: RowLayout {
+                                spacing: 8
+                                IconImage {
+                                    source: "qrc:/lootlens/icons/" + navItem.modelData.icon + ".svg"
+                                    color: win.palette.windowText
+                                    sourceSize: Qt.size(16, 16)
+                                    Layout.preferredWidth: 16
+                                    Layout.preferredHeight: 16
+                                }
+                                Label { text: navItem.text; Layout.fillWidth: true }
+                            }
+                            // Same selected look as checked filter rows in the overlay.
+                            leftInset: -8
+                            background: AccentTint {
+                                palette: win.palette
+                                active: navItem.ListView.isCurrentItem
+                                hovered: navItem.hovered
+                            }
                             onClicked: nav.currentIndex = index
                         }
                     }

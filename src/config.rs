@@ -160,11 +160,13 @@ pub struct OverlayConfig {
     pub width: i32,
     /// Height cap in pixels; 0 = fit content up to the screen height.
     pub max_height: i32,
+    /// Keep the overlay open when the game is clicked (close with ✕ or Esc only).
+    pub pinned: bool,
 }
 
 impl Default for OverlayConfig {
     fn default() -> Self {
-        Self { side: Side::Right, margin_top: 80, margin_side: 24, width: 380, max_height: 0 }
+        Self { side: Side::Right, margin_top: 80, margin_side: 24, width: 380, max_height: 0, pinned: false }
     }
 }
 

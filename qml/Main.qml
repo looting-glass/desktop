@@ -63,7 +63,7 @@ Window {
             activeSince = Date.now()
         } else if (wasActive && visible) {
             if (Date.now() - activeSince < 600) requestActivate()
-            else if (Backend.snapshotDir === "") Backend.hideOverlay()
+            else if (Backend.snapshotDir === "" && !Backend.pinned) Backend.hideOverlay()
         }
     }
     onVisibleChanged: if (!visible) wasActive = false
@@ -71,7 +71,8 @@ Window {
     // Colours come from the window's palette, the same one its controls inherit, so the card and
     // the controls always agree (SystemPalette can differ from the Quick Controls palette).
     readonly property var pal: win.palette
-    Shortcut { sequences: ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
+    // Pinned: only Esc (or ✕) closes, so Space and clicking the game leave it open.
+    Shortcut { sequences: Backend.pinned ? ["Escape"] : ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
     // Window-style resize edge. Height (and width when the overlay is on the left) resize live,
     // since the surface origin stays put. Growing a right-anchored overlay moves its origin,
@@ -115,12 +116,13 @@ Window {
     component Chip: Rectangle {
         property alias text: lbl.text
         property bool accent: false
+        property bool warn: false
         implicitWidth: lbl.implicitWidth + 14
         implicitHeight: lbl.implicitHeight + 6
         radius: 4
         color: "transparent"
-        border.color: accent ? pal.highlight : pal.mid
-        Label { id: lbl; anchors.centerIn: parent; font.bold: true; font.pointSize: 8 }
+        border.color: warn ? "#e06c6c" : accent ? pal.highlight : pal.mid
+        Label { id: lbl; anchors.centerIn: parent; font.bold: true; font.pointSize: 8; color: warn ? "#e06c6c" : pal.windowText }
     }
 
     Rectangle {
@@ -178,13 +180,32 @@ Window {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                     }
-                    Label {
-                        visible: win.hasSpec
-                        text: win.hasSpec && win.spec.corrupted ? "Corrupted" : "Not corrupted"
-                        color: win.hasSpec && win.spec.corrupted ? "#e06c6c" : pal.windowText
-                        opacity: win.hasSpec && win.spec.corrupted ? 1 : 0.55
+                    ToolButton {
+                        id: pinBtn
+                        icon.name: "window-pin"
+                        icon.source: "qrc:/lootlens/icons/pin.svg"
+                        // The style draws the checked (pinned) state as an active button.
+                        checkable: true
+                        checked: Backend.pinned
+                        focusPolicy: Qt.NoFocus
+                        onToggled: {
+                            Backend.pinned = checked
+                            Backend.saveOverlaySize()
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 500
+                        ToolTip.text: Backend.pinned ? "Pinned: close with ✕ or Esc" : "Keep open when clicking the game"
+                        // Accent bar under the pin while it's active.
+                        Rectangle {
+                            visible: Backend.pinned
+                            anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 1 }
+                            width: parent.width - 10
+                            height: 2
+                            radius: 1
+                            color: pal.highlight
+                        }
                     }
-                    ToolButton { icon.name: "window-close"; icon.source: "qrc:/lootlens/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
+                    ToolButton { id: closeBtn; icon.name: "window-close"; icon.source: "qrc:/lootlens/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
                 }
                 Label {
                     visible: Backend.overlayState !== "error"
@@ -225,6 +246,12 @@ Window {
                     spacing: 6
                     Chip { text: Backend.gameLabel }
                     Chip { visible: win.hasSpec && win.spec.item_level != null; text: "Item Level: " + (win.hasSpec ? win.spec.item_level : "") }
+                    Chip {
+                        readonly property bool corrupted: win.hasSpec && win.spec.corrupted
+                        warn: corrupted
+                        opacity: corrupted ? 1 : 0.7
+                        text: corrupted ? "Corrupted" : "Not corrupted"
+                    }
                     Chip { accent: true; text: win.enabledStats + " of " + (win.hasSpec ? win.spec.filters.length : 0) + " filters" }
                 }
                 Label {
@@ -272,13 +299,14 @@ Window {
                         Layout.fillWidth: true
                         implicitHeight: frl.implicitHeight + 8
                         radius: 4
-                        color: on ? Qt.rgba(pal.highlight.r, pal.highlight.g, pal.highlight.b, 0.12) : "transparent"
+                        color: "transparent"
+                        AccentTint { anchors.fill: parent; palette: pal; active: frow.on }
 
                         RowLayout {
                             id: frl
                             // Inset so the min/max fields don't touch the highlighted row's edge.
                             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter
-                                      leftMargin: 2; rightMargin: 6 }
+                                      leftMargin: 12; rightMargin: 6 }
                             spacing: 4
                             CheckBox {
                                 focusPolicy: Qt.NoFocus
