@@ -73,6 +73,10 @@ pub struct Spec {
 }
 
 async fn send(req: reqwest::RequestBuilder, ua: &str) -> Result<Value> {
+    crate::devcache::json(req, |req| send_live(req, ua)).await
+}
+
+async fn send_live(req: reqwest::RequestBuilder, ua: &str) -> Result<Value> {
     let r = req.header(reqwest::header::USER_AGENT, ua).send().await?;
     let status = r.status();
     if status.as_u16() == 429 {
