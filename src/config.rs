@@ -250,3 +250,40 @@ impl Config {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn partial_config_fills_in_defaults() {
+        let c: Config = toml::from_str("game = \"poe2\"\n[poe2]\nleague = \"Dawn\"\n").unwrap();
+        assert_eq!(c.game, Game::Poe2);
+        assert_eq!(c.league(), "Dawn");
+        assert_eq!(c.poe1.league, "Standard");
+        assert_eq!(c.trade.stat_tolerance, 10);
+        assert_eq!(c.overlay.width, 380);
+    }
+
+    #[test]
+    fn config_round_trips_through_toml() {
+        let mut c = Config::default();
+        c.game = Game::Poe2;
+        c.trade.max_results = 7;
+        let back: Config = toml::from_str(&toml::to_string(&c).unwrap()).unwrap();
+        assert_eq!(back.game, Game::Poe2);
+        assert_eq!(back.trade.max_results, 7);
+    }
+
+    #[test]
+    fn trade_site_urls() {
+        assert_eq!(
+            Game::Poe1.web_search("Standard", "abc"),
+            "https://www.pathofexile.com/trade/search/Standard/abc"
+        );
+        assert_eq!(
+            Game::Poe2.web_search("Rise of the Abyssal", "abc"),
+            "https://www.pathofexile.com/trade2/search/poe2/Rise%20of%20the%20Abyssal/abc"
+        );
+    }
+}
