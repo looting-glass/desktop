@@ -21,7 +21,10 @@ jobs:
           pacman -Syu --noconfirm --needed base-devel git rust \
             qt6-base qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      # Cache compiled dependencies between runs (keyed on Cargo.lock and the toolchain).
+      - uses: Swatinem/rust-cache@v2
 
       - name: Test
         run: cargo test --release --locked
@@ -32,7 +35,7 @@ jobs:
           [[ "$GITHUB_REF_TYPE" == tag ]] || version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)-dev"
           packaging/make-release.sh "$version"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lootlens-linux
           path: dist/*.tar.gz*
@@ -40,11 +43,15 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      # MSVC environment (cl.exe for the C++ bootstrap, VCINSTALLDIR for windeployqt's
-      # --compiler-runtime).
-      - uses: ilammy/msvc-dev-cmd@v1
+      # windeployqt's --compiler-runtime finds the MSVC runtime DLLs through VCINSTALLDIR.
+      # (The C++ compiler itself is located by the cc crate.)
+      - name: Locate MSVC
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          "VCINSTALLDIR=$vs\VC\" >> $env:GITHUB_ENV
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -55,6 +62,8 @@ jobs:
 
       - name: Update Rust
         run: rustup update stable --no-self-update && rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Test
         run: cargo test --release --locked
@@ -95,7 +104,7 @@ jobs:
             "$hash  $f" | Out-File -Encoding ascii -NoNewline "dist/$f.sha256"
           }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lootlens-windows
           path: |
@@ -107,12 +116,12 @@ jobs:
     needs: [linux, windows]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           generate_release_notes: true
