@@ -273,11 +273,16 @@ LOOTLENS_GAME=poe2 LOOTLENS_DEMO=dev/boots-poe2.txt cargo run       # force a ga
 
 ### Making a release
 
-Push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`. The
-[Release workflow](.github/workflows/release.yml) builds and tests Linux in an Arch Linux
-container (`packaging/make-release.sh`) and Windows on a Windows runner (`windeployqt`), then
-publishes the Linux tarball and the Windows installer and zip, each with a SHA-256 checksum. Running the workflow manually
-from the Actions tab is a dry run that only uploads them as artifacts.
+Releases are automated with [release-please](https://github.com/googleapis/release-please).
+Changes land on `main` as squash-merged PRs with [Conventional Commit](https://www.conventionalcommits.org)
+titles. After each merge, release-please keeps a release PR up to date: it bumps the version
+in `Cargo.toml` (`fix:` → patch, `feat:` → minor) and adds the changes to `CHANGELOG.md`.
+Merging the release PR tags `vX.Y.Z`, creates the GitHub release and runs the
+[Build workflow](.github/workflows/build.yml), which attaches the Linux tarball and the Windows
+installer and zip, each with a SHA-256 checksum.
+
+To test a branch on both platforms without releasing, run the Build workflow manually
+(`gh workflow run build.yml --ref <branch>`) and download the packages from the run's artifacts.
 
 ### Porting
 

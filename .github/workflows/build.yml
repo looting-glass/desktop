@@ -1,13 +1,20 @@
-name: Release
+name: Build
 
+# Builds, tests and packages Linux and Windows; the packages are uploaded as run artifacts.
+# - Manual run (Actions tab or `gh workflow run build.yml --ref <branch>`): a test build of
+#   any branch, versioned "<Cargo.toml version>-dev".
+# - Called by release-please.yml with a release tag: builds that tag for the GitHub release.
 on:
-  push:
-    tags: ["v*"]
-  # Manual run = dry run: builds both platforms and uploads them as artifacts, no release.
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to build, e.g. v0.2.0
+        type: string
+        required: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   linux:
@@ -22,6 +29,8 @@ jobs:
             qt6-base qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
 
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       # Cache compiled dependencies between runs (keyed on Cargo.lock and the toolchain).
       - uses: Swatinem/rust-cache@v2
@@ -30,9 +39,11 @@ jobs:
         run: cargo test --release --locked
 
       - name: Package
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
-          version="${GITHUB_REF_NAME}"
-          [[ "$GITHUB_REF_TYPE" == tag ]] || version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)-dev"
+          version="${TAG#v}"
+          [[ -n "$version" ]] || version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)-dev"
           packaging/make-release.sh "$version"
 
       - uses: actions/upload-artifact@v7
@@ -44,6 +55,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -65,12 +78,13 @@ jobs:
 
       - name: Package
         shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
-          $version = "$env:GITHUB_REF_NAME"
-          if ("$env:GITHUB_REF_TYPE" -ne "tag") {
+          $version = "$env:TAG".TrimStart("v")
+          if (-not $version) {
             $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.*)"').Matches[0].Groups[1].Value + "-dev"
           }
-          $version = $version.TrimStart("v")
           $name = "lootlens-$version-windows-x64"
           $dir = "dist/$name"
           New-Item -ItemType Directory -Force $dir | Out-Null
@@ -106,18 +120,3 @@ jobs:
           path: |
             dist/*.zip*
             dist/*-setup.exe*
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, windows]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: dist
-          merge-multiple: true
-
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: dist/*
-          generate_release_notes: true
