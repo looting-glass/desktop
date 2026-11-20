@@ -4,8 +4,10 @@ name: CI
 # show up before release time. Packaging is left to build.yml.
 on:
   pull_request:
+    paths-ignore: ["**.md", "docs/**", "LICENSE.md"]
   push:
     branches: [main]
+    paths-ignore: ["**.md", "docs/**", "LICENSE.md"]
 
 permissions:
   contents: read
@@ -25,11 +27,14 @@ jobs:
           pacman -Syu --noconfirm --needed base-devel git rust \
             qt6-base qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
       - uses: actions/checkout@v7
+      # Own cache key: release builds (build.yml) use the same job names but other artifacts.
+      # PRs reuse the cache saved by CI runs on main.
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ci
+      # Compiles the app and its tests in one go (a separate cargo build would compile twice).
       - name: Test
         run: cargo test --locked
-      - name: Build
-        run: cargo build --locked
 
   windows:
     runs-on: windows-latest
@@ -43,8 +48,11 @@ jobs:
           cache: true
       - name: Update Rust
         run: rustup update stable --no-self-update && rustup default stable
+      # Own cache key: release builds (build.yml) use the same job names but other artifacts.
+      # PRs reuse the cache saved by CI runs on main.
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ci
+      # Compiles the app and its tests in one go (a separate cargo build would compile twice).
       - name: Test
         run: cargo test --locked
-      - name: Build
-        run: cargo build --locked
