@@ -268,7 +268,9 @@ Window {
 
                         RowLayout {
                             id: frl
-                            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
+                            // Inset so the min/max fields don't touch the highlighted row's edge.
+                            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter
+                                      leftMargin: 2; rightMargin: 6 }
                             spacing: 4
                             CheckBox {
                                 focusPolicy: Qt.NoFocus
