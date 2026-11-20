@@ -65,7 +65,8 @@ ApplicationWindow {
                 }
                 Item { Layout.fillWidth: true }
                 ToolButton {
-                    icon.name: "configure"
+                    icon.name: Qt.platform.os === "linux" ? "configure" : ""
+                    icon.color: Qt.platform.os === "linux" ? undefined : win.palette.windowText
                     icon.source: "qrc:/lootingglass/icons/settings.svg"
                     text: "Settings"
                     display: AbstractButton.IconOnly

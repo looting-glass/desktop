@@ -71,6 +71,10 @@ Window {
     // Colours come from the window's palette, the same one its controls inherit, so the card and
     // the controls always agree (SystemPalette can differ from the Quick Controls palette).
     readonly property var pal: win.palette
+    // KDE: use the desktop's icon theme. Elsewhere use the bundled monochrome icons, tinted with
+    // the text colour (Windows' own icons don't follow its dark mode in tool buttons).
+    readonly property bool themeIcons: Qt.platform.os === "linux"
+    readonly property var iconTint: themeIcons ? undefined : pal.windowText
     // Pinned: only Esc (or ✕) closes, so Space and clicking the game leave it open.
     Shortcut { sequences: Backend.pinned ? ["Escape"] : ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
@@ -182,7 +186,8 @@ Window {
                     }
                     ToolButton {
                         id: pinBtn
-                        icon.name: "window-pin"
+                        icon.name: win.themeIcons ? "window-pin" : ""
+                        icon.color: win.iconTint
                         icon.source: "qrc:/lootingglass/icons/pin.svg"
                         // The style draws the checked (pinned) state as an active button.
                         checkable: true
@@ -205,7 +210,7 @@ Window {
                             color: pal.highlight
                         }
                     }
-                    ToolButton { id: closeBtn; icon.name: "window-close"; icon.source: "qrc:/lootingglass/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
+                    ToolButton { id: closeBtn; icon.name: win.themeIcons ? "window-close" : ""; icon.color: win.iconTint; icon.source: "qrc:/lootingglass/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
                 }
                 Label {
                     visible: Backend.overlayState !== "error"
@@ -300,7 +305,7 @@ Window {
                         implicitHeight: frl.implicitHeight + 8
                         radius: 4
                         color: "transparent"
-                        AccentTint { anchors.fill: parent; palette: pal; active: frow.on }
+                        AccentTint { anchors.fill: parent; colors: pal; active: frow.on }
 
                         RowLayout {
                             id: frl
@@ -359,7 +364,8 @@ Window {
                     flat: true
                     focusPolicy: Qt.NoFocus
                     text: win.expanded ? "Collapse" : "Show filters"
-                    icon.name: win.expanded ? "arrow-up" : "arrow-down"
+                    icon.name: !win.themeIcons ? "" : win.expanded ? "arrow-up" : "arrow-down"
+                    icon.color: win.iconTint
                     icon.source: win.expanded ? "qrc:/lootingglass/icons/arrow-up.svg" : "qrc:/lootingglass/icons/arrow-down.svg"
                     Layout.alignment: Qt.AlignHCenter
                     onClicked: win.expanded = !win.expanded
@@ -375,7 +381,8 @@ Window {
                     }
                     ToolButton {
                         focusPolicy: Qt.NoFocus
-                        icon.name: "view-refresh"
+                        icon.name: win.themeIcons ? "view-refresh" : ""
+                        icon.color: win.iconTint
                         icon.source: "qrc:/lootingglass/icons/refresh.svg"
                         text: win.hasSpec && win.spec.online ? "Online" : "Any"
                         display: AbstractButton.TextBesideIcon
@@ -397,7 +404,7 @@ Window {
                             opacity: tradeBtn.enabled ? 1 : 0.5
                             Label { text: "Trade"; color: pal.buttonText }
                             IconImage {
-                                name: "external-link-symbolic"
+                                name: win.themeIcons ? "external-link-symbolic" : ""
                                 source: "qrc:/lootingglass/icons/external-link.svg"
                                 color: pal.buttonText
                                 sourceSize: Qt.size(14, 14)
@@ -423,7 +430,8 @@ Window {
                         required property int index
                         Layout.fillWidth: true
                         implicitHeight: rl.implicitHeight + 6
-                        color: index % 2 ? Qt.rgba(pal.alternateBase.r, pal.alternateBase.g, pal.alternateBase.b, 0.6) : "transparent"
+                        // Zebra stripes from the text colour: alternateBase is unusable on Windows.
+                        color: index % 2 ? Qt.rgba(pal.windowText.r, pal.windowText.g, pal.windowText.b, 0.05) : "transparent"
                         RowLayout {
                             id: rl
                             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
@@ -496,6 +504,10 @@ Window {
         onTriggered: card.grabToImage(r => {
             r.saveToFile(Backend.snapshotDir + "/overlay.png")
             console.warn("snapshot: overlay saved")
+            // Palette in use, to diagnose colours on other platforms from the snapshot log.
+            console.warn("snapshot: palette", ["window", "windowText", "base", "alternateBase", "text",
+                "button", "buttonText", "highlight", "highlightedText", "mid", "light", "dark",
+                "midlight", "shadow", "placeholderText"].map(r => r + "=" + pal[r]).join(" "))
             settings.show()
             settingsSnap.start()
             manual.snapshot(Backend.snapshotDir)
