@@ -78,27 +78,55 @@ injection and always-on-top windows. Loot Lens uses the native equivalents inste
   background clipboard access. Sway lacks the GlobalShortcuts portal.
 - On Hyprland: `xdg-desktop-portal-hyprland` and a tray (e.g. Waybar's tray module) for the icon
 - Qt 6 with Qt Quick, plus `layer-shell-qt`, `kirigami` and `qqc2-desktop-style`
-- A Rust toolchain (edition 2024) and a C++ compiler
-
-On Arch / CachyOS:
-
-```bash
-sudo pacman -S --needed rustup qt6-base qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
-```
+- Building from source also needs a Rust toolchain (edition 2024) and a C++ compiler; see
+  [Install](#install)
 
 ## Install
 
+### Prebuilt release (no Rust needed)
+
+1. Install the runtime libraries (already present on most Plasma 6 desktops). On Arch / CachyOS:
+
+   ```bash
+   sudo pacman -S --needed qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
+   ```
+
+2. Download `lootlens-<version>-x86_64.tar.gz` from the
+   [latest release](https://github.com/rockymontana/loot-lens/releases/latest), then:
+
+   ```bash
+   tar xzf lootlens-*-x86_64.tar.gz
+   cd lootlens-*-x86_64
+   ./install.sh
+   ```
+
+Release binaries are built on Arch Linux. Qt 6 is backward compatible, so they keep working as
+your Qt updates, but they need a Qt at least as new as the one they were built with: a
+rolling distro (Arch, CachyOS, EndeavourOS) is the safe bet. On other distros, build from source.
+
+### From source
+
+Needs a Rust toolchain (edition 2024) and a C++ compiler, plus the Qt packages above
+(`qt6-base` too). On Arch / CachyOS:
+
 ```bash
+sudo pacman -S --needed rustup qt6-base qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
 git clone https://github.com/rockymontana/loot-lens.git
 cd loot-lens
 ./install.sh
 ```
 
-`install.sh` builds a release binary, installs it to `~/.local/bin/lootlens` and adds a launcher
-entry. The `.desktop` file matters: the portals use it to identify the app
-(`dev.lootlens.LootLens`).
+Either way, `install.sh` installs to `~/.local/bin/lootlens` with a launcher entry and icon. The
+`.desktop` file matters: the portals use it to identify the app (`dev.lootlens.LootLens`).
 
 Start **Loot Lens** from the application launcher. It lives in the system tray.
+
+### Making a release
+
+Push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`. The
+[Release workflow](.github/workflows/release.yml) builds and tests in an Arch Linux container,
+runs `packaging/make-release.sh` and publishes the tarball with a SHA-256 checksum. Running the
+workflow manually from the Actions tab is a dry run that only uploads the tarball as an artifact.
 
 ## Usage
 

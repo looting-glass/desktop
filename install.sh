@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
-# Build and install Loot Lens for the current user.
+# Install Loot Lens for the current user.
+# From a release tarball this installs the bundled binary; from a source checkout it builds first.
 set -euo pipefail
 cd "$(dirname "$0")"
-command -v cargo >/dev/null || export PATH="$(echo "$HOME"/.rustup/toolchains/stable-*/bin):$PATH"
-cargo build --release
-install -Dm755 target/release/lootlens "$HOME/.local/bin/lootlens"
+
+if [ -x ./lootlens ] && [ ! -f Cargo.toml ]; then
+    bin=./lootlens
+else
+    command -v cargo >/dev/null || export PATH="$(echo "$HOME"/.rustup/toolchains/stable-*/bin):$PATH"
+    cargo build --release
+    bin=target/release/lootlens
+fi
+
+install -Dm755 "$bin" "$HOME/.local/bin/lootlens"
 install -Dm644 data/dev.lootlens.LootLens.desktop "$HOME/.local/share/applications/dev.lootlens.LootLens.desktop"
 install -Dm644 data/icons/dev.lootlens.LootLens.svg "$HOME/.local/share/icons/hicolor/scalable/apps/dev.lootlens.LootLens.svg"
 sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/lootlens|" "$HOME/.local/share/applications/dev.lootlens.LootLens.desktop"
