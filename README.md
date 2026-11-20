@@ -135,13 +135,6 @@ Either way, `install.sh` installs to `~/.local/bin/lootlens` with a launcher ent
 
 Start **Loot Lens** from the application launcher. It lives in the system tray.
 
-### Making a release
-
-Push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`. The
-[Release workflow](.github/workflows/release.yml) builds and tests in an Arch Linux container,
-runs `packaging/make-release.sh` and publishes the tarball with a SHA-256 checksum. Running the
-workflow manually from the Actions tab is a dry run that only uploads the tarball as an artifact.
-
 ## Usage
 
 1. In the game, hover an item and press **Ctrl+D**.
@@ -246,6 +239,13 @@ LOOTLENS_GAME=poe2 LOOTLENS_DEMO=dev/boots-poe2.txt cargo run       # force a ga
 | `src/bridge.rs` | cxx-qt `Backend` object the QML binds to |
 | `qml/` | Overlay and settings views |
 | `cpp/main.cpp` | Small Qt bootstrap: QApplication for the Breeze style, layer-shell setup |
+
+### Making a release
+
+Push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`. The
+[Release workflow](.github/workflows/release.yml) builds and tests in an Arch Linux container,
+runs `packaging/make-release.sh` and publishes the tarball with a SHA-256 checksum. Running the
+workflow manually from the Actions tab is a dry run that only uploads the tarball as an artifact.
 
 ### Porting
 
