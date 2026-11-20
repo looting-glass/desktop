@@ -12,6 +12,7 @@ ApplicationWindow {
     minimumWidth: 420
     minimumHeight: 340
     visible: false
+    KdeLook { target: win.palette }
 
     function check() {
         const err = Backend.checkText(input.text)
@@ -65,7 +66,8 @@ ApplicationWindow {
                 }
                 Item { Layout.fillWidth: true }
                 ToolButton {
-                    icon.name: "configure"
+                    icon.name: Qt.platform.os === "linux" ? "configure" : ""
+                    icon.color: Qt.platform.os === "linux" ? undefined : win.palette.windowText
                     icon.source: "qrc:/lootingglass/icons/settings.svg"
                     text: "Settings"
                     display: AbstractButton.IconOnly
@@ -113,12 +115,12 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Button {
                     text: "Paste"
-                    icon.name: "edit-paste"
+                    icon.name: Qt.platform.os === "linux" ? "edit-paste" : ""
                     onClicked: { input.selectAll(); input.paste() }
                 }
                 Button {
                     text: "Clear"
-                    icon.name: "edit-clear"
+                    icon.name: Qt.platform.os === "linux" ? "edit-clear" : ""
                     enabled: input.text !== ""
                     onClicked: input.clear()
                 }

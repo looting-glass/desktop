@@ -15,6 +15,7 @@ ApplicationWindow {
     visible: false
 
     property var cfg: ({})
+    KdeLook { target: win.palette }
     readonly property var statuses: ["online", "any", "securable"]
     // Only present in the config on platforms where Looting Glass registers hotkeys itself (Windows).
     readonly property bool ownShortcuts: cfg.shortcuts !== undefined
@@ -174,7 +175,7 @@ ApplicationWindow {
                             // Same selected look as checked filter rows in the overlay.
                             leftInset: -8
                             background: AccentTint {
-                                palette: win.palette
+                                accent: win.palette.highlight
                                 active: navItem.ListView.isCurrentItem
                                 hovered: navItem.hovered
                             }
@@ -274,7 +275,7 @@ ApplicationWindow {
                         Button {
                             visible: !win.ownShortcuts
                             text: "Change shortcuts…"
-                            icon.name: "input-keyboard"
+                            icon.name: Qt.platform.os === "linux" ? "input-keyboard" : ""
                             onClicked: Backend.configureShortcuts()
                         }
 
@@ -337,8 +338,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.margins: 8
                 Label { id: saveStatus; opacity: 0.8; Layout.fillWidth: true }
-                Button { text: "Save"; icon.name: "document-save"; highlighted: true; onClicked: win.save() }
-                Button { text: "Close"; icon.name: "dialog-close"; onClicked: win.close() }
+                Button { text: "Save"; icon.name: Qt.platform.os === "linux" ? "document-save" : ""; highlighted: true; onClicked: win.save() }
+                Button { text: "Close"; icon.name: Qt.platform.os === "linux" ? "dialog-close" : ""; onClicked: win.close() }
             }
         }
     }
