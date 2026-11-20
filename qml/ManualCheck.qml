@@ -12,6 +12,7 @@ ApplicationWindow {
     minimumWidth: 420
     minimumHeight: 340
     visible: false
+    KdeLook { target: win.palette }
 
     function check() {
         const err = Backend.checkText(input.text)

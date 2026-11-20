@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.impl
 
-// CheckBox whose indicator follows the theme everywhere. Off KDE its indicator is replaced
-// (Fusion draws dark-mode checkboxes on Windows as navy squares) with neutral tones from the
-// text colour, matching the overlay's other state colours. KDE keeps Breeze's checkbox.
+// CheckBox that looks like KDE's Breeze checkbox everywhere. Off KDE its indicator is replaced
+// (Fusion draws dark-mode checkboxes on Windows as navy squares): a field-coloured box with a
+// soft outline and a tick. KDE keeps Breeze's own checkbox.
 CheckBox {
     id: control
 
@@ -19,7 +19,7 @@ CheckBox {
             implicitHeight: 16
             radius: 3
             readonly property color ink: control.palette.text
-            color: control.checked ? Qt.rgba(ink.r, ink.g, ink.b, 0.22) : control.palette.base
+            color: control.palette.base
             border.color: Qt.rgba(ink.r, ink.g, ink.b, control.checked || control.hovered ? 0.7 : 0.45)
 
             IconImage {

@@ -75,14 +75,8 @@ Window {
     // the text colour (Windows' own icons don't follow its dark mode in tool buttons).
     readonly property bool themeIcons: Qt.platform.os === "linux"
     readonly property var iconTint: themeIcons ? undefined : pal.windowText
-    // KDE colour schemes tint the background to match the accent, so the accent can decorate
-    // (title, chips). Elsewhere (Windows' neutral greys) it only marks state: checked rows,
-    // checkboxes, hover, pin.
-    readonly property bool decorativeAccent: Qt.platform.os === "linux"
-    // State colour: the KDE accent, or elsewhere a neutral tone from the text colour (Windows'
-    // blue clashes with its neutral greys, especially in dark mode).
-    readonly property color accent: decorativeAccent ? pal.highlight
-        : Qt.rgba(pal.windowText.r, pal.windowText.g, pal.windowText.b, 0.6)
+    readonly property color accent: pal.highlight
+    KdeLook { target: win.palette }
     // Pinned: only Esc (or ✕) closes, so Space and clicking the game leave it open.
     Shortcut { sequences: Backend.pinned ? ["Escape"] : ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
@@ -225,7 +219,7 @@ Window {
                     text: Backend.title
                     font.pointSize: 11
                     font.bold: true
-                    color: win.decorativeAccent ? pal.highlight : pal.windowText
+                    color: pal.highlight
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
@@ -235,9 +229,8 @@ Window {
                     Layout.fillWidth: true
                     implicitHeight: ninjaCol.implicitHeight + 12
                     radius: 6
-                    readonly property color tone: win.decorativeAccent ? pal.highlight : pal.windowText
-                    color: Qt.rgba(tone.r, tone.g, tone.b, win.decorativeAccent ? 0.18 : 0.06)
-                    border.color: win.decorativeAccent ? pal.highlight : pal.mid
+                    color: Qt.rgba(pal.highlight.r, pal.highlight.g, pal.highlight.b, 0.18)
+                    border.color: pal.highlight
                     ColumnLayout {
                         id: ninjaCol
                         anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 8 }
@@ -266,7 +259,7 @@ Window {
                         opacity: corrupted ? 1 : 0.7
                         text: corrupted ? "Corrupted" : "Not corrupted"
                     }
-                    Chip { accent: win.decorativeAccent; text: win.enabledStats + " of " + (win.hasSpec ? win.spec.filters.length : 0) + " filters" }
+                    Chip { accent: true; text: win.enabledStats + " of " + (win.hasSpec ? win.spec.filters.length : 0) + " filters" }
                 }
                 Label {
                     visible: Backend.overlayState === "error" || Backend.overlayState === "searchError"

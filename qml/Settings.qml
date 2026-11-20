@@ -15,6 +15,7 @@ ApplicationWindow {
     visible: false
 
     property var cfg: ({})
+    KdeLook { target: win.palette }
     readonly property var statuses: ["online", "any", "securable"]
     // Only present in the config on platforms where Looting Glass registers hotkeys itself (Windows).
     readonly property bool ownShortcuts: cfg.shortcuts !== undefined
@@ -174,8 +175,7 @@ ApplicationWindow {
                             // Same selected look as checked filter rows in the overlay.
                             leftInset: -8
                             background: AccentTint {
-                                accent: Qt.platform.os === "linux" ? win.palette.highlight
-                                    : Qt.rgba(win.palette.windowText.r, win.palette.windowText.g, win.palette.windowText.b, 0.6)
+                                accent: win.palette.highlight
                                 active: navItem.ListView.isCurrentItem
                                 hovered: navItem.hovered
                             }
