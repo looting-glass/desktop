@@ -152,7 +152,9 @@ Start **Looting Glass** from the application launcher. It lives in the system tr
    keyboard. That permission is needed so Looting Glass can press Ctrl+C in the game. Both are
    remembered.
 3. Adjust the filters if you like. The search updates automatically.
-4. Press **Esc** or **Space**, or click back into the game, to close the overlay.
+4. Press **Esc** or **Space**, or click back into the game, to close the overlay. To keep it
+   open while you play, click the pin next to ✕: it then stays until you press ✕ or Esc, and
+   remembers that setting.
 
 ### Manual price check
 
