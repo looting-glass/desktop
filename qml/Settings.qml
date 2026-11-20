@@ -174,7 +174,8 @@ ApplicationWindow {
                             // Same selected look as checked filter rows in the overlay.
                             leftInset: -8
                             background: AccentTint {
-                                colors: win.palette
+                                accent: Qt.platform.os === "linux" ? win.palette.highlight
+                                    : Qt.rgba(win.palette.windowText.r, win.palette.windowText.g, win.palette.windowText.b, 0.6)
                                 active: navItem.ListView.isCurrentItem
                                 hovered: navItem.hovered
                             }

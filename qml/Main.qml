@@ -79,6 +79,10 @@ Window {
     // (title, chips). Elsewhere (Windows' neutral greys) it only marks state: checked rows,
     // checkboxes, hover, pin.
     readonly property bool decorativeAccent: Qt.platform.os === "linux"
+    // State colour: the KDE accent, or elsewhere a neutral tone from the text colour (Windows'
+    // blue clashes with its neutral greys, especially in dark mode).
+    readonly property color accent: decorativeAccent ? pal.highlight
+        : Qt.rgba(pal.windowText.r, pal.windowText.g, pal.windowText.b, 0.6)
     // Pinned: only Esc (or ✕) closes, so Space and clicking the game leave it open.
     Shortcut { sequences: Backend.pinned ? ["Escape"] : ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
@@ -116,7 +120,7 @@ Window {
         Rectangle {
             anchors.fill: parent
             radius: 3
-            color: pal.highlight
+            color: win.accent
             opacity: parent.pressed ? 0.8 : parent.containsMouse ? 0.45 : 0
         }
     }
@@ -177,7 +181,7 @@ Window {
                             anchors.centerIn: parent
                             text: "⠿"
                             font.pixelSize: 18
-                            color: mover.containsMouse || mover.pressed ? pal.highlight : pal.windowText
+                            color: mover.containsMouse || mover.pressed ? win.accent : pal.windowText
                             opacity: mover.containsMouse || mover.pressed ? 1 : 0.5
                         }
                     }
@@ -211,7 +215,7 @@ Window {
                             width: parent.width - 10
                             height: 2
                             radius: 1
-                            color: pal.highlight
+                            color: win.accent
                         }
                     }
                     ToolButton { id: closeBtn; icon.name: win.themeIcons ? "window-close" : ""; icon.color: win.iconTint; icon.source: "qrc:/lootingglass/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
@@ -310,7 +314,7 @@ Window {
                         implicitHeight: frl.implicitHeight + 8
                         radius: 4
                         color: "transparent"
-                        AccentTint { anchors.fill: parent; colors: pal; active: frow.on }
+                        AccentTint { anchors.fill: parent; accent: win.accent; active: frow.on }
 
                         RowLayout {
                             id: frl
