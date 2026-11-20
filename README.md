@@ -180,6 +180,7 @@ cargo build
 cargo test
 LOOTLENS_DEMO=dev/boots.txt cargo run         # price-check an item text file without the game
 LOOTLENS_SNAPSHOT=/tmp/shots LOOTLENS_DEMO=dev/boots.txt cargo run   # also save README screenshots
+LOOTLENS_GAME=poe2 LOOTLENS_DEMO=dev/boots-poe2.txt cargo run       # force a game for this run
 ```
 
 | Path | What |

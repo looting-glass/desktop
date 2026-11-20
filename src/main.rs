@@ -23,7 +23,16 @@ pub enum Event {
     Quit,
 }
 
-pub static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| Mutex::new(Config::load()));
+pub static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
+    let mut c = Config::load();
+    // Dev aid: LOOTLENS_GAME=poe1|poe2 overrides the game for this run (e.g. for screenshots).
+    match std::env::var("LOOTLENS_GAME").as_deref() {
+        Ok("poe1") => c.game = Game::Poe1,
+        Ok("poe2") => c.game = Game::Poe2,
+        _ => {}
+    }
+    Mutex::new(c)
+});
 static EVENTS: OnceLock<async_channel::Sender<Event>> = OnceLock::new();
 static CHECK_GEN: AtomicU64 = AtomicU64::new(0);
 
