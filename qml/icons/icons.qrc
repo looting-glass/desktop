@@ -9,5 +9,10 @@
     <file>external-link.svg</file>
     <file>settings.svg</file>
     <file>pin.svg</file>
+    <file>nav-game.svg</file>
+    <file>nav-trade.svg</file>
+    <file>nav-overlay.svg</file>
+    <file>nav-shortcuts.svg</file>
+    <file>nav-about.svg</file>
 </qresource>
 </RCC>
