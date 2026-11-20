@@ -300,12 +300,21 @@ Window {
                         implicitHeight: frl.implicitHeight + 8
                         radius: 4
                         color: on ? Qt.rgba(pal.highlight.r, pal.highlight.g, pal.highlight.b, 0.12) : "transparent"
+                        // Solid accent edge, so checked rows show the same accent colour as the rest
+                        // of the app (the tint alone reads as a different colour on dark themes).
+                        Rectangle {
+                            visible: frow.on
+                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom; margins: 4 }
+                            width: 3
+                            radius: 1.5
+                            color: pal.highlight
+                        }
 
                         RowLayout {
                             id: frl
                             // Inset so the min/max fields don't touch the highlighted row's edge.
                             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter
-                                      leftMargin: 2; rightMargin: 6 }
+                                      leftMargin: 8; rightMargin: 6 }
                             spacing: 4
                             CheckBox {
                                 focusPolicy: Qt.NoFocus
