@@ -41,10 +41,10 @@ static HANDLE: OnceCell<ksni::Handle<Tray>> = OnceCell::const_new();
 
 impl ksni::Tray for Tray {
     fn id(&self) -> String {
-        "lootlens".into()
+        "lootingglass".into()
     }
     fn title(&self) -> String {
-        format!("Loot Lens — {}", self.game.label())
+        format!("Looting Glass — {}", self.game.label())
     }
     /// The icon is sent as pixels rather than a theme name: Plasma's panel resolves names
     /// against an icon theme cached at login and fails for freshly installed icons.

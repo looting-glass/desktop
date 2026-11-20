@@ -50,7 +50,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: lootlens-linux
+          name: lootingglass-linux
           path: dist/*.tar.gz*
 
   windows:
@@ -89,17 +89,17 @@ jobs:
           if (-not $version) {
             $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.*)"').Matches[0].Groups[1].Value + "-dev"
           }
-          $name = "lootlens-$version-windows-x64"
+          $name = "lootingglass-$version-windows-x64"
           $dir = "dist/$name"
           New-Item -ItemType Directory -Force $dir | Out-Null
-          Copy-Item target/release/lootlens.exe $dir/
+          Copy-Item target/release/lootingglass.exe $dir/
           # Qt runtime. Skip the software-OpenGL fallback (Qt Quick renders with Direct3D) and
           # the QML debugger plugins; the MSVC runtime is copied as DLLs below instead of the
           # 19 MB vc_redist installer windeployqt would add.
-          windeployqt --release --qmldir qml --no-translations --no-compiler-runtime --no-opengl-sw --skip-plugin-types qmltooling "$dir/lootlens.exe"
+          windeployqt --release --qmldir qml --no-translations --no-compiler-runtime --no-opengl-sw --skip-plugin-types qmltooling "$dir/lootingglass.exe"
           if ($LASTEXITCODE) { exit 1 }
           # App-local MSVC runtime (vcruntime140*.dll, msvcp140*.dll), as Microsoft allows, so
-          # Loot Lens starts on PCs without the Visual C++ Redistributable.
+          # Looting Glass starts on PCs without the Visual C++ Redistributable.
           $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           $redist = Get-ChildItem "$vs\VC\Redist\MSVC" -Directory | Where-Object { $_.Name -match '^\d+\.' } |
             Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
@@ -118,7 +118,7 @@ jobs:
           # Installer (Inno Setup; installed on demand if the runner image lacks it).
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; if ($LASTEXITCODE) { exit 1 } }
-          & $iscc "/DAppVersion=$version" "/DSourceDir=$((Resolve-Path $dir).Path)" "/DOutputDir=$((Resolve-Path dist).Path)" packaging\windows\lootlens.iss
+          & $iscc "/DAppVersion=$version" "/DSourceDir=$((Resolve-Path $dir).Path)" "/DOutputDir=$((Resolve-Path dist).Path)" packaging\windows\lootingglass.iss
           if ($LASTEXITCODE) { exit 1 }
 
           foreach ($f in "$name.zip", "$name-setup.exe") {
@@ -128,7 +128,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: lootlens-windows
+          name: lootingglass-windows
           path: |
             dist/*.zip*
             dist/*-setup.exe*

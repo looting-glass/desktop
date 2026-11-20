@@ -1,11 +1,11 @@
 <h1 align="center">
-  <img src="data/icons/dev.lootlens.LootLens.svg" alt="" width="40" height="40" align="top">
-  Loot Lens
+  <img src="data/icons/dev.lootingglass.LootingGlass.svg" alt="" width="40" height="40" align="top">
+  Looting Glass
 </h1>
 
 **A Wayland-native price checker for Path of Exile 1 and Path of Exile 2.**
 
-Hover an item in game, press a hotkey, and Loot Lens shows what it is worth: live listings from the
+Hover an item in game, press a hotkey, and Looting Glass shows what it is worth: live listings from the
 official trade site, poe.ninja prices for currency and other stackables, and filters you can tweak
 on the spot. One app for both games, with a league per game.
 
@@ -13,7 +13,7 @@ Built for KDE Plasma on Wayland with Rust and Qt 6, with experimental Hyprland a
 support. No Electron, no browser, no XWayland. Global hotkeys, the overlay and clipboard access
 all use the desktop's native mechanisms.
 
-> Loot Lens is a fan-made tool and is not affiliated with or endorsed by Grinding Gear Games.
+> Looting Glass is a fan-made tool and is not affiliated with or endorsed by Grinding Gear Games.
 
 <table align="center">
   <tr>
@@ -77,17 +77,17 @@ all use the desktop's native mechanisms.
 
 ### Arch Linux / CachyOS (package)
 
-A `lootlens-bin` package for the AUR is on its way. Until it's published, build the same package
+A `lootingglass-bin` package for the AUR is on its way. Until it's published, build the same package
 from this repository with `makepkg`:
 
 ```bash
-git clone https://github.com/rockymontana/loot-lens.git
-cd loot-lens/packaging/aur/lootlens-bin
+git clone https://github.com/rockymontana/looting-glass.git
+cd looting-glass/packaging/aur/lootingglass-bin
 makepkg -si
 ```
 
 This installs the prebuilt release binary system-wide through pacman, with its dependencies,
-launcher entry and icon, and `pacman -R lootlens-bin` removes it cleanly.
+launcher entry and icon, and `pacman -R lootingglass-bin` removes it cleanly.
 
 ### Prebuilt release (no Rust needed)
 
@@ -97,12 +97,12 @@ launcher entry and icon, and `pacman -R lootlens-bin` removes it cleanly.
    sudo pacman -S --needed qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
    ```
 
-2. Download `lootlens-<version>-x86_64.tar.gz` from the
-   [latest release](https://github.com/rockymontana/loot-lens/releases/latest), then:
+2. Download `lootingglass-<version>-x86_64.tar.gz` from the
+   [latest release](https://github.com/rockymontana/looting-glass/releases/latest), then:
 
    ```bash
-   tar xzf lootlens-*-x86_64.tar.gz
-   cd lootlens-*-x86_64
+   tar xzf lootingglass-*-x86_64.tar.gz
+   cd lootingglass-*-x86_64
    ./install.sh
    ```
 
@@ -115,18 +115,18 @@ rolling distro (Arch, CachyOS, EndeavourOS) is the safe bet. On other distros, b
 > ⚠️ The Windows build compiles and packages in CI, but nobody has run it with the game yet.
 > Bug reports and fixes are very welcome.
 
-Download `lootlens-<version>-windows-x64-setup.exe` from the
-[latest release](https://github.com/rockymontana/loot-lens/releases/latest) and run it. It
-installs for your user only (no admin rights), adds a Start menu entry, can start Loot Lens with
+Download `lootingglass-<version>-windows-x64-setup.exe` from the
+[latest release](https://github.com/rockymontana/looting-glass/releases/latest) and run it. It
+installs for your user only (no admin rights), adds a Start menu entry, can start Looting Glass with
 Windows, and uninstalls from *Settings → Apps*. Prefer a portable app? Extract
-`lootlens-<version>-windows-x64.zip` anywhere and run `lootlens.exe`. Either way it lives in the
+`lootingglass-<version>-windows-x64.zip` anywhere and run `lootingglass.exe`. Either way it lives in the
 system tray.
 
 The downloads aren't code-signed yet, so Windows SmartScreen may say "Windows protected your PC".
 Click *More info → Run anyway*.
 
 Run Path of Exile in **windowed fullscreen** (borderless): Windows can't draw the overlay above a
-game in exclusive fullscreen. Hotkeys are set in Loot Lens's own *Settings → Shortcuts*.
+game in exclusive fullscreen. Hotkeys are set in Looting Glass's own *Settings → Shortcuts*.
 
 ### From source
 
@@ -135,21 +135,21 @@ Needs a Rust toolchain (edition 2024) and a C++ compiler, plus the Qt packages a
 
 ```bash
 sudo pacman -S --needed rustup qt6-base qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
-git clone https://github.com/rockymontana/loot-lens.git
-cd loot-lens
+git clone https://github.com/rockymontana/looting-glass.git
+cd looting-glass
 ./install.sh
 ```
 
-Either way, `install.sh` installs to `~/.local/bin/lootlens` with a launcher entry and icon. The
-`.desktop` file matters: the portals use it to identify the app (`dev.lootlens.LootLens`).
+Either way, `install.sh` installs to `~/.local/bin/lootingglass` with a launcher entry and icon. The
+`.desktop` file matters: the portals use it to identify the app (`dev.lootingglass.LootingGlass`).
 
-Start **Loot Lens** from the application launcher. It lives in the system tray.
+Start **Looting Glass** from the application launcher. It lives in the system tray.
 
 ## Usage
 
 1. In the game, hover an item and press **Ctrl+D**.
-2. The first time, KDE asks you to confirm the shortcuts and to allow Loot Lens to control the
-   keyboard. That permission is needed so Loot Lens can press Ctrl+C in the game. Both are
+2. The first time, KDE asks you to confirm the shortcuts and to allow Looting Glass to control the
+   keyboard. That permission is needed so Looting Glass can press Ctrl+C in the game. Both are
    remembered.
 3. Adjust the filters if you like. The search updates automatically.
 4. Press **Esc** or **Space**, or click back into the game, to close the overlay.
@@ -170,7 +170,7 @@ click the tray icon (or use *Manual check…* in its menu). Paste the item text 
 | Open manual price check | unassigned |
 | Hide overlay | unassigned |
 
-Change them in *System Settings → Shortcuts → Loot Lens*, or via *Settings → Shortcuts*. On
+Change them in *System Settings → Shortcuts → Looting Glass*, or via *Settings → Shortcuts*. On
 Windows, type them straight into *Settings → Shortcuts* (e.g. `Ctrl+D`, `Ctrl+Shift+F7`).
 
 #### Hyprland (experimental)
@@ -182,8 +182,8 @@ Windows, type them straight into *Settings → Shortcuts* (e.g. `Ctrl+D`, `Ctrl+
 Hyprland doesn't let apps choose their own keys, so bind them in `hyprland.conf`:
 
 ```ini
-bind = CTRL, D, global, dev.lootlens.LootLens:price-check
-bind = , F7, global, dev.lootlens.LootLens:toggle-game     # optional
+bind = CTRL, D, global, dev.lootingglass.LootingGlass:price-check
+bind = , F7, global, dev.lootingglass.LootingGlass:toggle-game     # optional
 ```
 
 The shortcut ids are `price-check`, `toggle-game`, `settings`, `manual-check` and `hide-overlay`. If a bind does
@@ -192,7 +192,7 @@ Copying and refocusing go through `hyprctl`, so no permission dialog appears.
 
 ## Configuration
 
-Settings live in `~/.config/lootlens/config.toml` (on Windows `%APPDATA%\lootlens\config.toml`) and can be edited in the settings window
+Settings live in `~/.config/lootingglass/config.toml` (on Windows `%APPDATA%\lootingglass\config.toml`) and can be edited in the settings window
 (click the tray icon) or by hand:
 
 ```toml
@@ -228,20 +228,20 @@ hide_overlay = ""
 
 ## Troubleshooting
 
-- **The overlay has a title bar or isn't on top.** Loot Lens has to run as a native Wayland client.
-  It overrides `QT_QPA_PLATFORM=xcb` for itself, but if you start it with `LOOTLENS_ALLOW_X11=1`
+- **The overlay has a title bar or isn't on top.** Looting Glass has to run as a native Wayland client.
+  It overrides `QT_QPA_PLATFORM=xcb` for itself, but if you start it with `LOOTINGGLASS_ALLOW_X11=1`
   the overlay can't use layer-shell.
 - **"The game didn't copy anything".** Make sure the cursor is over an item and that you allowed
   keyboard control when KDE asked. To reset that permission, delete
-  `~/.local/state/lootlens/remote-desktop.token` and restart Loot Lens.
-- **Debug output.** Run `RUST_LOG=lootlens=debug QT_FORCE_STDERR_LOGGING=1 lootlens` in a terminal.
+  `~/.local/state/lootingglass/remote-desktop.token` and restart Looting Glass.
+- **Debug output.** Run `RUST_LOG=lootingglass=debug QT_FORCE_STDERR_LOGGING=1 lootingglass` in a terminal.
 
 ## How it works on Wayland
 
 Electron-based tools struggle on Wayland because they rely on X11 tricks for hotkeys, key
-injection and always-on-top windows. Loot Lens uses the native equivalents instead:
+injection and always-on-top windows. Looting Glass uses the native equivalents instead:
 
-| Need | How Loot Lens does it |
+| Need | How Looting Glass does it |
 |---|---|
 | Hotkeys while the game is focused | XDG **GlobalShortcuts** portal (bound in System Settings) |
 | Make the game copy the hovered item | KDE: XDG **RemoteDesktop** portal, keyboard only (you approve it once). Hyprland: `hyprctl dispatch sendshortcut` |
@@ -255,11 +255,11 @@ injection and always-on-top windows. Loot Lens uses the native equivalents inste
 ```bash
 cargo build
 cargo test
-LOOTLENS_DEMO=dev/boots.txt cargo run         # price-check an item text file without the game
-LOOTLENS_SNAPSHOT=/tmp/shots LOOTLENS_DEMO=dev/boots.txt cargo run   # also save README screenshots
-LOOTLENS_GAME=poe2 LOOTLENS_DEMO=dev/boots-poe2.txt cargo run       # force a game for this run
-LOOTLENS_MOCK=1 LOOTLENS_DEMO=dev/boots.txt cargo run              # fake API responses, no network
-LOOTLENS_HTTP_CACHE=/tmp/ll-cache LOOTLENS_DEMO=dev/boots.txt cargo run   # record real API replies once, replay after
+LOOTINGGLASS_DEMO=dev/boots.txt cargo run         # price-check an item text file without the game
+LOOTINGGLASS_SNAPSHOT=/tmp/shots LOOTINGGLASS_DEMO=dev/boots.txt cargo run   # also save README screenshots
+LOOTINGGLASS_GAME=poe2 LOOTINGGLASS_DEMO=dev/boots-poe2.txt cargo run       # force a game for this run
+LOOTINGGLASS_MOCK=1 LOOTINGGLASS_DEMO=dev/boots.txt cargo run              # fake API responses, no network
+LOOTINGGLASS_HTTP_CACHE=/tmp/ll-cache LOOTINGGLASS_DEMO=dev/boots.txt cargo run   # record real API replies once, replay after
 ```
 
 | Path | What |
@@ -296,20 +296,20 @@ fallback icons. A new OS needs a module implementing the functions documented in
 
 ## Thanks & inspiration
 
-Loot Lens stands on the shoulders of the tools the PoE community already loves:
+Looting Glass stands on the shoulders of the tools the PoE community already loves:
 
 - [**Awakened PoE Trade**](https://github.com/SnosMe/awakened-poe-trade): the overlay that set the
-  standard for in-game price checking, and the model for Loot Lens's filter layout.
+  standard for in-game price checking, and the model for Looting Glass's filter layout.
 - [**Exiled Exchange 2**](https://github.com/Kvan7/Exiled-Exchange-2): carried that experience over
   to Path of Exile 2.
 - [**Sidekick**](https://github.com/Sidekick-Poe/Sidekick): showed how nice it is to have one app for
   both games, with the league picked per game.
 
-Huge thanks to their authors and contributors. Loot Lens exists because they showed what a great
+Huge thanks to their authors and contributors. Looting Glass exists because they showed what a great
 price checker looks like; it just brings that to a native Wayland desktop. Prices come from
 [poe.ninja](https://poe.ninja) and the official
 [Path of Exile trade site](https://www.pathofexile.com/trade).
 
 ## License
 
-Loot Lens is free software, licensed under the [GNU General Public License v3.0 or later](LICENSE.md).
+Looting Glass is free software, licensed under the [GNU General Public License v3.0 or later](LICENSE.md).

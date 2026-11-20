@@ -1,6 +1,6 @@
-# Loot Lens: notes for agents
+# Looting Glass: notes for agents
 
-Loot Lens is a native (Rust + Qt 6/QML) price checker for Path of Exile 1 and 2. `README.md`
+Looting Glass is a native (Rust + Qt 6/QML) price checker for Path of Exile 1 and 2. `README.md`
 covers features, layout and the dev commands; this file holds the conventions that aren't
 written down anywhere else.
 
@@ -38,17 +38,17 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 ## Verifying changes
 
 - `cargo test` for the parser and hotkey logic.
-- `LOOTLENS_DEMO=dev/<item>.txt cargo run` price-checks a sample without the game; add a
+- `LOOTINGGLASS_DEMO=dev/<item>.txt cargo run` price-checks a sample without the game; add a
   `dev/` sample for any new item type you handle.
-- UI changes: compare before/after with `LOOTLENS_SNAPSHOT=<dir>` (writes the README
+- UI changes: compare before/after with `LOOTINGGLASS_SNAPSHOT=<dir>` (writes the README
   screenshots).
-- Repeated runs: the trade API rate-limits quickly. For UI work use `LOOTLENS_MOCK=1` (canned
+- Repeated runs: the trade API rate-limits quickly. For UI work use `LOOTINGGLASS_MOCK=1` (canned
   responses, no network; extend `src/mock.rs` for new items); to replay real data, set
-  `LOOTLENS_HTTP_CACHE=<dir>` so replies are recorded once.
+  `LOOTINGGLASS_HTTP_CACHE=<dir>` so replies are recorded once.
 
 ## Screenshots
 
-README screenshots come from `LOOTLENS_SNAPSHOT`, cropped to the app with seller names
+README screenshots come from `LOOTINGGLASS_SNAPSHOT`, cropped to the app with seller names
 blurred. Show new screenshots to the maintainer before committing them. Desktop screenshots
 taken while debugging are cropped to the app window and deleted after use: the desktop can show
 private chats.

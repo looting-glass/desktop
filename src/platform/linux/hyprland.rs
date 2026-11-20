@@ -10,7 +10,7 @@ use anyhow::{Context, Result, bail};
 const GAME_WINDOW: &str = "title:^(Path of Exile( 2)?)$";
 
 /// Example `hyprland.conf` line shown to users (Hyprland ignores preferred triggers).
-pub const BIND_HINT: &str = "bind = CTRL, D, global, dev.lootlens.LootLens:price-check";
+pub const BIND_HINT: &str = "bind = CTRL, D, global, dev.lootingglass.LootingGlass:price-check";
 
 pub fn detected() -> bool {
     std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some()

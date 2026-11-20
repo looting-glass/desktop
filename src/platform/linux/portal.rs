@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::{Mutex, OnceCell};
 
-pub const APP_ID: &str = "dev.lootlens.LootLens";
+pub const APP_ID: &str = "dev.lootingglass.LootingGlass";
 
 const KEY_LEFTCTRL: i32 = 29;
 const KEY_C: i32 = 46;
@@ -53,7 +53,7 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
             let shortcuts = [
                 NewShortcut::new("price-check", "Price check hovered item").preferred_trigger("CTRL+D"),
                 NewShortcut::new("toggle-game", "Switch between PoE 1 and PoE 2").preferred_trigger(None),
-                NewShortcut::new("settings", "Open Loot Lens settings").preferred_trigger(None),
+                NewShortcut::new("settings", "Open Looting Glass settings").preferred_trigger(None),
                 NewShortcut::new("manual-check", "Open manual price check").preferred_trigger(None),
                 NewShortcut::new("hide-overlay", "Hide price overlay").preferred_trigger(None),
             ];
@@ -121,7 +121,7 @@ pub async fn configure_shortcuts() {
 fn token_path() -> PathBuf {
     dirs::state_dir()
         .unwrap_or_else(std::env::temp_dir)
-        .join("lootlens/remote-desktop.token")
+        .join("lootingglass/remote-desktop.token")
 }
 
 async fn open_keyboard() -> Result<Keyboard> {

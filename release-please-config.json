@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "rust",
-      "package-name": "lootlens",
+      "package-name": "lootingglass",
       "include-component-in-tag": false,
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
