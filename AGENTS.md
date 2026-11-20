@@ -6,14 +6,15 @@ written down anywhere else.
 
 ## Git
 
-- Branches follow **git-flow**: `main` holds released versions (tagged `vX.Y.Z`, which
-  triggers the release workflow), `develop` collects finished work. New work goes on
-  `feature/<name>` from `develop`; `release/<version>` and `hotfix/<version>` merge into
-  `main` and back into `develop`.
-- Feature PRs into `develop` are **squash-merged**. Release and hotfix branches use a regular
-  merge so `main` and `develop` keep a shared history.
+- **GitHub Flow**: `main` is always releasable; work happens on short-lived branches named
+  after the change type (`feat/…`, `fix/…`, `ci/…`, `docs/…`) and lands through a PR that is
+  **squash-merged**.
 - Commit messages and PR titles use **Conventional Commits** (`feat(windows): …`, `fix: …`,
-  `ci: …`, `docs: …`). The PR title becomes the squash commit, so it carries the same weight.
+  `ci: …`, `docs: …`). The PR title becomes the squash commit on `main` and drives releases.
+- Releases come from **release-please**: after each merge it updates a release PR that bumps
+  the version in `Cargo.toml` and writes `CHANGELOG.md` (`fix` → patch, `feat` → minor,
+  `docs`/`ci`/`chore` → no release). Merging that PR tags `vX.Y.Z`, publishes the GitHub
+  release and builds the Linux and Windows downloads. Leave the version and changelog to it.
 - Commit and push when the maintainer asks; leave changes uncommitted otherwise. Already-pushed
   history stays as it is.
 
@@ -30,8 +31,8 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 - Desktop-specific code lives in `src/platform/` (contract in `src/platform/mod.rs`) and the
   `#ifdef`s of `cpp/main.cpp`. QML uses only Qt Quick Controls, with bundled fallback icons in
   `qml/icons/`, so it runs on any platform.
-- Windows code can't be built locally; the release workflow's Windows job (manual run from
-  the Actions tab) is the build check.
+- Windows code can't be built locally. Build any branch for both platforms with
+  `gh workflow run build.yml --ref <branch>`; the packages appear as run artifacts.
 
 ## Verifying changes
 
