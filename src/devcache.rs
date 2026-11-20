@@ -1,4 +1,5 @@
-//! Dev aid: `LOOTLENS_HTTP_CACHE=<dir>` records every trade API / poe.ninja JSON response in
+//! Dev aids for API responses. `LOOTLENS_MOCK=1` answers from canned data (see `mock.rs`);
+//! `LOOTLENS_HTTP_CACHE=<dir>` records every trade API / poe.ninja JSON response in
 //! `<dir>` and replays it on later runs, so UI work (`LOOTLENS_DEMO`, `LOOTLENS_SNAPSHOT`)
 //! doesn't hit the APIs or their rate limits. Delete the directory to fetch fresh data.
 
@@ -27,6 +28,11 @@ where
     F: FnOnce(reqwest::RequestBuilder) -> Fut,
     Fut: Future<Output = Result<Value>>,
 {
+    if crate::mock::enabled() {
+        let req = req.build()?;
+        return crate::mock::response(req.method().as_str(), req.url().as_str())
+            .ok_or_else(|| anyhow::anyhow!("LOOTLENS_MOCK: no canned response for {}", req.url()));
+    }
     let Some(path) = dir().and_then(|d| file(&d, &req)) else {
         return fetch(req).await;
     };
