@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/rockymontana/looting-glass/compare/v0.3.0...v0.4.0) (2026-11-20)
+
+
+### Features
+
+* rename the app to Looting Glass ([#11](https://github.com/rockymontana/looting-glass/issues/11)) ([372970c](https://github.com/rockymontana/looting-glass/commit/372970ca183b74ae44885b9435d689b9371903f4))
+
 ## [0.3.0](https://github.com/rockymontana/loot-lens/compare/v0.2.0...v0.3.0) (2026-11-20)
 
 
