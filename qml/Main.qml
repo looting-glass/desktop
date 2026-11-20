@@ -306,7 +306,7 @@ Window {
                             id: frl
                             // Inset so the min/max fields don't touch the highlighted row's edge.
                             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter
-                                      leftMargin: 8; rightMargin: 6 }
+                                      leftMargin: 2; rightMargin: 6 }
                             spacing: 4
                             CheckBox {
                                 focusPolicy: Qt.NoFocus
@@ -326,7 +326,7 @@ Window {
                                     text: frow.modelData.tag
                                     font.pointSize: 7
                                     font.capitalization: Font.AllUppercase
-                                    opacity: frow.on ? 0.85 : 0.5
+                                    opacity: 0.5
                                 }
                             }
                             TextField {
