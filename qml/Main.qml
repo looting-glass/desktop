@@ -346,6 +346,9 @@ Window {
                     Button {
                         id: tradeBtn
                         focusPolicy: Qt.NoFocus
+                        // The Breeze style doesn't pad a custom contentItem; add normal button padding.
+                        leftPadding: 12
+                        rightPadding: 10
                         enabled: Backend.tradeUrl !== ""
                         onClicked: Qt.openUrlExternally(Backend.tradeUrl)
                         // Text first, then a small "opens externally" icon with a tight gap.
