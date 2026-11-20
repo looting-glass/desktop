@@ -2,7 +2,7 @@ use cxx_qt_build::{CxxQtBuilder, QmlModule};
 
 fn main() {
     let builder = CxxQtBuilder::new_qml_module(
-        QmlModule::new("dev.lootlens").qml_files(["qml/Main.qml", "qml/Settings.qml"]),
+        QmlModule::new("dev.lootlens").qml_files(["qml/Main.qml", "qml/Settings.qml", "qml/ManualCheck.qml"]),
     )
     .files(["src/bridge.rs"])
     .qt_module("Quick")

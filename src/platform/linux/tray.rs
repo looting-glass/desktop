@@ -52,7 +52,7 @@ impl ksni::Tray for Tray {
         ICONS.iter().filter_map(|png| decode(png)).collect()
     }
     fn activate(&mut self, _x: i32, _y: i32) {
-        send_event(Event::OpenSettings);
+        send_event(Event::OpenManual);
     }
     fn menu(&self) -> Vec<MenuItem<Self>> {
         vec![
@@ -66,6 +66,13 @@ impl ksni::Tray for Tray {
             }
             .into(),
             MenuItem::Separator,
+            StandardItem {
+                label: "Manual check…".into(),
+                icon_name: "edit-paste".into(),
+                activate: Box::new(|_: &mut Self| send_event(Event::OpenManual)),
+                ..Default::default()
+            }
+            .into(),
             StandardItem {
                 label: "Settings…".into(),
                 icon_name: "configure".into(),

@@ -450,6 +450,11 @@ Window {
         transientParent: null
     }
 
+    ManualCheck {
+        id: manual
+        transientParent: null
+    }
+
     // Dev aid (LOOTLENS_SNAPSHOT): render the overlay, then the settings window, to PNGs with
     // transparency — no desktop behind them.
     Timer {
@@ -460,6 +465,7 @@ Window {
             console.warn("snapshot: overlay saved")
             settings.show()
             settingsSnap.start()
+            manual.snapshot(Backend.snapshotDir)
         })
     }
     Timer {
@@ -476,6 +482,11 @@ Window {
 
     Connections {
         target: Backend
+        function onOpenManual() {
+            manual.show()
+            manual.raise()
+            manual.requestActivate()
+        }
         function onOpenSettings() {
             settings.show()
             settings.raise()

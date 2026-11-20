@@ -54,6 +54,7 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
                 NewShortcut::new("price-check", "Price check hovered item").preferred_trigger("CTRL+D"),
                 NewShortcut::new("toggle-game", "Switch between PoE 1 and PoE 2").preferred_trigger(None),
                 NewShortcut::new("settings", "Open Loot Lens settings").preferred_trigger(None),
+                NewShortcut::new("manual-check", "Open manual price check").preferred_trigger(None),
                 NewShortcut::new("hide-overlay", "Hide price overlay").preferred_trigger(None),
             ];
             gs.bind_shortcuts(&session, &shortcuts, None, Default::default())
@@ -70,6 +71,7 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
             "price-check" => Event::PriceCheck,
             "toggle-game" => Event::ToggleGame,
             "settings" => Event::OpenSettings,
+            "manual-check" => Event::OpenManual,
             "hide-overlay" => Event::HideOverlay,
             _ => continue,
         };

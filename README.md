@@ -49,6 +49,8 @@ hotkeys, the overlay and clipboard access all use the desktop's native mechanism
 - **A proper overlay.** Always on top of the game, on the game's screen, without window
   decorations. Drag the ⠿ handle to move it and its free edges to resize it. Close it with Esc,
   Space or by clicking back into the game.
+- **Manual check.** Paste item text into a native window (click the tray icon) and check it
+  without a hotkey, e.g. items from a friend or a forum post.
 - **Native settings** in a KDE-style window, stored as TOML.
 
 <p align="center">
@@ -107,6 +109,13 @@ Start **Loot Lens** from the application launcher. It lives in the system tray.
 3. Adjust the filters if you like. The search updates automatically.
 4. Press **Esc** or **Space**, or click back into the game, to close the overlay.
 
+To check an item without the hotkey, click the tray icon (or use *Manual check…* in its menu),
+paste the item text and press **Check price** (or Ctrl+Enter).
+
+<p align="center">
+  <img src="docs/screenshots/manual-check.png" alt="Manual price check window with pasted item text" width="600">
+</p>
+
 ### Shortcuts
 
 | Action | Default |
@@ -114,6 +123,7 @@ Start **Loot Lens** from the application launcher. It lives in the system tray.
 | Price check hovered item | Ctrl+D |
 | Switch between PoE 1 and PoE 2 | unassigned |
 | Open settings | unassigned |
+| Open manual price check | unassigned |
 | Hide overlay | unassigned |
 
 Change them in *System Settings → Shortcuts → Loot Lens*, or via *Settings → Shortcuts*.
@@ -131,7 +141,7 @@ bind = CTRL, D, global, dev.lootlens.LootLens:price-check
 bind = , F7, global, dev.lootlens.LootLens:toggle-game     # optional
 ```
 
-The shortcut ids are `price-check`, `toggle-game`, `settings` and `hide-overlay`. If a bind does
+The shortcut ids are `price-check`, `toggle-game`, `settings`, `manual-check` and `hide-overlay`. If a bind does
 nothing, run `hyprctl globalshortcuts` to see the exact names your portal registered.
 Copying and refocusing go through `hyprctl`, so no permission dialog appears.
 

@@ -19,6 +19,9 @@ pub enum Event {
     ToggleGame,
     SetGame(Game),
     OpenSettings,
+    OpenManual,
+    /// Price check pasted item text (manual check window).
+    CheckText(String),
     HideOverlay,
     Quit,
 }
@@ -108,6 +111,8 @@ async fn handle(ev: Event) {
         Event::ToggleGame => set_game(config().game.other()).await,
         Event::SetGame(g) => set_game(g).await,
         Event::OpenSettings => ui(|b| b.open_settings()),
+        Event::OpenManual => ui(|b| b.open_manual()),
+        Event::CheckText(text) => check_text(text).await,
         Event::HideOverlay => {
             ui(|b| b.set_overlay_visible(false));
             platform::focus_game().await;

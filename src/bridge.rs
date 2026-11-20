@@ -24,6 +24,7 @@ pub mod qobject {
         #[qproperty(QString, ninja_detail)]
         #[qproperty(i32, overlay_max_height)]
         #[qproperty(QString, snapshot_dir)]
+        #[qproperty(QString, demo_text)]
         #[qproperty(QString, trade_url)]
         #[qproperty(QString, game_label)]
         #[qproperty(QString, shortcuts_text)]
@@ -53,10 +54,16 @@ pub mod qobject {
         #[qinvokable]
         fn search(self: &Backend, spec: &QString);
         #[qinvokable]
+        fn check_text(self: &Backend, text: &QString) -> QString;
+        #[qinvokable]
+        fn open_settings_window(self: Pin<&mut Backend>);
+        #[qinvokable]
         fn save_overlay_size(self: &Backend);
 
         #[qsignal]
         fn open_settings(self: Pin<&mut Backend>);
+        #[qsignal]
+        fn open_manual(self: Pin<&mut Backend>);
     }
 
     impl cxx_qt::Threading for Backend {}
@@ -83,6 +90,7 @@ pub struct BackendRust {
     ninja_detail: QString,
     overlay_max_height: i32,
     snapshot_dir: QString,
+    demo_text: QString,
     trade_url: QString,
     game_label: QString,
     shortcuts_text: QString,
@@ -127,6 +135,10 @@ impl cxx_qt::Initialize for qobject::Backend {
         // Dev aid: LOOTLENS_SNAPSHOT=<dir> makes QML save overlay/settings screenshots there.
         if let Ok(dir) = std::env::var("LOOTLENS_SNAPSHOT") {
             self.as_mut().set_snapshot_dir(q(dir));
+            // Sample text for the manual check window screenshot.
+            if let Some(t) = std::env::var_os("LOOTLENS_DEMO").and_then(|p| std::fs::read_to_string(p).ok()) {
+                self.as_mut().set_demo_text(q(t));
+            }
         }
         let _ = UI.set(Mutex::new(self.qt_thread()));
         apply_config(&config());
@@ -210,6 +222,21 @@ impl qobject::Backend {
         if let Err(e) = c.save() {
             log::error!("saving config: {e}");
         }
+    }
+
+    /// Manual check: validate pasted text, then price check it like a hotkey copy.
+    /// Returns an error message, or "" when the check was started.
+    fn check_text(&self, text: &QString) -> QString {
+        let text = text.to_string();
+        if crate::item::parse(&text).is_none() {
+            return q("That doesn't look like Path of Exile item text. Copy an item in game with Ctrl+C and paste it here.");
+        }
+        send_event(Event::CheckText(text));
+        QString::default()
+    }
+
+    fn open_settings_window(self: Pin<&mut Self>) {
+        self.open_settings();
     }
 
     fn search(&self, spec: &QString) {
