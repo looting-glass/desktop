@@ -89,12 +89,20 @@ jobs:
           $dir = "dist/$name"
           New-Item -ItemType Directory -Force $dir | Out-Null
           Copy-Item target/release/lootlens.exe $dir/
-          # windeployqt's --compiler-runtime finds the MSVC runtime DLLs through VCINSTALLDIR.
-          # Set it only here: job-wide it makes rustc trust PATH's link.exe (Git's coreutils).
-          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          $env:VCINSTALLDIR = "$vs\VC\"
-          windeployqt --release --qmldir qml --no-translations --compiler-runtime "$dir/lootlens.exe"
+          # Qt runtime. Skip the software-OpenGL fallback (Qt Quick renders with Direct3D) and
+          # the QML debugger plugins; the MSVC runtime is copied as DLLs below instead of the
+          # 19 MB vc_redist installer windeployqt would add.
+          windeployqt --release --qmldir qml --no-translations --no-compiler-runtime --no-opengl-sw --skip-plugin-types qmltooling "$dir/lootlens.exe"
           if ($LASTEXITCODE) { exit 1 }
+          # App-local MSVC runtime (vcruntime140*.dll, msvcp140*.dll), as Microsoft allows, so
+          # Loot Lens starts on PCs without the Visual C++ Redistributable.
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $redist = Get-ChildItem "$vs\VC\Redist\MSVC" -Directory | Where-Object { $_.Name -match '^\d+\.' } |
+            Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+          $crt = Get-ChildItem "$($redist.FullName)\x64" -Directory -Filter "Microsoft.VC*.CRT" | Select-Object -First 1
+          if (-not $crt) { throw "MSVC runtime DLLs not found under $vs" }
+          Copy-Item "$($crt.FullName)\*.dll" $dir/
+          Get-ChildItem $dir -Filter "vc*.dll" | ForEach-Object { $_.Name }
           # SVG icons (app icon, fallback UI icons) need the SVG image/icon plugins.
           New-Item -ItemType Directory -Force "$dir/imageformats", "$dir/iconengines" | Out-Null
           Copy-Item "$env:QT_ROOT_DIR/bin/Qt6Svg.dll" $dir/
