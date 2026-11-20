@@ -49,7 +49,7 @@ all use the desktop's native mechanisms.
   a one-click jump to the full search on pathofexile.com.
 - **A proper overlay.** Always on top of the game, on the game's screen, without window
   decorations. Drag the ⠿ handle to move it and its free edges to resize it. Close it with Esc,
-  Space or by clicking back into the game.
+  Space or by clicking back into the game, or pin it to keep it open until you close it.
 - **Manual check.** Paste item text into a native window (click the tray icon) and check it
   without a hotkey, e.g. items from a friend or a forum post.
 - **Native settings** in a KDE-style window, stored as TOML.
@@ -216,6 +216,7 @@ margin_top = 80
 margin_side = 24
 width = 380
 max_height = 0           # 0 = fit content
+pinned = false           # true = stay open when clicking the game (close with ✕ or Esc)
 
 [shortcuts]              # Windows only; on Linux shortcuts belong to the desktop
 price_check = "Ctrl+D"

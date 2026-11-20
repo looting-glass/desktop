@@ -8,5 +8,6 @@
     <file>refresh.svg</file>
     <file>external-link.svg</file>
     <file>settings.svg</file>
+    <file>pin.svg</file>
 </qresource>
 </RCC>

@@ -63,13 +63,16 @@ Window {
             activeSince = Date.now()
         } else if (wasActive && visible) {
             if (Date.now() - activeSince < 600) requestActivate()
-            else if (Backend.snapshotDir === "") Backend.hideOverlay()
+            else if (Backend.snapshotDir === "" && !Backend.pinned) Backend.hideOverlay()
         }
     }
     onVisibleChanged: if (!visible) wasActive = false
 
-    SystemPalette { id: pal }
-    Shortcut { sequences: ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
+    // Colours come from the window's palette, the same one its controls inherit, so the card and
+    // the controls always agree (SystemPalette can differ from the Quick Controls palette).
+    readonly property var pal: win.palette
+    // Pinned: only Esc (or ✕) closes, so Space and clicking the game leave it open.
+    Shortcut { sequences: Backend.pinned ? ["Escape"] : ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
     // Window-style resize edge. Height (and width when the overlay is on the left) resize live,
     // since the surface origin stays put. Growing a right-anchored overlay moves its origin,
@@ -182,7 +185,32 @@ Window {
                         color: win.hasSpec && win.spec.corrupted ? "#e06c6c" : pal.windowText
                         opacity: win.hasSpec && win.spec.corrupted ? 1 : 0.55
                     }
-                    ToolButton { icon.name: "window-close"; icon.source: "qrc:/lootlens/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
+                    ToolButton {
+                        id: pinBtn
+                        icon.name: "window-pin"
+                        icon.source: "qrc:/lootlens/icons/pin.svg"
+                        // The style draws the checked (pinned) state as an active button.
+                        checkable: true
+                        checked: Backend.pinned
+                        focusPolicy: Qt.NoFocus
+                        onToggled: {
+                            Backend.pinned = checked
+                            Backend.saveOverlaySize()
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 500
+                        ToolTip.text: Backend.pinned ? "Pinned: close with ✕ or Esc" : "Keep open when clicking the game"
+                        // Accent bar under the pin while it's active.
+                        Rectangle {
+                            visible: Backend.pinned
+                            anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 1 }
+                            width: parent.width - 10
+                            height: 2
+                            radius: 1
+                            color: pal.highlight
+                        }
+                    }
+                    ToolButton { id: closeBtn; icon.name: "window-close"; icon.source: "qrc:/lootlens/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
                 }
                 Label {
                     visible: Backend.overlayState !== "error"
