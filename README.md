@@ -16,16 +16,17 @@ all use the desktop's native mechanisms.
 > Looting Glass is a fan-made tool and is not affiliated with or endorsed by Grinding Gear Games.
 
 <table align="center">
-  <tr>
-    <th>Path of Exile</th>
-    <th>Path of Exile 2</th>
-  </tr>
+  <tr><th colspan="2">Path of Exile</th></tr>
   <tr>
     <td valign="top"><img src="docs/screenshots/poe1-rare.png" alt="PoE 1 rare item price check with editable stat filters" width="300"></td>
-    <td valign="top"><img src="docs/screenshots/poe2-rare.png" alt="PoE 2 rare item price check with editable stat filters" width="300"></td>
-  </tr>
-  <tr>
     <td valign="top"><img src="docs/screenshots/poe1-currency.png" alt="PoE 1 currency price check with poe.ninja value" width="300"></td>
+  </tr>
+</table>
+
+<table align="center">
+  <tr><th colspan="2">Path of Exile 2</th></tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/poe2-rare.png" alt="PoE 2 rare item price check with editable stat filters" width="300"></td>
     <td valign="top"><img src="docs/screenshots/poe2-currency.png" alt="PoE 2 currency price check with poe.ninja value" width="300"></td>
   </tr>
 </table>
