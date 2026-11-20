@@ -115,9 +115,15 @@ rolling distro (Arch, CachyOS, EndeavourOS) is the safe bet. On other distros, b
 > ⚠️ The Windows build compiles and packages in CI, but nobody has run it with the game yet.
 > Bug reports and fixes are very welcome.
 
-Download `lootlens-<version>-windows-x64.zip` from the
-[latest release](https://github.com/rockymontana/loot-lens/releases/latest), extract it anywhere
-and run `lootlens.exe`. Everything it needs is in the folder; it lives in the system tray.
+Download `lootlens-<version>-windows-x64-setup.exe` from the
+[latest release](https://github.com/rockymontana/loot-lens/releases/latest) and run it. It
+installs for your user only (no admin rights), adds a Start menu entry, can start Loot Lens with
+Windows, and uninstalls from *Settings → Apps*. Prefer a portable app? Extract
+`lootlens-<version>-windows-x64.zip` anywhere and run `lootlens.exe`. Either way it lives in the
+system tray.
+
+The downloads aren't code-signed yet, so Windows SmartScreen may say "Windows protected your PC".
+Click *More info → Run anyway*.
 
 Run Path of Exile in **windowed fullscreen** (borderless): Windows can't draw the overlay above a
 game in exclusive fullscreen. Hotkeys are set in Loot Lens's own *Settings → Shortcuts*.
@@ -270,7 +276,7 @@ LOOTLENS_GAME=poe2 LOOTLENS_DEMO=dev/boots-poe2.txt cargo run       # force a ga
 Push a version tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`. The
 [Release workflow](.github/workflows/release.yml) builds and tests Linux in an Arch Linux
 container (`packaging/make-release.sh`) and Windows on a Windows runner (`windeployqt`), then
-publishes the Linux tarball and Windows zip with SHA-256 checksums. Running the workflow manually
+publishes the Linux tarball and the Windows installer and zip, each with a SHA-256 checksum. Running the workflow manually
 from the Actions tab is a dry run that only uploads them as artifacts.
 
 ### Porting

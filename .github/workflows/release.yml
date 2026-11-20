@@ -72,6 +72,7 @@ jobs:
           New-Item -ItemType Directory -Force $dir | Out-Null
           Copy-Item target/release/lootlens.exe $dir/
           windeployqt --release --qmldir qml --no-translations --compiler-runtime "$dir/lootlens.exe"
+          if ($LASTEXITCODE) { exit 1 }
           # SVG icons (app icon, fallback UI icons) need the SVG image/icon plugins.
           New-Item -ItemType Directory -Force "$dir/imageformats", "$dir/iconengines" | Out-Null
           Copy-Item "$env:QT_ROOT_DIR/bin/Qt6Svg.dll" $dir/
@@ -79,13 +80,24 @@ jobs:
           Copy-Item "$env:QT_ROOT_DIR/plugins/iconengines/qsvgicon.dll" "$dir/iconengines/"
           Copy-Item README.md, LICENSE.md $dir/
           Compress-Archive -Path $dir -DestinationPath "dist/$name.zip"
-          $hash = (Get-FileHash "dist/$name.zip" -Algorithm SHA256).Hash.ToLower()
-          "$hash  $name.zip" | Out-File -Encoding ascii -NoNewline "dist/$name.zip.sha256"
+
+          # Installer (Inno Setup; installed on demand if the runner image lacks it).
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; if ($LASTEXITCODE) { exit 1 } }
+          & $iscc "/DAppVersion=$version" "/DSourceDir=$((Resolve-Path $dir).Path)" "/DOutputDir=$((Resolve-Path dist).Path)" packaging\windows\lootlens.iss
+          if ($LASTEXITCODE) { exit 1 }
+
+          foreach ($f in "$name.zip", "$name-setup.exe") {
+            $hash = (Get-FileHash "dist/$f" -Algorithm SHA256).Hash.ToLower()
+            "$hash  $f" | Out-File -Encoding ascii -NoNewline "dist/$f.sha256"
+          }
 
       - uses: actions/upload-artifact@v4
         with:
           name: lootlens-windows
-          path: dist/*.zip*
+          path: |
+            dist/*.zip*
+            dist/*-setup.exe*
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
