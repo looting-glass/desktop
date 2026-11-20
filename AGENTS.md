@@ -41,6 +41,8 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
   `dev/` sample for any new item type you handle.
 - UI changes: compare before/after with `LOOTLENS_SNAPSHOT=<dir>` (writes the README
   screenshots).
+- Repeated runs: set `LOOTLENS_HTTP_CACHE=<dir>` so trade API and poe.ninja replies are recorded
+  once and replayed; the trade API rate-limits quickly.
 
 ## Screenshots
 

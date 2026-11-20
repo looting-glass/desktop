@@ -44,7 +44,10 @@ async fn fetch_type(game: Game, league: &str, kind: &str, ua: &str) -> Result<Ve
         "https://poe.ninja/{seg}/api/economy/exchange/current/overview?league={}&type={kind}",
         urlencode(league)
     );
-    let v: Value = HTTP.get(url).header("User-Agent", ua).send().await?.error_for_status()?.json().await?;
+    let v = crate::devcache::json(HTTP.get(url).header("User-Agent", ua), |req| async move {
+        Ok(req.send().await?.error_for_status()?.json::<Value>().await?)
+    })
+    .await?;
     let core = &v["core"];
     let primary = core["primary"].as_str().unwrap_or("chaos").to_string();
     // rates[c] = units of currency c per 1 primary.
