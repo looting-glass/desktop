@@ -299,16 +299,8 @@ Window {
                         Layout.fillWidth: true
                         implicitHeight: frl.implicitHeight + 8
                         radius: 4
-                        color: on ? Qt.rgba(pal.highlight.r, pal.highlight.g, pal.highlight.b, 0.12) : "transparent"
-                        // Solid accent edge, so checked rows show the same accent colour as the rest
-                        // of the app (the tint alone reads as a different colour on dark themes).
-                        Rectangle {
-                            visible: frow.on
-                            anchors { left: parent.left; top: parent.top; bottom: parent.bottom; margins: 4 }
-                            width: 3
-                            radius: 1.5
-                            color: pal.highlight
-                        }
+                        color: "transparent"
+                        AccentTint { anchors.fill: parent; palette: pal; active: frow.on }
 
                         RowLayout {
                             id: frl
@@ -334,7 +326,7 @@ Window {
                                     text: frow.modelData.tag
                                     font.pointSize: 7
                                     font.capitalization: Font.AllUppercase
-                                    opacity: 0.5
+                                    opacity: frow.on ? 0.85 : 0.5
                                 }
                             }
                             TextField {

@@ -149,12 +149,19 @@ ApplicationWindow {
                         currentIndex: 0
                         spacing: 2
                         delegate: ItemDelegate {
+                            id: navItem
                             required property var modelData
                             required property int index
                             width: ListView.view.width
                             text: modelData.name
                             icon.name: modelData.icon
-                            highlighted: ListView.isCurrentItem
+                            // Same selected look as checked filter rows in the overlay.
+                            leftPadding: 14
+                            background: AccentTint {
+                                palette: win.palette
+                                active: navItem.ListView.isCurrentItem
+                                hovered: navItem.hovered
+                            }
                             onClicked: nav.currentIndex = index
                         }
                     }

@@ -8,6 +8,7 @@ fn main() {
             "qml/ManualCheck.qml",
             "qml/FormPage.qml",
             "qml/FormLabel.qml",
+            "qml/AccentTint.qml",
         ]),
     )
     .files(["src/bridge.rs"])
