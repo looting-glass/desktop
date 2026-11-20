@@ -1,0 +1,7 @@
+Item Class: Stackable Currency
+Rarity: Currency
+Chaos Orb
+--------
+Stack Size: 12/50
+--------
+Removes a random modifier and augments a Rare item with a new random modifier

@@ -14,11 +14,20 @@ hotkeys, the overlay and clipboard access all use the desktop's native mechanism
 
 > Loot Lens is a fan-made tool and is not affiliated with or endorsed by Grinding Gear Games.
 
-<p align="center">
-  <img src="docs/screenshots/rare-item.png" alt="Price check of a rare item with editable stat filters" width="331">
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/currency.png" alt="Currency price check with poe.ninja value" width="331">
-</p>
+<table align="center">
+  <tr>
+    <th>Path of Exile</th>
+    <th>Path of Exile 2</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/poe1-rare.png" alt="PoE 1 rare item price check with editable stat filters" width="300"></td>
+    <td valign="top"><img src="docs/screenshots/poe2-rare.png" alt="PoE 2 rare item price check with editable stat filters" width="300"></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/poe1-currency.png" alt="PoE 1 currency price check with poe.ninja value" width="300"></td>
+    <td valign="top"><img src="docs/screenshots/poe2-currency.png" alt="PoE 2 currency price check with poe.ninja value" width="300"></td>
+  </tr>
+</table>
 
 ## Features
 
@@ -43,7 +52,8 @@ hotkeys, the overlay and clipboard access all use the desktop's native mechanism
 - **Native settings** in a KDE-style window, stored as TOML.
 
 <p align="center">
-  <img src="docs/screenshots/settings.png" alt="Settings window with category sidebar" width="600">
+  <img src="docs/screenshots/settings-game.png" alt="Settings: game and league per game" width="420">
+  <img src="docs/screenshots/settings-trade.png" alt="Settings: trade options" width="420">
 </p>
 
 ## How it works on Wayland

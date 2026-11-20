@@ -71,21 +71,31 @@ ApplicationWindow {
         }
     }
 
-    // Page background as a real item so it can be captured (LOOTLENS_SNAPSHOT).
-    function snapshot(path) {
+    // Page background as a real item so it can be captured (LOOTLENS_SNAPSHOT):
+    // saves the Game and Trade tabs as settings-game.png / settings-trade.png in `dir`.
+    function snapshot(dir) {
         win.width = 760
         win.height = 440
-        nav.currentIndex = 1
-        snapTimer.path = path
+        snapTimer.dir = dir
+        snapTimer.step = 0
+        nav.currentIndex = 0
         snapTimer.start()
     }
     Timer {
         id: snapTimer
-        property string path
+        property string dir
+        property int step: 0
+        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1]]
         interval: 800
         onTriggered: page.grabToImage(r => {
-            r.saveToFile(path)
-            console.warn("snapshot: settings saved")
+            r.saveToFile(dir + "/" + shots[step][0])
+            if (step + 1 < shots.length) {
+                step++
+                nav.currentIndex = shots[step][1]
+                start()
+            } else {
+                console.warn("snapshot: settings saved")
+            }
         })
     }
 

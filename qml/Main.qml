@@ -459,7 +459,7 @@ Window {
     Timer {
         id: settingsSnap
         interval: 2500
-        onTriggered: settings.snapshot(Backend.snapshotDir + "/settings.png")
+        onTriggered: settings.snapshot(Backend.snapshotDir)
     }
     Connections {
         target: Backend

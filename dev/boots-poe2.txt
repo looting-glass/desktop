@@ -1,0 +1,15 @@
+Item Class: Boots
+Rarity: Rare
+Dusk Stride
+Dragonscale Boots
+--------
+Evasion Rating: 310 (augmented)
+Energy Shield: 92 (augmented)
+--------
+Requires: Level 65
+--------
+Item Level: 81
+--------
++38 to maximum Life
+15% increased Movement Speed
++24% to Cold Resistance
