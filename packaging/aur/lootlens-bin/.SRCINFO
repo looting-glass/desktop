@@ -1,0 +1,27 @@
+pkgbase = lootlens-bin
+	pkgdesc = Wayland-native price checker for Path of Exile 1 and 2 (Qt 6, KDE Plasma; experimental Hyprland)
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/rockymontana/loot-lens
+	arch = x86_64
+	license = GPL-3.0-or-later
+	depends = qt6-base
+	depends = qt6-declarative
+	depends = qt6-wayland
+	depends = layer-shell-qt
+	depends = kirigami
+	depends = qqc2-desktop-style
+	depends = dbus
+	depends = gcc-libs
+	depends = glibc
+	depends = hicolor-icon-theme
+	optdepends = xdg-desktop-portal-kde: global shortcuts and key injection on KDE Plasma
+	optdepends = xdg-desktop-portal-hyprland: global shortcuts on Hyprland (experimental)
+	provides = lootlens
+	conflicts = lootlens
+	options = !strip
+	options = !debug
+	source = https://github.com/rockymontana/loot-lens/releases/download/v0.1.0/lootlens-0.1.0-x86_64.tar.gz
+	sha256sums = 540dd3e456241fcdb91ed48cbf30ad057594047cc8c2fe583868a890515377b9
+
+pkgname = lootlens-bin

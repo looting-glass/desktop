@@ -1,0 +1,42 @@
+# Maintainer: rockymontana <rockymontana at users dot noreply dot github dot com>
+
+pkgname=lootlens-bin
+_pkgname=lootlens
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Wayland-native price checker for Path of Exile 1 and 2 (Qt 6, KDE Plasma; experimental Hyprland)"
+arch=('x86_64')
+url="https://github.com/rockymontana/loot-lens"
+license=('GPL-3.0-or-later')
+depends=(
+  'qt6-base'
+  'qt6-declarative'
+  'qt6-wayland'
+  'layer-shell-qt'
+  'kirigami'
+  'qqc2-desktop-style'
+  'dbus'
+  'gcc-libs'
+  'glibc'
+  'hicolor-icon-theme'
+)
+optdepends=(
+  'xdg-desktop-portal-kde: global shortcuts and key injection on KDE Plasma'
+  'xdg-desktop-portal-hyprland: global shortcuts on Hyprland (experimental)'
+)
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!strip' '!debug')
+source=("$url/releases/download/v$pkgver/$_pkgname-$pkgver-x86_64.tar.gz")
+sha256sums=('540dd3e456241fcdb91ed48cbf30ad057594047cc8c2fe583868a890515377b9')
+
+package() {
+  cd "$_pkgname-$pkgver-x86_64"
+  install -Dm755 lootlens "$pkgdir/usr/bin/lootlens"
+  install -Dm644 data/dev.lootlens.LootLens.desktop \
+    "$pkgdir/usr/share/applications/dev.lootlens.LootLens.desktop"
+  install -Dm644 data/icons/dev.lootlens.LootLens.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/dev.lootlens.LootLens.svg"
+  install -Dm644 LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE.md"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}
