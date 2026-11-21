@@ -229,8 +229,44 @@ unsafe extern "C" {
     fn lootingglass_qt_main() -> i32;
 }
 
+/// Holds an exclusive lock on `instance.lock` for the life of the process, so a second copy
+/// (autostart plus a manual start, say) exits instead of fighting the first for the hotkey.
+/// The OS drops the lock when the process ends, crashes included. Returns false if another
+/// copy holds it. Dev runs (`LOOTINGGLASS_DEMO`/`LOOTINGGLASS_SNAPSHOT`) skip the check.
+fn single_instance() -> bool {
+    if std::env::var_os("LOOTINGGLASS_DEMO").is_some() || std::env::var_os("LOOTINGGLASS_SNAPSHOT").is_some() {
+        return true;
+    }
+    let Some(dir) = dirs::state_dir().or_else(dirs::data_local_dir).map(|d| d.join("lootingglass")) else {
+        return true;
+    };
+    let _ = std::fs::create_dir_all(&dir);
+    let file = match std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(dir.join("instance.lock")) {
+        Ok(f) => f,
+        Err(e) => {
+            log::warn!("instance lock: {e}");
+            return true; // can't tell; don't block start-up
+        }
+    };
+    match file.try_lock() {
+        Ok(()) => {
+            std::mem::forget(file); // keep the lock until exit
+            true
+        }
+        Err(std::fs::TryLockError::WouldBlock) => false,
+        Err(std::fs::TryLockError::Error(e)) => {
+            log::warn!("instance lock: {e}");
+            true
+        }
+    }
+}
+
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    if !single_instance() {
+        log::info!("Looting Glass is already running; exiting.");
+        return;
+    }
     cxx_qt::init_crate!(cxx_qt_lib);
     cxx_qt::init_qml_module!("dev.lootingglass");
     let code = unsafe { lootingglass_qt_main() };
