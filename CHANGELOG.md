@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/looting-glass/desktop/compare/v0.6.0...v0.7.0) (2026-11-21)
+
+
+### Features
+
+* search on sockets, links, influences and special bases ([#36](https://github.com/looting-glass/desktop/issues/36)) ([7d552d4](https://github.com/looting-glass/desktop/commit/7d552d41ef32e8cbe88e76827473c56ac42ead5e)), closes [#25](https://github.com/looting-glass/desktop/issues/25)
+
 ## [0.6.0](https://github.com/looting-glass/desktop/compare/v0.5.0...v0.6.0) (2026-11-21)
 
 
