@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 use tokio::sync::OnceCell;
 
-static HTTP: LazyLock<reqwest::Client> = LazyLock::new(|| {
+pub(crate) static HTTP: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
@@ -80,7 +80,7 @@ pub struct Spec {
     pub filters: Vec<Filter>,
 }
 
-async fn send(req: reqwest::RequestBuilder, ua: &str) -> Result<Value> {
+pub(crate) async fn send(req: reqwest::RequestBuilder, ua: &str) -> Result<Value> {
     crate::devcache::json(req, |req| send_live(req, ua)).await
 }
 

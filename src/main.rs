@@ -8,6 +8,7 @@ mod devcache;
 mod mock;
 mod item;
 mod links;
+mod exchange;
 mod ninja;
 mod platform;
 mod pseudo;
@@ -203,6 +204,7 @@ async fn check_text(text: String) {
     if matches!(item.rarity, Currency | DivinationCard | Normal | Gem | Other) {
         let (game, league, ua) = (cfg.game, cfg.league().to_string(), cfg.user_agent());
         let (name, stack) = (item.base.clone(), item.stack_size);
+        let (league2, name2, ua2, status) = (league.clone(), name.clone(), ua.clone(), cfg.trade.status.clone());
         tokio::spawn(async move {
             if let Some((main, detail)) = ninja::lookup(game, &league, &name, stack, &ua).await {
                 ui(move |mut b| {
@@ -211,11 +213,23 @@ async fn check_text(text: String) {
                 });
             }
         });
+        // The trade site's bulk exchange: what people ask right now, next to the poe.ninja average.
+        tokio::spawn(async move {
+            match exchange::lookup(game, &league2, &status, &name2, &ua2).await {
+                Ok(Some(ex)) => {
+                    let json = q(serde_json::to_string(&ex).unwrap_or_default());
+                    ui(move |b| b.set_exchange(json));
+                }
+                Ok(None) => {}
+                Err(e) => log::warn!("bulk exchange: {e:#}"),
+            }
+        });
     }
     ui(move |mut b| {
         b.as_mut().set_title(title);
         b.as_mut().set_ninja(q(""));
         b.as_mut().set_ninja_detail(q(""));
+        b.as_mut().set_exchange(q(""));
         b.as_mut().set_spec(q(""));
         b.as_mut().set_overlay_state(q("loading"));
         b.as_mut().set_listings(q("[]"));

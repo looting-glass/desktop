@@ -296,6 +296,43 @@ Window {
                     }
                 }
 
+                // Trade site bulk exchange for stackables: the cheapest current offers.
+                Rectangle {
+                    id: exBox
+                    readonly property var ex: {
+                        try { return Backend.exchange ? JSON.parse(Backend.exchange) : null } catch (e) { return null }
+                    }
+                    visible: ex !== null
+                    Layout.fillWidth: true
+                    implicitHeight: exCol.implicitHeight + 12
+                    radius: 6
+                    color: "transparent"
+                    border.color: Qt.rgba(pal.windowText.r, pal.windowText.g, pal.windowText.b, 0.25)
+                    ColumnLayout {
+                        id: exCol
+                        anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 8 }
+                        spacing: 2
+                        RowLayout {
+                            Label { text: "Bulk exchange"; font.pointSize: 8; font.bold: true; opacity: 0.7; Layout.fillWidth: true }
+                            LinkButton { label: "Exchange"; url: exBox.ex ? exBox.ex.url : "" }
+                        }
+                        Label {
+                            text: exBox.ex ? exBox.ex.best + " each" : ""
+                            font.pointSize: 12; font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Repeater {
+                            model: exBox.ex ? exBox.ex.offers : []
+                            RowLayout {
+                                required property var modelData
+                                Label { text: modelData.ratio; Layout.fillWidth: true; elide: Text.ElideRight }
+                                Label { text: "stock " + modelData.stock; opacity: 0.6 }
+                            }
+                        }
+                    }
+                }
+
                 Flow {
                     visible: win.hasSpec
                     Layout.fillWidth: true
