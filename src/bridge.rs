@@ -23,6 +23,7 @@ pub mod qobject {
         #[qproperty(QString, ninja)]
         #[qproperty(QString, ninja_detail)]
         #[qproperty(QString, exchange)]
+        #[qproperty(QString, map_info)]
         #[qproperty(i32, overlay_max_height)]
         #[qproperty(QString, snapshot_dir)]
         #[qproperty(QString, demo_text)]
@@ -69,6 +70,10 @@ pub mod qobject {
         #[qinvokable]
         fn check_text(self: &Backend, text: &QString) -> QString;
         #[qinvokable]
+        fn mark_map_mod(self: &Backend, mod_template: &QString, level: &QString);
+        #[qinvokable]
+        fn price_check_map(self: &Backend);
+        #[qinvokable]
         fn open_settings_window(self: Pin<&mut Backend>);
         #[qinvokable]
         fn save_overlay_size(self: &Backend);
@@ -114,6 +119,8 @@ pub struct BackendRust {
     ninja_detail: QString,
     /// Bulk exchange offers as JSON (`exchange::Exchange`), or empty.
     exchange: QString,
+    /// Map check view as JSON (`mapcheck::MapView`), or empty.
+    map_info: QString,
     overlay_max_height: i32,
     snapshot_dir: QString,
     demo_text: QString,
@@ -277,6 +284,14 @@ impl qobject::Backend {
         }
         send_event(Event::CheckText(text));
         QString::default()
+    }
+
+    fn mark_map_mod(&self, mod_template: &QString, level: &QString) {
+        send_event(Event::MarkMapMod(mod_template.to_string(), level.to_string()));
+    }
+
+    fn price_check_map(&self) {
+        send_event(Event::PriceCheckMap);
     }
 
     fn open_settings_window(self: Pin<&mut Self>) {

@@ -1,0 +1,23 @@
+Item Class: Maps
+Rarity: Rare
+Dread Trap
+Cemetery Map
+--------
+Map Tier: 16
+Item Quantity: +87% (augmented)
+Item Rarity: +45% (augmented)
+Monster Pack Size: +28% (augmented)
+Quality: +20% (augmented)
+--------
+Item Level: 83
+--------
+Monster Level: 83
+--------
+Players cannot Regenerate Life, Mana or Energy Shield
+Monsters reflect 18% of Elemental Damage
+Monsters have 70% increased Area of Effect
+Area contains two Unique Bosses
+Monsters deal 102% extra Physical Damage as Fire
+Players have 60% less Recovery Rate of Life and Energy Shield
+--------
+Travel to this Map by using it in a personal Map Device. Maps can only be used once.

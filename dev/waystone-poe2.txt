@@ -1,0 +1,21 @@
+Item Class: Waystones
+Rarity: Rare
+Grim Haven
+Waystone (Tier 15)
+--------
+Waystone Tier: 15
+Revives Available: 0 (augmented)
+Item Quantity: +60% (augmented)
+Item Rarity: +38% (augmented)
+Monster Pack Size: +15% (augmented)
+Waystone Drop Chance: +120% (augmented)
+--------
+Item Level: 79
+--------
+Monsters deal 30% of Damage as Extra Cold
+Players are Cursed with Enfeeble
+Monsters have 40% increased Critical Hit Chance
+Area has patches of Ignited Ground
+Monsters take 30% reduced Extra Damage from Critical Hits
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.

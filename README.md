@@ -69,6 +69,10 @@ all use the desktop's native mechanisms.
   Space or by clicking back into the game, or pin it to keep it open until you close it.
 - **Item info.** A hotkey and an overlay button open the item's page on poedb (poedb.tw /
   poe2db.tw), or the community wiki if you prefer: uniques by name, everything else by base type.
+- **Map check.** A separate hotkey lists a map's (PoE 1) or waystone's (PoE 2) mods with its tier,
+  quantity, rarity and pack size, coloured by how you marked them: deadly (red) or annoying (yellow).
+  Click a mod in the overlay to mark it, or manage the marks in *Settings → Maps*; each game keeps
+  its own. A button price-checks the map as usual.
 - **Manual check.** Paste item text into a native window (click the tray icon) and check it
   without a hotkey, e.g. items from a friend or a forum post.
 - **Native settings** in a KDE-style window, stored as TOML.
@@ -76,6 +80,10 @@ all use the desktop's native mechanisms.
 <p align="center">
   <img src="docs/screenshots/settings-game.png" alt="Settings: game and league per game" width="420">
   <img src="docs/screenshots/settings-trade.png" alt="Settings: trade options" width="420">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/map-check.png" alt="Map check: a map's mods with deadly and annoying ones marked" width="340">
 </p>
 
 <p align="center">
@@ -181,6 +189,13 @@ To check an item without the hotkey, for example one a friend sent you or one fr
 click the tray icon (or use *Manual check…* in its menu). Paste the item text and press
 **Check price** (or Ctrl+Enter). The results open in the overlay as usual.
 
+### Map check
+
+Assign the *Map check* shortcut (it starts unassigned), hover a map or waystone and press it. The
+overlay lists the map's mods: click one to mark it annoying, click again for deadly, and once more
+to clear it. Marks cover every roll of a mod and are kept per game, so the next map with a mod you
+can't run shows it in red right away. *Settings → Maps* lists the marks and takes pasted mod lines.
+
 ### Shortcuts
 
 | Action | Default |
@@ -191,6 +206,7 @@ click the tray icon (or use *Manual check…* in its menu). Paste the item text 
 | Open manual price check | unassigned |
 | Hide overlay | unassigned |
 | Open hovered item on poedb or the wiki | unassigned |
+| Map check: hovered map's mods | unassigned |
 
 Change them in *System Settings → Shortcuts → Looting Glass*, or via *Settings → Shortcuts*. On
 Windows, type them straight into *Settings → Shortcuts* (e.g. `Ctrl+D`, `Ctrl+Shift+F7`).
@@ -208,7 +224,7 @@ bind = CTRL, D, global, dev.lootingglass.LootingGlass:price-check
 bind = , F7, global, dev.lootingglass.LootingGlass:toggle-game     # optional
 ```
 
-The shortcut ids are `price-check`, `toggle-game`, `settings`, `manual-check`, `hide-overlay` and `item-info`. If a bind does
+The shortcut ids are `price-check`, `toggle-game`, `settings`, `manual-check`, `hide-overlay`, `item-info` and `map-check`. If a bind does
 nothing, run `hyprctl globalshortcuts` to see the exact names your portal registered.
 Copying and refocusing go through `hyprctl`, so no permission dialog appears.
 
@@ -223,6 +239,10 @@ contact = ""             # optional, appended to the User-Agent sent to the trad
 
 [poe1]
 league = "Standard"
+
+[poe1.map_mods]          # map check marks (mod text, numbers as #); also [poe2.map_mods]
+deadly = ["Monsters reflect #% of Elemental Damage"]
+annoying = []
 
 [poe2]
 league = "Standard"
@@ -254,6 +274,7 @@ manual_check = ""
 settings = ""
 hide_overlay = ""
 item_info = ""
+map_check = ""
 ```
 
 ### Updates
@@ -297,6 +318,7 @@ cargo build
 cargo test
 LOOTINGGLASS_DEMO=dev/boots.txt cargo run         # price-check an item text file without the game
 LOOTINGGLASS_SNAPSHOT=/tmp/shots LOOTINGGLASS_DEMO=dev/boots.txt cargo run   # also save README screenshots
+LOOTINGGLASS_DEMO_MAP=dev/map.txt cargo run                         # map-check a map/waystone file without the game
 LOOTINGGLASS_GAME=poe2 LOOTINGGLASS_DEMO=dev/boots-poe2.txt cargo run       # force a game for this run
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_DEMO=dev/boots.txt cargo run              # fake API responses, no network
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_MOCK_UPDATE=1 cargo run                   # ... and a fake newer release (update UI)

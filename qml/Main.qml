@@ -229,7 +229,7 @@ Window {
                         }
                     }
                     Label {
-                        text: win.hasSpec ? (win.spec.class || "Item") : "Looting Glass"
+                        text: win.hasSpec ? (win.spec.class || "Item") : mapView.visible ? mapView.m.class : "Looting Glass"
                         font.bold: true
                         font.capitalization: Font.AllUppercase
                         Layout.fillWidth: true
@@ -356,6 +356,101 @@ Window {
                 }
 
                 // ── Filters ──────────────────────────────────────────
+                // Map check: a map's/waystone's mods coloured by the player's marks. Clicking a mod
+                // cycles it neutral → annoying → deadly → neutral; marks are stored per game.
+                ColumnLayout {
+                    id: mapView
+                    readonly property var m: {
+                        try { return Backend.mapInfo ? JSON.parse(Backend.mapInfo) : null } catch (e) { return null }
+                    }
+                    readonly property color deadlyColor: "#e06c6c"
+                    readonly property color annoyingColor: "#e0b84a"
+                    function levelColor(level) {
+                        return level === "deadly" ? deadlyColor : level === "annoying" ? annoyingColor : pal.windowText
+                    }
+                    visible: Backend.overlayState === "map" && m !== null
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Chip { visible: mapView.m && mapView.m.tier != null; text: "Tier " + (mapView.m ? mapView.m.tier : "") }
+                        Chip { visible: mapView.m && mapView.m.quantity != null; text: "Quantity +" + (mapView.m ? mapView.m.quantity : "") + "%" }
+                        Chip { visible: mapView.m && mapView.m.rarity != null; text: "Rarity +" + (mapView.m ? mapView.m.rarity : "") + "%" }
+                        Chip { visible: mapView.m && mapView.m.pack_size != null; text: "Pack size +" + (mapView.m ? mapView.m.pack_size : "") + "%" }
+                        Chip { visible: mapView.m && mapView.m.corrupted; text: "Corrupted"; warn: true }
+                    }
+                    Label {
+                        readonly property int deadly: mapView.m ? mapView.m.deadly : 0
+                        readonly property int annoying: mapView.m ? mapView.m.annoying : 0
+                        text: deadly > 0 ? deadly + (deadly === 1 ? " deadly mod" : " deadly mods") + (annoying > 0 ? " · " + annoying + " annoying" : "")
+                            : annoying > 0 ? annoying + (annoying === 1 ? " annoying mod" : " annoying mods")
+                            : "No marked mods"
+                        font.bold: deadly + annoying > 0
+                        color: mapView.levelColor(deadly > 0 ? "deadly" : annoying > 0 ? "annoying" : "")
+                        opacity: deadly + annoying > 0 ? 1 : 0.6
+                    }
+                    Repeater {
+                        model: mapView.m ? mapView.m.mods : []
+                        Rectangle {
+                            id: mrow
+                            required property var modelData
+                            readonly property string level: modelData.level
+                            readonly property color tint: mapView.levelColor(level)
+                            Layout.fillWidth: true
+                            implicitHeight: mrl.implicitHeight + 12
+                            radius: 4
+                            color: level === "" ? (mmouse.containsMouse ? Qt.rgba(tint.r, tint.g, tint.b, 0.06) : "transparent")
+                                                : Qt.rgba(tint.r, tint.g, tint.b, mmouse.containsMouse ? 0.24 : 0.16)
+                            border.color: level === "" ? "transparent" : tint
+                            RowLayout {
+                                id: mrl
+                                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 8; rightMargin: 8 }
+                                Label {
+                                    text: mrow.modelData.text
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    visible: mrow.level !== ""
+                                    text: mrow.level === "deadly" ? "Deadly" : "Annoying"
+                                    font.pointSize: 8
+                                    font.bold: true
+                                    font.capitalization: Font.AllUppercase
+                                    color: mrow.tint
+                                }
+                            }
+                            MouseArea {
+                                id: mmouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Backend.markMapMod(mrow.modelData.template,
+                                    mrow.level === "" ? "annoying" : mrow.level === "annoying" ? "deadly" : "")
+                            }
+                            ToolTip.visible: mmouse.containsMouse
+                            ToolTip.delay: 800
+                            ToolTip.text: "Click to mark: annoying → deadly → clear"
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: "Click a mod to mark it. Marks are kept per game."
+                            font.pointSize: 8
+                            opacity: 0.6
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                        }
+                        Button {
+                            text: "Price check"
+                            focusPolicy: Qt.NoFocus
+                            onClicked: Backend.priceCheckMap()
+                        }
+                    }
+                }
+
                 Flow {
                     visible: win.hasSpec && win.expanded
                     Layout.fillWidth: true
@@ -699,7 +794,7 @@ Window {
         id: snapTimer
         interval: 1000
         onTriggered: card.grabToImage(r => {
-            r.saveToFile(Backend.snapshotDir + "/overlay.png")
+            r.saveToFile(Backend.snapshotDir + (Backend.overlayState === "map" ? "/map-check.png" : "/overlay.png"))
             console.warn("snapshot: overlay saved")
             // Palette in use, to diagnose colours on other platforms from the snapshot log.
             console.warn("snapshot: palette", ["window", "windowText", "base", "alternateBase", "text",
@@ -718,7 +813,7 @@ Window {
     Connections {
         target: Backend
         function onOverlayStateChanged() {
-            if (Backend.snapshotDir !== "" && Backend.overlayState === "result") snapTimer.restart()
+            if (Backend.snapshotDir !== "" && (Backend.overlayState === "result" || Backend.overlayState === "map")) snapTimer.restart()
         }
     }
 
