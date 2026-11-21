@@ -15,6 +15,10 @@ written down anywhere else.
   the version in `Cargo.toml` and writes `CHANGELOG.md` (`fix` → patch, `feat` → minor,
   `docs`/`ci`/`chore` → no release). Merging that PR tags `vX.Y.Z`, publishes the GitHub
   release and builds the Linux and Windows downloads. Leave the version and changelog to it.
+- The website shows the latest release's changelog and download links, and a daily deploy
+  picks up new releases. After merging a release PR, once the downloads are attached, start
+  `gh workflow run Pages --repo looting-glass/looting-glass.github.io` to show it right away;
+  the website's `AGENTS.md` says what to check.
 - Commit and push when the maintainer asks; leave changes uncommitted otherwise. Already-pushed
   history stays as it is.
 
@@ -55,7 +59,7 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 ## Screenshots
 
 The website ([looting-glass/looting-glass.github.io](https://github.com/looting-glass/looting-glass.github.io))
-uses the same `docs/screenshots`; it picks up changes weekly or on a manual Pages run there.
+uses the same `docs/screenshots`; it picks up changes daily or on a manual Pages run there.
 README screenshots come from `LOOTINGGLASS_SNAPSHOT`, cropped to the app with seller names
 blurred. Show new screenshots to the maintainer before committing them.
 
@@ -64,7 +68,7 @@ Any change to how the app looks (overlay, settings, manual check) regenerates th
 They show real listings: record the replies once with `LOOTINGGLASS_HTTP_CACHE` and retake from
 the cache. After it merges, start the website's Pages run
 (`gh workflow run Pages --repo looting-glass/looting-glass.github.io`) instead of
-waiting for the weekly pickup.
+waiting for the daily pickup.
 
 Desktop screenshots taken while debugging are cropped to the app window and deleted after use:
 the desktop can show private chats.
