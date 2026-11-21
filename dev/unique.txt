@@ -1,0 +1,20 @@
+Item Class: Body Armours
+Rarity: Unique
+Kaom's Heart
+Glorious Plate
+--------
+Armour: 553
+--------
+Requirements:
+Level: 68
+Str: 191
+--------
+Sockets: R
+--------
+Item Level: 84
+--------
+Has no Sockets
++20% to Fire Resistance
++528 to maximum Life
+--------
+The warrior who fears will fall.

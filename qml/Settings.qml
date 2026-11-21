@@ -25,7 +25,9 @@ ApplicationWindow {
         ["manual_check", "Manual check:"],
         ["settings", "Open settings:"],
         ["hide_overlay", "Hide overlay:"],
+        ["item_info", "Item info:"],
     ]
+    readonly property var infoSites: ["poedb", "wiki"]
 
     function leaguesFor(key) {
         try { return JSON.parse(Backend.leagues || "{}")[key] || [] } catch (e) { return [] }
@@ -40,6 +42,7 @@ ApplicationWindow {
         game.currentIndex = cfg.game === "poe2" ? 1 : 0
         syncLeague(league1, cfg.poe1.league)
         syncLeague(league2, cfg.poe2.league)
+        infoSite.currentIndex = Math.max(0, infoSites.indexOf(cfg.links.site))
         status.currentIndex = Math.max(0, statuses.indexOf(cfg.trade.status))
         tolerance.value = cfg.trade.stat_tolerance
         results.value = cfg.trade.max_results
@@ -62,6 +65,7 @@ ApplicationWindow {
         c.game = game.currentIndex === 1 ? "poe2" : "poe1"
         c.poe1.league = league1.editText.trim() || "Standard"
         c.poe2.league = league2.editText.trim() || "Standard"
+        c.links.site = infoSites[infoSite.currentIndex]
         c.trade.status = statuses[status.currentIndex]
         c.trade.stat_tolerance = tolerance.value
         c.trade.max_results = results.value
@@ -219,6 +223,13 @@ ApplicationWindow {
                             id: league2
                             editable: true
                             model: win.leaguesFor("poe2")
+                            Layout.preferredWidth: 260
+                        }
+                        FormLabel { text: "Item info opens:" }
+                        ComboBox {
+                            id: infoSite
+                            // Per game: poedb.tw / poe2db.tw, poewiki.net / poe2wiki.net.
+                            model: ["poedb", "Community wiki"]
                             Layout.preferredWidth: 260
                         }
                     }

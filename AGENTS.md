@@ -57,6 +57,14 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 The website ([looting-glass/looting-glass.github.io](https://github.com/looting-glass/looting-glass.github.io))
 uses the same `docs/screenshots`; it picks up changes weekly or on a manual Pages run there.
 README screenshots come from `LOOTINGGLASS_SNAPSHOT`, cropped to the app with seller names
-blurred. Show new screenshots to the maintainer before committing them. Desktop screenshots
-taken while debugging are cropped to the app window and deleted after use: the desktop can show
-private chats.
+blurred. Show new screenshots to the maintainer before committing them.
+
+Any change to how the app looks (overlay, settings, manual check) regenerates the affected
+`docs/screenshots` in the same PR, so the README's screenshot section always matches the app.
+They show real listings: record the replies once with `LOOTINGGLASS_HTTP_CACHE` and retake from
+the cache. After it merges, start the website's Pages run
+(`gh workflow run Pages --repo looting-glass/looting-glass.github.io`) instead of
+waiting for the weekly pickup.
+
+Desktop screenshots taken while debugging are cropped to the app window and deleted after use:
+the desktop can show private chats.

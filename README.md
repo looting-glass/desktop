@@ -42,6 +42,10 @@ all use the desktop's native mechanisms.
   checkbox and min/max values, pre-filled from your roll minus a configurable tolerance. Sensible
   mods (life, resistances, movement speed, …) are enabled by default, and the search re-runs as you
   edit.
+- **Totals, not just single mods.** Resistances, life, mana, energy shield and attributes are
+  also searched as the trade site's pseudo totals (e.g. total elemental resistance), so items with
+  the same value split differently still match. The single mods stay listed for an exact search,
+  and filters are grouped into foldable Properties, Totals and Mods sections.
 - **Quality-adjusted values.** Armour, evasion, energy shield and physical DPS are compared at 20%
   quality, the same way the trade site does.
 - **Weapon DPS filters.** Physical, elemental and total DPS, attack speed and critical chance.
@@ -54,6 +58,8 @@ all use the desktop's native mechanisms.
 - **A proper overlay.** Always on top of the game, on the game's screen, without window
   decorations. Drag the ⠿ handle to move it and its free edges to resize it. Close it with Esc,
   Space or by clicking back into the game, or pin it to keep it open until you close it.
+- **Item info.** A hotkey and an overlay button open the item's page on poedb (poedb.tw /
+  poe2db.tw), or the community wiki if you prefer: uniques by name, everything else by base type.
 - **Manual check.** Paste item text into a native window (click the tray icon) and check it
   without a hotkey, e.g. items from a friend or a forum post.
 - **Native settings** in a KDE-style window, stored as TOML.
@@ -175,6 +181,7 @@ click the tray icon (or use *Manual check…* in its menu). Paste the item text 
 | Open settings | unassigned |
 | Open manual price check | unassigned |
 | Hide overlay | unassigned |
+| Open hovered item on poedb or the wiki | unassigned |
 
 Change them in *System Settings → Shortcuts → Looting Glass*, or via *Settings → Shortcuts*. On
 Windows, type them straight into *Settings → Shortcuts* (e.g. `Ctrl+D`, `Ctrl+Shift+F7`).
@@ -192,7 +199,7 @@ bind = CTRL, D, global, dev.lootingglass.LootingGlass:price-check
 bind = , F7, global, dev.lootingglass.LootingGlass:toggle-game     # optional
 ```
 
-The shortcut ids are `price-check`, `toggle-game`, `settings`, `manual-check` and `hide-overlay`. If a bind does
+The shortcut ids are `price-check`, `toggle-game`, `settings`, `manual-check`, `hide-overlay` and `item-info`. If a bind does
 nothing, run `hyprctl globalshortcuts` to see the exact names your portal registered.
 Copying and refocusing go through `hyprctl`, so no permission dialog appears.
 
@@ -224,6 +231,9 @@ width = 380
 max_height = 0           # 0 = fit content
 pinned = false           # true = stay open when clicking the game (close with ✕ or Esc)
 
+[links]
+site = "poedb"           # item info opens "poedb" (poedb.tw / poe2db.tw) or "wiki" (poewiki.net / poe2wiki.net)
+
 [updates]
 check = true             # look for a new release on GitHub at start-up and once a day
 
@@ -233,6 +243,7 @@ toggle_game = ""
 manual_check = ""
 settings = ""
 hide_overlay = ""
+item_info = ""
 ```
 
 ### Updates

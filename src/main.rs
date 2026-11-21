@@ -7,6 +7,7 @@ mod config;
 mod devcache;
 mod mock;
 mod item;
+mod links;
 mod ninja;
 mod platform;
 mod pseudo;
@@ -35,6 +36,8 @@ pub enum Event {
     /// Price check pasted item text (manual check window).
     CheckText(String),
     HideOverlay,
+    /// Open the hovered item's wiki/poedb page.
+    OpenItemInfo,
     Quit,
 }
 
@@ -135,6 +138,7 @@ async fn handle(ev: Event) {
             ui(|b| b.set_overlay_visible(false));
             platform::focus_game().await;
         }
+        Event::OpenItemInfo => open_item_info().await,
         Event::Quit => std::process::exit(0),
     }
 }
@@ -162,6 +166,25 @@ async fn price_check() {
         Err(e) => return show_error(format!("{e:#}")),
     };
     check_text(text).await;
+}
+
+/// Hotkey: copy the hovered item and open its page on the configured site, without a price check.
+async fn open_item_info() {
+    let text = match platform::copy_item().await {
+        Ok(t) => t,
+        Err(e) => return show_error(format!("{e:#}")),
+    };
+    let Some(item) = item::parse(&text) else {
+        return show_error("The clipboard does not contain a Path of Exile item.".into());
+    };
+    let url = q(item_info_url(&item, &config()).await);
+    ui(move |b| b.open_url(url));
+}
+
+/// Wiki/poedb page for an item; magic items are resolved to their base type first.
+async fn item_info_url(item: &item::Item, cfg: &Config) -> String {
+    let base = trade::base_type(item, cfg).await.unwrap_or_else(|| item.base.clone());
+    links::url(cfg.game, cfg.links.site, links::page_name(item, &base))
 }
 
 /// Parse item text, show the overlay with default filters and run the first search.
@@ -197,8 +220,11 @@ async fn check_text(text: String) {
         b.as_mut().set_overlay_state(q("loading"));
         b.as_mut().set_listings(q("[]"));
         b.as_mut().set_trade_url(q(""));
+        b.as_mut().set_info_url(q(""));
         b.as_mut().set_overlay_visible(true);
     });
+    let info = q(item_info_url(&item, &cfg).await);
+    ui(move |b| b.set_info_url(info));
     let spec = match trade::prepare(&item, &cfg).await {
         Ok(s) => s,
         Err(e) => return show_error(format!("{e:#}")),
