@@ -459,12 +459,25 @@ Window {
                     opacity: 0.7
                 }
                 // Version footer: makes "which version is this?" answerable from any screenshot.
-                Label {
-                    text: "Looting Glass " + Backend.version
-                    font.pointSize: 8.5
-                    opacity: 0.6
+                // A newer release shows up next to it; clicking it opens Settings → About.
+                RowLayout {
+                    spacing: 0
                     Layout.alignment: Qt.AlignRight
                     Layout.topMargin: 2
+                    Label {
+                        text: "Looting Glass " + Backend.version
+                        font.pointSize: 8.5
+                        opacity: 0.6
+                    }
+                    Label {
+                        visible: Backend.updateVersion !== ""
+                        text: " · " + Backend.updateVersion + " available"
+                        font.pointSize: 8.5
+                        font.underline: updateHover.hovered
+                        color: win.accent
+                        HoverHandler { id: updateHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: settings.showAbout() }
+                    }
                 }
             }
         }
@@ -547,5 +560,6 @@ Window {
             settings.raise()
             settings.requestActivate()
         }
+        function onOpenAbout() { settings.showAbout() }
     }
 }

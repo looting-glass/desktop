@@ -221,6 +221,9 @@ width = 380
 max_height = 0           # 0 = fit content
 pinned = false           # true = stay open when clicking the game (close with ✕ or Esc)
 
+[updates]
+check = true             # look for a new release on GitHub at start-up and once a day
+
 [shortcuts]              # Windows only; on Linux shortcuts belong to the desktop
 price_check = "Ctrl+D"
 toggle_game = ""
@@ -228,6 +231,16 @@ manual_check = ""
 settings = ""
 hide_overlay = ""
 ```
+
+### Updates
+
+Looting Glass asks GitHub for the latest release shortly after it starts and once a day (one
+anonymous request; turn it off under *Settings → About*, or check by hand there or from the tray
+menu's *Check for updates…*). A newer version shows next to the version in the overlay, in the
+tray menu and on the About page, with its release notes. Nothing installs until you click
+*Install update*: the Windows installer updates silently and restarts the app, the Windows zip and
+the Linux `install.sh` install replace their files after checking the download's SHA-256, and
+then offer a restart. Package-managed installs (AUR) are only told about the new version.
 
 ## Troubleshooting
 
@@ -262,6 +275,7 @@ LOOTINGGLASS_DEMO=dev/boots.txt cargo run         # price-check an item text fil
 LOOTINGGLASS_SNAPSHOT=/tmp/shots LOOTINGGLASS_DEMO=dev/boots.txt cargo run   # also save README screenshots
 LOOTINGGLASS_GAME=poe2 LOOTINGGLASS_DEMO=dev/boots-poe2.txt cargo run       # force a game for this run
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_DEMO=dev/boots.txt cargo run              # fake API responses, no network
+LOOTINGGLASS_MOCK=1 LOOTINGGLASS_MOCK_UPDATE=1 cargo run                   # ... and a fake newer release (update UI)
 LOOTINGGLASS_HTTP_CACHE=/tmp/ll-cache LOOTINGGLASS_DEMO=dev/boots.txt cargo run   # record real API replies once, replay after
 ```
 
@@ -270,6 +284,7 @@ LOOTINGGLASS_HTTP_CACHE=/tmp/ll-cache LOOTINGGLASS_DEMO=dev/boots.txt cargo run 
 | `src/item.rs` | Parser for the game's Ctrl+C item text (with tests) |
 | `src/trade.rs` | Trade API client (`/api/trade` and `/api/trade2`), stat matching, filters |
 | `src/ninja.rs` | poe.ninja prices for stackables |
+| `src/update.rs` | Update check (GitHub releases) and self-update per install type |
 | `src/platform/` | Desktop integration: hotkeys, copying the item, focus, tray |
 | `src/platform/linux/` | KDE/Wayland backend: portals, data-control clipboard, KWin, SNI tray |
 | `src/platform/windows.rs` | Windows backend (experimental): RegisterHotKey, SendInput, Win32 clipboard |

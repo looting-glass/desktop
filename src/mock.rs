@@ -42,6 +42,9 @@ const PRICES: &[(f64, &str)] = &[
 /// Canned response for a request, or `None` for an unknown endpoint.
 pub fn response(method: &str, url: &str) -> Option<Value> {
     let path = url.split('?').next().unwrap_or(url);
+    if url.contains("api.github.com") && path.ends_with("/releases/latest") {
+        return Some(release());
+    }
     if url.contains("poe.ninja") {
         return Some(ninja(url));
     }
@@ -100,6 +103,24 @@ pub fn response(method: &str, url: &str) -> Option<Value> {
         return Some(json!({ "result": result }));
     }
     None
+}
+
+/// Latest GitHub release: the running version, or v99.0.0 with `LOOTINGGLASS_MOCK_UPDATE=1` so the
+/// update notice can be seen.
+fn release() -> Value {
+    let v = if std::env::var_os("LOOTINGGLASS_MOCK_UPDATE").is_some() { "99.0.0" } else { env!("CARGO_PKG_VERSION") };
+    let base = "https://github.com/rockymontana/looting-glass/releases";
+    let assets: Vec<Value> = ["windows-x64-setup.exe", "windows-x64.zip", "x86_64.tar.gz"]
+        .iter()
+        .flat_map(|s| [format!("lootingglass-{v}-{s}"), format!("lootingglass-{v}-{s}.sha256")])
+        .map(|n| json!({ "name": n, "browser_download_url": format!("{base}/download/v{v}/{n}") }))
+        .collect();
+    json!({
+        "tag_name": format!("v{v}"),
+        "html_url": format!("{base}/tag/v{v}"),
+        "body": "## [99.0.0](https://example.invalid) (2026-11-21)\n\n## Features\n\n* **overlay:** a mock feature ([#99](https://example.invalid))\n\n## Bug Fixes\n\n* a mock fix",
+        "assets": assets,
+    })
 }
 
 /// poe.ninja exchange overview: a few currencies, priced in chaos (PoE 1) or exalted (PoE 2).

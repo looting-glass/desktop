@@ -215,12 +215,37 @@ pub async fn spawn_tray(_game: Game) {}
 /// The tray menu reads the current game when it opens, nothing to push.
 pub async fn set_tray_game(_game: Game) {}
 
+/// Newer version for the tray menu, read by `lootingglass_tray_update` when the menu opens.
+static TRAY_UPDATE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+pub async fn set_tray_update(version: Option<String>) {
+    *TRAY_UPDATE.lock().unwrap() = version;
+}
+
+/// Copies the newer version (NUL-terminated UTF-8) into `buf`; returns 0 when there is none.
+#[unsafe(no_mangle)]
+extern "C" fn lootingglass_tray_update(buf: *mut u8, len: usize) -> i32 {
+    let v = TRAY_UPDATE.lock().unwrap();
+    let Some(v) = v.as_deref() else { return 0 };
+    if buf.is_null() || v.len() + 1 > len {
+        return 0;
+    }
+    // SAFETY: the caller passes a writable buffer of `len` bytes.
+    unsafe {
+        std::ptr::copy_nonoverlapping(v.as_ptr(), buf, v.len());
+        *buf.add(v.len()) = 0;
+    }
+    1
+}
+
 #[unsafe(no_mangle)]
 extern "C" fn lootingglass_tray_action(action: i32) {
     let ev = match action {
         0 => Event::OpenManual,
         1 => Event::OpenSettings,
         2 => Event::Quit,
+        3 => Event::OpenAbout,
+        4 => Event::CheckUpdates,
         10 => Event::SetGame(Game::Poe1),
         11 => Event::SetGame(Game::Poe2),
         _ => return,

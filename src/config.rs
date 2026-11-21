@@ -101,6 +101,7 @@ pub struct Config {
     pub poe2: GameConfig,
     pub trade: TradeConfig,
     pub overlay: OverlayConfig,
+    pub updates: UpdatesConfig,
     /// Optional contact info appended to the User-Agent (GGG asks API clients to identify themselves).
     pub contact: String,
     /// Global hotkeys, on platforms where Looting Glass registers them itself (Windows). On Linux
@@ -153,6 +154,19 @@ impl Default for TradeConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct UpdatesConfig {
+    /// Look for a newer release on GitHub at start-up and once a day.
+    pub check: bool,
+}
+
+impl Default for UpdatesConfig {
+    fn default() -> Self {
+        Self { check: true }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct OverlayConfig {
     pub side: Side,
     pub margin_top: i32,
@@ -178,6 +192,7 @@ impl Default for Config {
             poe2: GameConfig::default(),
             trade: TradeConfig::default(),
             overlay: OverlayConfig::default(),
+            updates: UpdatesConfig::default(),
             contact: String::new(),
             #[cfg(windows)]
             shortcuts: ShortcutsConfig::default(),
@@ -267,6 +282,9 @@ mod tests {
         assert_eq!(c.poe1.league, "Standard");
         assert_eq!(c.trade.stat_tolerance, 10);
         assert_eq!(c.overlay.width, 380);
+        assert!(c.updates.check);
+        let off: Config = toml::from_str("[updates]\ncheck = false\n").unwrap();
+        assert!(!off.updates.check);
     }
 
     #[test]
