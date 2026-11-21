@@ -1,0 +1,16 @@
+Item Class: Rings
+Rarity: Rare
+Grim Coil
+Ruby Ring
+--------
+Requires: Level 52
+--------
+Item Level: 78
+--------
++24% to Fire Resistance (implicit)
+--------
++61 to maximum Life
++11% to all Elemental Resistances
++31% to Lightning Resistance
++14 to Dexterity
++18 to Intelligence

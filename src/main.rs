@@ -9,6 +9,7 @@ mod mock;
 mod item;
 mod ninja;
 mod platform;
+mod pseudo;
 mod trade;
 mod update;
 

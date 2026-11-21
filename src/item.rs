@@ -338,6 +338,8 @@ mod tests {
             ("sceptre-poe2", include_str!("../dev/sceptre-poe2.txt")),
             ("divine", include_str!("../dev/divine.txt")),
             ("chaos-poe2", include_str!("../dev/chaos-poe2.txt")),
+            ("ring", include_str!("../dev/ring.txt")),
+            ("ring-poe2", include_str!("../dev/ring-poe2.txt")),
         ] {
             let it = parse(text).unwrap_or_else(|| panic!("{name} doesn't parse"));
             assert!(!it.base.is_empty(), "{name} has no base");
