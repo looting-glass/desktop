@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.0](https://github.com/looting-glass/desktop/compare/v0.7.0...v0.8.0) (2026-11-21)
+
+
+### Features
+
+* bulk exchange offers for currency and other stackables ([#43](https://github.com/looting-glass/desktop/issues/43)) ([fdb040c](https://github.com/looting-glass/desktop/commit/fdb040ce0f99b390a7eef3f1ffe4ba91fc5490d8))
+* map check that highlights dangerous map mods ([#44](https://github.com/looting-glass/desktop/issues/44)) ([6eb612e](https://github.com/looting-glass/desktop/commit/6eb612ea94531c5fc42f209759e91687c097a334)), closes [#26](https://github.com/looting-glass/desktop/issues/26)
+* purple-pink app icon to match the app's accent ([#40](https://github.com/looting-glass/desktop/issues/40)) ([2e89bec](https://github.com/looting-glass/desktop/commit/2e89bec5a091509935e4ec125f80c6a6b358316a))
+* show mod tiers and roll ranges from advanced item text ([#42](https://github.com/looting-glass/desktop/issues/42)) ([15ace41](https://github.com/looting-glass/desktop/commit/15ace41ffce1a45a168b86640757fcf9e423b31b)), closes [#27](https://github.com/looting-glass/desktop/issues/27)
+
 ## [0.7.0](https://github.com/looting-glass/desktop/compare/v0.6.0...v0.7.0) (2026-11-21)
 
 
