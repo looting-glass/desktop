@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/looting-glass/desktop/compare/v0.8.0...v0.9.0) (2026-11-21)
+
+
+### Features
+
+* map check is PoE 1 only, with an on/off option ([#45](https://github.com/looting-glass/desktop/issues/45)) ([8e2c601](https://github.com/looting-glass/desktop/commit/8e2c60180fddc7301d91bd005809f606e5526662))
+
+
+### Bug Fixes
+
+* tray icon in the new purple-pink colours ([#46](https://github.com/looting-glass/desktop/issues/46)) ([44abb72](https://github.com/looting-glass/desktop/commit/44abb7256ff041a32ceb3ae251a8b6f52040e954))
+
 ## [0.8.0](https://github.com/looting-glass/desktop/compare/v0.7.0...v0.8.0) (2026-11-21)
 
 
