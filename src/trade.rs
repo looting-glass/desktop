@@ -1,7 +1,7 @@
 //! Official trade API client (pathofexile.com/api/trade for PoE 1, /api/trade2 for PoE 2).
 
 use crate::config::{Config, Game, urlencode};
-use crate::item::{Item, Rarity};
+use crate::item::{Item, ModKind, Rarity};
 use crate::pseudo;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -44,7 +44,8 @@ pub struct PriceResult {
 }
 
 /// One toggleable search criterion shown in the overlay.
-/// `id` is a trade stat id, or `prop:<key>` / `misc:<key>` for item properties.
+/// `id` is a trade stat id (`<id>|<option>` for option stats such as cluster jewel enchants), or
+/// `prop:<key>` / `misc:<key>` / `socket:<key>` / `flag:<key>` for item properties.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Filter {
     pub id: String,
@@ -225,6 +226,28 @@ pub async fn base_type(item: &Item, cfg: &Config) -> Option<String> {
     resolve_base(item, d)
 }
 
+/// Trade category for an item: cluster jewels have their own, other items go by class.
+fn item_category(item: &Item) -> Option<&'static str> {
+    if item.base.ends_with("Cluster Jewel") {
+        return Some("jewel.cluster");
+    }
+    category(&item.class)
+}
+
+/// Special-item flags each trade site can filter on (`misc_filters` yes/no options).
+fn flag_supported(game: Game, key: &str) -> bool {
+    match game {
+        Game::Poe1 => true,
+        Game::Poe2 => matches!(key, "fractured_item" | "veiled"),
+    }
+}
+
+const FLAG_LABELS: &[(&str, &str)] = &[
+    ("fractured_item", "Fractured item"), ("synthesised_item", "Synthesised item"),
+    ("searing_item", "Searing Exarch item"), ("tangled_item", "Eater of Worlds item"),
+    ("veiled", "Has a veiled mod"),
+];
+
 /// Build the default search for an item.
 pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
     let d = data(cfg.game, &cfg.user_agent()).await.context("Failed to load trade data")?;
@@ -292,6 +315,39 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
         filters.push(f("misc:ilvl".into(), format!("Item Level: {l}"), "property", false, Some(l as f64)));
     }
 
+    // Sockets: links set a PoE 1 item's price (5- and 6-links); PoE 2 has rune sockets instead.
+    let unique = item.rarity == Rarity::Unique;
+    match (cfg.game, item.socket_count()) {
+        (_, 0) => {}
+        (Game::Poe1, n) => {
+            let links = item.max_links();
+            if links >= 2 {
+                filters.push(f("socket:links".into(), format!("Links: {links}"), "socket", links >= 5, Some(links as f64)));
+            }
+            filters.push(f("socket:sockets".into(), format!("Sockets: {n}"), "socket", false, Some(n as f64)));
+        }
+        (Game::Poe2, n) => {
+            filters.push(f("prop:rune_sockets".into(), format!("Rune Sockets: {n}"), "socket", false, Some(n as f64)));
+        }
+    }
+    // PoE 1 influences are pseudo stats on the trade site.
+    if cfg.game == Game::Poe1 {
+        for inf in &item.influences {
+            let id = format!("pseudo.pseudo_has_{inf}_influence");
+            if !d.stats.values().flatten().any(|(i, _)| *i == id) {
+                log::info!("no trade stat {id}");
+                continue;
+            }
+            let mut name = inf.to_string();
+            name[..1].make_ascii_uppercase();
+            filters.push(f(id, format!("{name} influence"), "influence", !unique, None));
+        }
+    }
+    for flag in item.flags.iter().filter(|k| flag_supported(cfg.game, k)) {
+        let label = FLAG_LABELS.iter().find(|(k, _)| k == flag).map_or(*flag, |(_, l)| *l);
+        filters.push(f(format!("flag:{flag}"), label.into(), "property", !unique && *flag != "veiled", None));
+    }
+
     let tol = 1.0 - cfg.trade.stat_tolerance as f64 / 100.0;
     let mut stats = Vec::new();
     // Index into `item.mods` for each entry of `stats`.
@@ -302,15 +358,20 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
         let group = m.kind.trade_type().to_string();
         let ids = d.stats.get(&(group.clone(), m.template.clone())).or_else(|| {
             (cfg.game == Game::Poe2)
-                .then(|| d.stats.get(&(group, m.template.replace("+#", "#"))))
+                .then(|| d.stats.get(&(group.clone(), m.template.replace("+#", "#"))))
                 .flatten()
         });
+        // Option stats are listed with their numbers ("Added Small Passive Skills grant: 12%
+        // increased Fire Damage"), so match the mod's own text.
+        let by_text = ids.is_none();
+        let ids = ids.or_else(|| d.stats.get(&(group, m.text.clone())));
         let Some(ids) = ids else {
             log::info!("no trade stat for {} mod: {:?}", m.kind.trade_type(), m.template);
             continue;
         };
         let id = ids.iter().find(|(_, l)| *l == item.has_local_props).unwrap_or(&ids[0]).0.clone();
-        let min = (!m.values.is_empty())
+        // A stat matched by its full text has nothing left to compare ("1 Added Passive Skill is …").
+        let min = (!m.values.is_empty() && !by_text)
             .then(|| m.values.iter().sum::<f64>() / m.values.len() as f64)
             .filter(|avg| *avg > 0.0)
             .map(|avg| (avg * tol).floor());
@@ -322,13 +383,22 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
     if stats.len() <= 3 {
         stats.iter_mut().for_each(|s| s.enabled = true);
     }
+    // Cluster jewels are priced by their enchant (passive count and type) and notables.
+    if item_category(item) == Some("jewel.cluster") {
+        for (s, mi) in stats.iter_mut().zip(&stat_mods) {
+            let m = &item.mods[*mi];
+            if m.kind == ModKind::Enchant || m.text.starts_with("1 Added Passive Skill is ") {
+                s.enabled = true;
+            }
+        }
+    }
     if item.rarity == Rarity::Unique {
         stats.iter_mut().for_each(|s| s.enabled = false);
     }
 
     // Totals over related mods. On armour and jewellery the elemental resistance and life totals
     // replace their mods by default; the mods stay listed, unticked, for an exact search.
-    let gear = category(&item.class).is_some_and(|c| c.starts_with("armour.") || c.starts_with("accessory."));
+    let gear = item_category(item).is_some_and(|c| c.starts_with("armour.") || c.starts_with("accessory."));
     for t in pseudo::totals(cfg.game, &item.mods, item.has_local_props) {
         let known = d.stats.get(&("pseudo".to_string(), t.pseudo.text.to_string()));
         if !known.is_some_and(|ids| ids.iter().any(|(id, _)| id == t.pseudo.id)) {
@@ -358,8 +428,8 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
         base,
         // Rares are about their mods, not the exact base: search the whole category by
         // default (like Awakened PoE Trade); exact base stays one click away.
-        use_base: !(item.rarity == Rarity::Rare && category(&item.class).is_some()),
-        category: category(&item.class).map(str::to_string),
+        use_base: !(item.rarity == Rarity::Rare && item_category(item).is_some()),
+        category: item_category(item).map(str::to_string),
         corrupted: item.corrupted,
         filter_corrupted: matches!(item.rarity, Rarity::Unique | Rarity::Gem),
         class: item.class.clone(),
@@ -368,10 +438,15 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
     })
 }
 
+/// Whole numbers go out as integers: some filters (links, sockets) reject `6.0`.
+fn num(x: f64) -> Value {
+    if x.fract() == 0.0 && x.abs() < 1e15 { json!(x as i64) } else { json!(x) }
+}
+
 fn range(f: &Filter) -> Value {
     let mut v = json!({});
-    if let Some(m) = f.min { v["min"] = json!(m) }
-    if let Some(m) = f.max { v["max"] = json!(m) }
+    if let Some(m) = f.min { v["min"] = num(m) }
+    if let Some(m) = f.max { v["max"] = num(m) }
     v
 }
 
@@ -412,6 +487,13 @@ fn build_query(spec: &Spec) -> Value {
         } else if let Some(k) = f.id.strip_prefix("misc:") {
             let g = if k == "gem_level" { "misc_filters" } else { lvl_group };
             put(g, k, range(f));
+        } else if let Some(k) = f.id.strip_prefix("socket:") {
+            put("socket_filters", k, range(f));
+        } else if let Some(k) = f.id.strip_prefix("flag:") {
+            put("misc_filters", k, json!({ "option": "true" }));
+        } else if let Some((id, opt)) = f.id.split_once('|') {
+            let opt = opt.parse::<i64>().map_or_else(|_| json!(opt), |n| json!(n));
+            stats.push(json!({ "id": id, "value": { "option": opt } }));
         } else {
             stats.push(json!({ "id": f.id, "value": range(f) }));
         }
@@ -622,6 +704,70 @@ mod tests {
         assert_eq!(block(base_type(&magic, &cfg(Game::Poe1))).as_deref(), Some("Slink Boots"));
         let rare = parse(include_str!("../dev/boots.txt")).unwrap();
         assert_eq!(block(base_type(&rare, &cfg(Game::Poe1))).as_deref(), Some("Slink Boots"));
+    }
+
+    fn by_id<'a>(s: &'a Spec, id: &str) -> &'a Filter {
+        s.filters.iter().find(|f| f.id == id).unwrap_or_else(|| panic!("no {id} in {:?}", s.filters))
+    }
+
+    #[test]
+    fn six_links_are_searched() {
+        let s = spec_for(include_str!("../dev/sixlink.txt"), Game::Poe1);
+        let links = by_id(&s, "socket:links");
+        assert_eq!((links.label.as_str(), links.min, links.enabled), ("Links: 6", Some(6.0), true));
+        assert!(!by_id(&s, "socket:sockets").enabled);
+        let q = build_query(&s);
+        assert_eq!(q["query"]["filters"]["socket_filters"]["filters"]["links"]["min"], json!(6), "the API wants an integer");
+        assert!(q["query"]["filters"]["socket_filters"]["filters"]["sockets"].is_null());
+    }
+
+    #[test]
+    fn influences_and_special_items_are_searched() {
+        let s = spec_for(include_str!("../dev/influenced.txt"), Game::Poe1);
+        assert!(by_id(&s, "pseudo.pseudo_has_hunter_influence").enabled);
+        assert!(by_id(&s, "pseudo.pseudo_has_redeemer_influence").enabled);
+        assert!(by_id(&s, "flag:fractured_item").enabled);
+        assert!(!by_id(&s, "flag:veiled").enabled, "veiled is opt-in");
+        let q = build_query(&s);
+        assert_eq!(q["query"]["filters"]["misc_filters"]["filters"]["fractured_item"]["option"], "true");
+        let ids: Vec<&str> =
+            q["query"]["stats"][0]["filters"].as_array().unwrap().iter().map(|f| f["id"].as_str().unwrap()).collect();
+        assert!(ids.contains(&"pseudo.pseudo_has_hunter_influence"));
+        // The same lines in a PoE 2 item: no influences there, and only the flags PoE 2 has.
+        let s2 = spec_for(include_str!("../dev/influenced.txt"), Game::Poe2);
+        assert!(!s2.filters.iter().any(|f| f.tag == "influence"));
+        assert!(s2.filters.iter().any(|f| f.id == "flag:fractured_item"));
+        let synth = parse("Item Class: Rings\nRarity: Rare\nX\nSynthesised Opal Ring\n--------\nSynthesised Item\n").unwrap();
+        let s2 = block(prepare(&synth, &cfg(Game::Poe2))).unwrap();
+        assert!(!s2.filters.iter().any(|f| f.id == "flag:synthesised_item"), "PoE 2 has no synthesised items");
+    }
+
+    #[test]
+    fn cluster_jewels_search_enchant_and_notables() {
+        let s = spec_for(include_str!("../dev/cluster.txt"), Game::Poe1);
+        assert_eq!(s.category.as_deref(), Some("jewel.cluster"));
+        for on in ["Adds 8 Passive Skills", "12% increased Fire Damage", "Prismatic Heart", "Burning Bright"] {
+            assert!(filter(&s, on).enabled, "{on} should be ticked");
+        }
+        let small = filter(&s, "Added Small Passive Skills grant");
+        assert_eq!((small.id.as_str(), small.min), ("enchant.stat_3948993189|13", None));
+        assert_eq!(filter(&s, "Prismatic Heart").min, None, "notables have no value to compare");
+        let q = build_query(&s);
+        let stats = q["query"]["stats"][0]["filters"].as_array().unwrap();
+        let opt = stats.iter().find(|f| f["id"] == "enchant.stat_3948993189").expect("option stat sent");
+        assert_eq!(opt["value"], json!({ "option": 13 }));
+    }
+
+    #[test]
+    fn poe2_rune_sockets() {
+        let s = spec_for(include_str!("../dev/runes-poe2.txt"), Game::Poe2);
+        let rs = by_id(&s, "prop:rune_sockets");
+        assert_eq!((rs.label.as_str(), rs.min, rs.enabled), ("Rune Sockets: 2", Some(2.0), false));
+        assert!(!s.filters.iter().any(|f| f.id.starts_with("socket:")), "no PoE 1 socket filters");
+        assert!(s.filters.iter().any(|f| f.tag == "rune"), "socketed runes are their own mods");
+        let mut s = s;
+        s.filters.iter_mut().for_each(|f| f.enabled = f.id == "prop:rune_sockets");
+        assert_eq!(build_query(&s)["query"]["filters"]["equipment_filters"]["filters"]["rune_sockets"]["min"], 2.0);
     }
 
     #[test]

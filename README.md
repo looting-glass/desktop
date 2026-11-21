@@ -46,6 +46,10 @@ all use the desktop's native mechanisms.
   also searched as the trade site's pseudo totals (e.g. total elemental resistance), so items with
   the same value split differently still match. The single mods stay listed for an exact search,
   and filters are grouped into foldable Properties, Totals and Mods sections.
+- **Sockets, influences and special bases.** PoE 1 links and sockets (5- and 6-links are searched
+  by default), Shaper/Elder/Conqueror influences, fractured, synthesised, Searing Exarch, Eater of
+  Worlds and veiled items, and cluster jewels by passive count, enchant and notables. PoE 2 rune
+  sockets, with the socketed runes as their own mods.
 - **Quality-adjusted values.** Armour, evasion, energy shield and physical DPS are compared at 20%
   quality, the same way the trade site does.
 - **Weapon DPS filters.** Physical, elemental and total DPS, attack speed and critical chance.

@@ -71,6 +71,13 @@ pub struct Item {
     pub props: Vec<(&'static str, f64)>,
     pub weapon: Option<Weapon>,
     pub mods: Vec<Mod>,
+    /// "Sockets:" line. PoE 1: "R-G-B B" (groups of linked sockets); PoE 2: "S S" (rune sockets).
+    pub sockets: Option<String>,
+    /// PoE 1 influences as trade names: "shaper", "elder", "crusader", "hunter", "redeemer", "warlord".
+    pub influences: Vec<&'static str>,
+    /// Special item kinds as trade `misc_filters` keys: "fractured_item", "synthesised_item",
+    /// "searing_item", "tangled_item", "veiled".
+    pub flags: Vec<&'static str>,
 }
 
 /// Weapon damage lines, as average damage per hit.
@@ -98,6 +105,21 @@ fn first_float(s: &str) -> f64 {
 }
 
 impl Item {
+    /// Number of sockets (any colour, including rune sockets).
+    pub fn socket_count(&self) -> u32 {
+        self.sockets.as_deref().map_or(0, |s| s.chars().filter(|c| c.is_ascii_alphabetic()).count() as u32)
+    }
+
+    /// Size of the largest group of linked sockets (PoE 1).
+    pub fn max_links(&self) -> u32 {
+        self.sockets.as_deref().map_or(0, |s| {
+            s.split_whitespace()
+                .map(|g| g.split('-').filter(|x| !x.is_empty()).count() as u32)
+                .max()
+                .unwrap_or(0)
+        })
+    }
+
     pub fn display_name(&self) -> String {
         match &self.name {
             Some(n) => format!("{n} — {}", self.base),
@@ -115,6 +137,18 @@ const LOCAL_PROPS: &[&str] = &[
     "Armour:", "Evasion Rating:", "Evasion:", "Energy Shield:", "Ward:", "Physical Damage:",
     "Elemental Damage:", "Chaos Damage:", "Attacks per Second:", "Critical Strike Chance:", "Critical Hit Chance:",
     "Block chance:", "Chance to Block:", "Spirit:",
+];
+
+/// Lines PoE 1 adds at the end of influenced items.
+const INFLUENCES: &[(&str, &str)] = &[
+    ("Shaper Item", "shaper"), ("Elder Item", "elder"), ("Crusader Item", "crusader"),
+    ("Hunter Item", "hunter"), ("Redeemer Item", "redeemer"), ("Warlord Item", "warlord"),
+];
+
+/// Lines that mark special items, with their trade `misc_filters` key.
+const FLAG_LINES: &[(&str, &str)] = &[
+    ("Fractured Item", "fractured_item"), ("Synthesised Item", "synthesised_item"),
+    ("Searing Exarch Item", "searing_item"), ("Eater of Worlds Item", "tangled_item"),
 ];
 
 const SUFFIXES: &[(&str, ModKind)] = &[
@@ -165,8 +199,10 @@ pub fn parse(text: &str) -> Option<Item> {
             it.base = base.to_string();
         }
     }
-    if let Some(b) = it.base.strip_prefix("Superior ") {
-        it.base = b.to_string();
+    for prefix in ["Superior ", "Synthesised "] {
+        if let Some(b) = it.base.strip_prefix(prefix) {
+            it.base = b.to_string();
+        }
     }
 
     for sec in &sections[1..] {
@@ -190,6 +226,19 @@ pub fn parse(text: &str) -> Option<Item> {
                 it.corrupted = true;
             } else if line == "Unidentified" {
                 it.unidentified = true;
+            } else if let Some(v) = line.strip_prefix("Sockets: ") {
+                it.sockets = Some(v.trim().to_string());
+            } else if let Some((_, inf)) = INFLUENCES.iter().find(|(l, _)| *l == line) {
+                it.influences.push(inf);
+            } else if let Some((_, flag)) = FLAG_LINES.iter().find(|(l, _)| *l == line) {
+                if !it.flags.contains(flag) {
+                    it.flags.push(flag);
+                }
+            } else if line == "Veiled Prefix" || line == "Veiled Suffix" {
+                // An unrevealed veiled mod: no stat to search, but the trade site can filter on it.
+                if !it.flags.contains(&"veiled") {
+                    it.flags.push("veiled");
+                }
             } else if LOCAL_PROPS.iter().any(|p| line.starts_with(p)) {
                 it.has_local_props = true;
                 let w = it.weapon.get_or_insert_with(Weapon::default);
@@ -209,7 +258,7 @@ pub fn parse(text: &str) -> Option<Item> {
                         it.props.push((key, v as f64));
                     }
                 }
-            } else if !line.contains(": ") && !is_requirements {
+            } else if (!line.contains(": ") || line.starts_with("Added Small Passive Skills grant: ")) && !is_requirements {
                 let mut m = parse_mod(line);
                 if let (ModKind::Explicit, Some(k)) = (m.kind, header) {
                     m.kind = k;
@@ -338,6 +387,10 @@ mod tests {
             ("sceptre-poe2", include_str!("../dev/sceptre-poe2.txt")),
             ("divine", include_str!("../dev/divine.txt")),
             ("unique", include_str!("../dev/unique.txt")),
+            ("sixlink", include_str!("../dev/sixlink.txt")),
+            ("influenced", include_str!("../dev/influenced.txt")),
+            ("cluster", include_str!("../dev/cluster.txt")),
+            ("runes-poe2", include_str!("../dev/runes-poe2.txt")),
             ("chaos-poe2", include_str!("../dev/chaos-poe2.txt")),
             ("ring", include_str!("../dev/ring.txt")),
             ("ring-poe2", include_str!("../dev/ring-poe2.txt")),
@@ -349,6 +402,30 @@ mod tests {
         assert_eq!(boots2.base, "Dragonscale Boots");
         assert_eq!(boots2.mods.len(), 3);
         assert_eq!(parse(include_str!("../dev/chaos-poe2.txt")).unwrap().rarity, Rarity::Currency);
+    }
+
+    #[test]
+    fn parses_sockets_and_links() {
+        let six = parse(include_str!("../dev/sixlink.txt")).unwrap();
+        assert_eq!((six.socket_count(), six.max_links()), (6, 6));
+        let split = parse("Item Class: Gloves\nRarity: Rare\nX\nY Gloves\n--------\nSockets: R-G B-B \n").unwrap();
+        assert_eq!((split.socket_count(), split.max_links()), (4, 2));
+        let runes = parse(include_str!("../dev/runes-poe2.txt")).unwrap();
+        assert_eq!(runes.socket_count(), 2);
+        assert_eq!(runes.mods.iter().filter(|m| m.kind == ModKind::Rune).count(), 2, "socketed runes are mods");
+        assert_eq!(parse(include_str!("../dev/boots.txt")).unwrap().sockets, None);
+    }
+
+    #[test]
+    fn parses_influences_and_special_items() {
+        let ring = parse(include_str!("../dev/influenced.txt")).unwrap();
+        assert_eq!(ring.influences, vec!["hunter", "redeemer"]);
+        assert_eq!(ring.flags, vec!["veiled", "fractured_item"]);
+        assert!(ring.mods.iter().all(|m| !m.text.starts_with("Veiled") && !m.text.ends_with(" Item")));
+        assert_eq!(ring.mods.iter().filter(|m| m.kind == ModKind::Fractured).count(), 1);
+        let synth = parse("Item Class: Rings\nRarity: Rare\nX\nSynthesised Opal Ring\n--------\nSynthesised Item\nSearing Exarch Item\nEater of Worlds Item\n").unwrap();
+        assert_eq!(synth.base, "Opal Ring");
+        assert_eq!(synth.flags, vec!["synthesised_item", "searing_item", "tangled_item"]);
     }
 
     #[test]

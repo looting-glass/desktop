@@ -254,6 +254,7 @@ async fn run_search(spec: trade::Spec) {
             });
         }
         Err(e) => {
+            log::warn!("search failed: {e:#}");
             let msg = q(format!("{e:#}"));
             ui(move |mut b| {
                 b.as_mut().set_message(msg);
