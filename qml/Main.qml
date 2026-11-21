@@ -34,6 +34,28 @@ Window {
         return hasSpec ? spec.filters.filter(f => f.enabled).length : 0
     }
 
+    // Heading for a filter's group in the list: item properties, pseudo totals, then the item's own mods.
+    function filterSection(tag) {
+        if (tag === "pseudo") return "Totals (pseudo stats)"
+        if (tag === "property" || tag === "weapon") return "Properties"
+        return "Mods"
+    }
+
+    // Filter groups the user folded away, by heading; kept for the rest of the session.
+    property var collapsed: ({})
+    function toggleSection(section) {
+        const c = Object.assign({}, collapsed)
+        c[section] = !c[section]
+        collapsed = c
+    }
+    // "2 of 6" ticked filters in a group, shown next to its heading.
+    function sectionCount(section) {
+        rev
+        if (!hasSpec) return ""
+        const fs = spec.filters.filter(f => filterSection(f.tag) === section)
+        return fs.filter(f => f.enabled).length + " of " + fs.length
+    }
+
     function edited() {
         rev++
         searchTimer.restart()
@@ -298,64 +320,140 @@ Window {
 
                 Repeater {
                     model: win.hasSpec && win.expanded ? win.spec.filters : []
-                    delegate: Rectangle {
-                        id: frow
+                    delegate: ColumnLayout {
+                        id: fsec
                         required property var modelData
                         required property int index
-                        readonly property bool on: { win.rev; return win.spec.filters[index].enabled }
+                        readonly property string section: win.filterSection(modelData.tag)
+                        readonly property bool first: index === 0
+                            || win.filterSection(win.spec.filters[index - 1].tag) !== section
                         Layout.fillWidth: true
-                        implicitHeight: frl.implicitHeight + 8
-                        radius: 4
-                        color: "transparent"
-                        AccentTint { anchors.fill: parent; accent: win.accent; active: frow.on }
+                        spacing: 2
 
-                        RowLayout {
-                            id: frl
-                            // Inset so the min/max fields don't touch the highlighted row's edge.
-                            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter
-                                      leftMargin: 12; rightMargin: 6 }
-                            spacing: 4
-                            LgCheckBox {
-                                focusPolicy: Qt.NoFocus
-                                checked: frow.modelData.enabled
-                                onToggled: { win.spec.filters[frow.index].enabled = checked; win.edited() }
-                            }
-                            ColumnLayout {
-                                spacing: 0
-                                Layout.fillWidth: true
-                                Label {
-                                    text: frow.modelData.label
-                                    wrapMode: Text.Wrap
-                                    opacity: frow.on ? 1 : 0.6
-                                    Layout.fillWidth: true
+                        readonly property bool folded: win.collapsed[section] === true
+                        // Hide folded rows entirely, so they don't leave layout spacing behind.
+                        visible: first || !folded
+
+                        // Group heading with a rule, so totals and the mods they sum don't blur
+                        // together. Clicking anywhere on it folds the group away.
+                        Item {
+                            visible: fsec.first
+                            Layout.fillWidth: true
+                            Layout.topMargin: fsec.index === 0 ? 0 : 6
+                            implicitHeight: headRow.implicitHeight
+                            RowLayout {
+                                id: headRow
+                                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
+                                spacing: 6
+                                // Disclosure chevron: › folded, ⌄ unfolded, centred in its square.
+                                Item {
+                                    implicitWidth: 22
+                                    implicitHeight: 22
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 4
+                                        color: pal.windowText
+                                        opacity: headMouse.containsMouse ? 0.12 : 0
+                                    }
+                                    IconImage {
+                                        anchors.centerIn: parent
+                                        sourceSize: Qt.size(16, 16)
+                                        color: pal.windowText
+                                        source: fsec.folded ? "qrc:/lootingglass/icons/chevron-right.svg"
+                                                            : "qrc:/lootingglass/icons/chevron-down.svg"
+                                    }
                                 }
                                 Label {
-                                    text: frow.modelData.tag
-                                    font.pointSize: 7
+                                    text: fsec.section
+                                    font.pointSize: 8
+                                    font.bold: true
                                     font.capitalization: Font.AllUppercase
-                                    opacity: 0.5
+                                    opacity: 0.7
+                                }
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 1
+                                    color: pal.windowText
+                                    opacity: 0.2
+                                }
+                                Label {
+                                    text: win.sectionCount(fsec.section)
+                                    font.pointSize: 8
+                                    opacity: 0.6
                                 }
                             }
-                            TextField {
-                                Layout.preferredWidth: 54
-                                placeholderText: "min"
-                                horizontalAlignment: Text.AlignHCenter
-                                text: frow.modelData.min != null ? frow.modelData.min : ""
-                                validator: DoubleValidator {}
-                                onEditingFinished: {
-                                    win.spec.filters[frow.index].min = text === "" ? null : Number(text)
-                                    win.edited()
-                                }
+                            MouseArea {
+                                id: headMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: win.toggleSection(fsec.section)
+                                ToolTip.visible: containsMouse
+                                ToolTip.delay: 500
+                                ToolTip.text: (fsec.folded ? "Show " : "Hide ") + fsec.section.toLowerCase()
                             }
-                            TextField {
-                                Layout.preferredWidth: 54
-                                placeholderText: "max"
-                                horizontalAlignment: Text.AlignHCenter
-                                text: frow.modelData.max != null ? frow.modelData.max : ""
-                                validator: DoubleValidator {}
-                                onEditingFinished: {
-                                    win.spec.filters[frow.index].max = text === "" ? null : Number(text)
-                                    win.edited()
+                        }
+                        Rectangle {
+                            id: frow
+                            visible: !fsec.folded
+                            readonly property var modelData: fsec.modelData
+                            readonly property int index: fsec.index
+                            readonly property bool on: { win.rev; return win.spec.filters[index].enabled }
+                            Layout.fillWidth: true
+                            implicitHeight: frl.implicitHeight + 8
+                            radius: 4
+                            color: "transparent"
+                            AccentTint { anchors.fill: parent; accent: win.accent; active: frow.on }
+
+                            RowLayout {
+                                id: frl
+                                // Inset so the min/max fields don't touch the highlighted row's edge.
+                                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter
+                                          leftMargin: 12; rightMargin: 6 }
+                                spacing: 4
+                                LgCheckBox {
+                                    focusPolicy: Qt.NoFocus
+                                    checked: frow.modelData.enabled
+                                    onToggled: { win.spec.filters[frow.index].enabled = checked; win.edited() }
+                                }
+                                ColumnLayout {
+                                    spacing: 0
+                                    Layout.fillWidth: true
+                                    Label {
+                                        text: frow.modelData.label
+                                        wrapMode: Text.Wrap
+                                        opacity: frow.on ? 1 : 0.6
+                                        Layout.fillWidth: true
+                                    }
+                                    Label {
+                                        visible: frow.modelData.tag !== "pseudo"
+                                        text: frow.modelData.tag
+                                        font.pointSize: 7
+                                        font.capitalization: Font.AllUppercase
+                                        opacity: 0.5
+                                    }
+                                }
+                                TextField {
+                                    Layout.preferredWidth: 54
+                                    placeholderText: "min"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: frow.modelData.min != null ? frow.modelData.min : ""
+                                    validator: DoubleValidator {}
+                                    onEditingFinished: {
+                                        win.spec.filters[frow.index].min = text === "" ? null : Number(text)
+                                        win.edited()
+                                    }
+                                }
+                                TextField {
+                                    Layout.preferredWidth: 54
+                                    placeholderText: "max"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: frow.modelData.max != null ? frow.modelData.max : ""
+                                    validator: DoubleValidator {}
+                                    onEditingFinished: {
+                                        win.spec.filters[frow.index].max = text === "" ? null : Number(text)
+                                        win.edited()
+                                    }
                                 }
                             }
                         }
