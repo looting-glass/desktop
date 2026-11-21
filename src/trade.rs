@@ -210,13 +210,25 @@ fn category(class: &str) -> Option<&'static str> {
     })
 }
 
+/// The item's base type: magic item names carry affixes ("Sapphire Ring of the Whale"), so they
+/// are matched against the trade site's base list.
+fn resolve_base(item: &Item, d: &GameData) -> Option<String> {
+    match item.rarity {
+        Rarity::Magic => d.bases.iter().find(|b| item.base.contains(b.as_str())).cloned(),
+        _ => Some(item.base.clone()),
+    }
+}
+
+/// Base type for an item, or `None` when the trade data can't be loaded or doesn't know it.
+pub async fn base_type(item: &Item, cfg: &Config) -> Option<String> {
+    let d = data(cfg.game, &cfg.user_agent()).await.ok()?;
+    resolve_base(item, d)
+}
+
 /// Build the default search for an item.
 pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
     let d = data(cfg.game, &cfg.user_agent()).await.context("Failed to load trade data")?;
-    let base = match item.rarity {
-        Rarity::Magic => d.bases.iter().find(|b| item.base.contains(b.as_str())).cloned(),
-        _ => Some(item.base.clone()),
-    };
+    let base = resolve_base(item, d);
     let mut filters = Vec::new();
     let f = |id: String, label: String, tag: &str, enabled: bool, min: Option<f64>| Filter {
         id, label, tag: tag.into(), enabled, min, max: None,
@@ -602,6 +614,14 @@ mod tests {
         let q = build_query(&s);
         assert_eq!(q["query"]["type"], "Slink Boots");
         assert!(q["query"]["filters"]["type_filters"].is_null());
+    }
+
+    #[test]
+    fn magic_items_resolve_to_their_base() {
+        let magic = parse("Item Class: Boots\nRarity: Magic\nFleet Slink Boots of the Fox\n--------\n").unwrap();
+        assert_eq!(block(base_type(&magic, &cfg(Game::Poe1))).as_deref(), Some("Slink Boots"));
+        let rare = parse(include_str!("../dev/boots.txt")).unwrap();
+        assert_eq!(block(base_type(&rare, &cfg(Game::Poe1))).as_deref(), Some("Slink Boots"));
     }
 
     #[test]

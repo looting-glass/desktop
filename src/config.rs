@@ -102,6 +102,7 @@ pub struct Config {
     pub trade: TradeConfig,
     pub overlay: OverlayConfig,
     pub updates: UpdatesConfig,
+    pub links: LinksConfig,
     /// Optional contact info appended to the User-Agent (GGG asks API clients to identify themselves).
     pub contact: String,
     /// Global hotkeys, on platforms where Looting Glass registers them itself (Windows). On Linux
@@ -120,6 +121,7 @@ pub struct ShortcutsConfig {
     pub manual_check: String,
     pub settings: String,
     pub hide_overlay: String,
+    pub item_info: String,
 }
 
 #[cfg(windows)]
@@ -131,6 +133,7 @@ impl Default for ShortcutsConfig {
             manual_check: String::new(),
             settings: String::new(),
             hide_overlay: String::new(),
+            item_info: String::new(),
         }
     }
 }
@@ -150,6 +153,13 @@ impl Default for TradeConfig {
     fn default() -> Self {
         Self { status: "online".into(), stat_tolerance: 10, max_results: 20 }
     }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LinksConfig {
+    /// Where "open item info" (hotkey and overlay button) goes: "wiki" or "poedb".
+    pub site: crate::links::InfoSite,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -193,6 +203,7 @@ impl Default for Config {
             trade: TradeConfig::default(),
             overlay: OverlayConfig::default(),
             updates: UpdatesConfig::default(),
+            links: LinksConfig::default(),
             contact: String::new(),
             #[cfg(windows)]
             shortcuts: ShortcutsConfig::default(),

@@ -141,6 +141,33 @@ Window {
         }
     }
 
+    // Opens a page in the browser: text first, then a small "opens externally" icon with a tight gap.
+    component LinkButton: Button {
+        id: linkBtn
+        property string url
+        // Not `text`: the Breeze style would paint that itself, on top of the label below.
+        property string label
+        focusPolicy: Qt.NoFocus
+        // The Breeze style doesn't pad a custom contentItem; add normal button padding.
+        leftPadding: 12
+        rightPadding: 10
+        enabled: url !== ""
+        onClicked: Qt.openUrlExternally(url)
+        contentItem: RowLayout {
+            spacing: 4
+            opacity: linkBtn.enabled ? 1 : 0.5
+            Label { text: linkBtn.label; color: pal.buttonText }
+            IconImage {
+                name: win.themeIcons ? "external-link-symbolic" : ""
+                source: "qrc:/lootingglass/icons/external-link.svg"
+                color: pal.buttonText
+                sourceSize: Qt.size(14, 14)
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+            }
+        }
+    }
+
     component Chip: Rectangle {
         property alias text: lbl.text
         property bool accent: false
@@ -490,28 +517,14 @@ Window {
                     }
                     Item { Layout.fillWidth: true }
                     BusyIndicator { visible: Backend.overlayState === "loading"; running: visible; implicitWidth: 24; implicitHeight: 24 }
-                    Button {
-                        id: tradeBtn
-                        focusPolicy: Qt.NoFocus
-                        // The Breeze style doesn't pad a custom contentItem; add normal button padding.
-                        leftPadding: 12
-                        rightPadding: 10
-                        enabled: Backend.tradeUrl !== ""
-                        onClicked: Qt.openUrlExternally(Backend.tradeUrl)
-                        // Text first, then a small "opens externally" icon with a tight gap.
-                        contentItem: RowLayout {
-                            spacing: 4
-                            opacity: tradeBtn.enabled ? 1 : 0.5
-                            Label { text: "Trade"; color: pal.buttonText }
-                            IconImage {
-                                name: win.themeIcons ? "external-link-symbolic" : ""
-                                source: "qrc:/lootingglass/icons/external-link.svg"
-                                color: pal.buttonText
-                                sourceSize: Qt.size(14, 14)
-                                Layout.preferredWidth: 14
-                                Layout.preferredHeight: 14
-                            }
-                        }
+                    LinkButton {
+                        visible: Backend.infoUrl !== ""
+                        label: Backend.infoLabel
+                        url: Backend.infoUrl
+                    }
+                    LinkButton {
+                        label: "Trade"
+                        url: Backend.tradeUrl
                     }
                 }
 
@@ -659,5 +672,6 @@ Window {
             settings.requestActivate()
         }
         function onOpenAbout() { settings.showAbout() }
+        function onOpenUrl(url) { Qt.openUrlExternally(url) }
     }
 }

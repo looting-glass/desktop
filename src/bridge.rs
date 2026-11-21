@@ -26,6 +26,8 @@ pub mod qobject {
         #[qproperty(QString, snapshot_dir)]
         #[qproperty(QString, demo_text)]
         #[qproperty(QString, trade_url)]
+        #[qproperty(QString, info_url)]
+        #[qproperty(QString, info_label)]
         #[qproperty(QString, game_label)]
         #[qproperty(QString, shortcuts_text)]
         #[qproperty(QString, leagues)]
@@ -82,6 +84,9 @@ pub mod qobject {
         fn open_about(self: Pin<&mut Backend>);
         #[qsignal]
         fn open_manual(self: Pin<&mut Backend>);
+        /// Open a link in the default browser (hotkey actions; QML calls Qt.openUrlExternally).
+        #[qsignal]
+        fn open_url(self: Pin<&mut Backend>, url: QString);
     }
 
     impl cxx_qt::Threading for Backend {}
@@ -110,6 +115,8 @@ pub struct BackendRust {
     snapshot_dir: QString,
     demo_text: QString,
     trade_url: QString,
+    info_url: QString,
+    info_label: QString,
     game_label: QString,
     shortcuts_text: QString,
     leagues: QString,
@@ -148,8 +155,10 @@ pub fn q(s: impl AsRef<str>) -> QString {
 pub fn apply_config(cfg: &Config) {
     let label = q(format!("{} · {}", cfg.game.short(), cfg.league()));
     let o = cfg.overlay.clone();
+    let info_label = q(cfg.links.site.label());
     ui(move |mut b| {
         b.as_mut().set_game_label(label);
+        b.as_mut().set_info_label(info_label);
         b.as_mut().set_side(o.side as i32);
         b.as_mut().set_overlay_width(o.width);
         b.as_mut().set_overlay_max_height(o.max_height);
