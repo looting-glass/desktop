@@ -158,7 +158,7 @@ impl Default for TradeConfig {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LinksConfig {
-    /// Where "open item info" (hotkey and overlay button) goes: "wiki" or "poedb".
+    /// Where "open item info" (hotkey and overlay button) goes: "poedb" (default) or "wiki".
     pub site: crate::links::InfoSite,
 }
 

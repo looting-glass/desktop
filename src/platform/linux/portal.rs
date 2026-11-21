@@ -56,7 +56,7 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
                 NewShortcut::new("settings", "Open Looting Glass settings").preferred_trigger(None),
                 NewShortcut::new("manual-check", "Open manual price check").preferred_trigger(None),
                 NewShortcut::new("hide-overlay", "Hide price overlay").preferred_trigger(None),
-                NewShortcut::new("item-info", "Open hovered item on the wiki or poedb").preferred_trigger(None),
+                NewShortcut::new("item-info", "Open hovered item on poedb or the wiki").preferred_trigger(None),
             ];
             gs.bind_shortcuts(&session, &shortcuts, None, Default::default())
                 .await?

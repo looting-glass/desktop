@@ -1,4 +1,4 @@
-//! Links to an item's page on the community wiki or poedb, per game.
+//! Links to an item's page on poedb or the community wiki, per game.
 
 use crate::config::{Game, urlencode};
 use crate::item::{Item, Rarity};
@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InfoSite {
-    /// poewiki.net (PoE 1) / poe2wiki.net (PoE 2)
+    /// poedb.tw (PoE 1) / poe2db.tw (PoE 2): mod pools and base data, the better default.
     #[default]
-    Wiki,
-    /// poedb.tw (PoE 1) / poe2db.tw (PoE 2)
     Poedb,
+    /// poewiki.net (PoE 1) / poe2wiki.net (PoE 2)
+    Wiki,
 }
 
 impl InfoSite {
@@ -69,6 +69,12 @@ mod tests {
         assert_eq!(url(Game::Poe2, InfoSite::Poedb, "Rattling Sceptre"), "https://poe2db.tw/us/Rattling_Sceptre");
         assert_eq!(url(Game::Poe1, InfoSite::Poedb, "Self-Flagellation"), "https://poedb.tw/us/Self-Flagellation");
         assert_eq!(url(Game::Poe1, InfoSite::Poedb, "Mjölner"), "https://poedb.tw/us/Mj%C3%B6lner");
+    }
+
+    #[test]
+    fn poedb_is_the_default() {
+        assert_eq!(InfoSite::default(), InfoSite::Poedb);
+        assert_eq!(crate::config::Config::default().links.site.label(), "poedb");
     }
 
     #[test]

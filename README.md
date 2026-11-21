@@ -58,8 +58,8 @@ all use the desktop's native mechanisms.
 - **A proper overlay.** Always on top of the game, on the game's screen, without window
   decorations. Drag the ⠿ handle to move it and its free edges to resize it. Close it with Esc,
   Space or by clicking back into the game, or pin it to keep it open until you close it.
-- **Item info.** A hotkey and an overlay button open the item's page on the community wiki or
-  poedb (your choice, per game): uniques by name, everything else by base type.
+- **Item info.** A hotkey and an overlay button open the item's page on poedb (poedb.tw /
+  poe2db.tw), or the community wiki if you prefer: uniques by name, everything else by base type.
 - **Manual check.** Paste item text into a native window (click the tray icon) and check it
   without a hotkey, e.g. items from a friend or a forum post.
 - **Native settings** in a KDE-style window, stored as TOML.
@@ -181,7 +181,7 @@ click the tray icon (or use *Manual check…* in its menu). Paste the item text 
 | Open settings | unassigned |
 | Open manual price check | unassigned |
 | Hide overlay | unassigned |
-| Open hovered item on the wiki or poedb | unassigned |
+| Open hovered item on poedb or the wiki | unassigned |
 
 Change them in *System Settings → Shortcuts → Looting Glass*, or via *Settings → Shortcuts*. On
 Windows, type them straight into *Settings → Shortcuts* (e.g. `Ctrl+D`, `Ctrl+Shift+F7`).
@@ -232,7 +232,7 @@ max_height = 0           # 0 = fit content
 pinned = false           # true = stay open when clicking the game (close with ✕ or Esc)
 
 [links]
-site = "wiki"            # item info opens "wiki" (poewiki.net / poe2wiki.net) or "poedb" (poedb.tw / poe2db.tw)
+site = "poedb"           # item info opens "poedb" (poedb.tw / poe2db.tw) or "wiki" (poewiki.net / poe2wiki.net)
 
 [updates]
 check = true             # look for a new release on GitHub at start-up and once a day

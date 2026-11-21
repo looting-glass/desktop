@@ -27,7 +27,7 @@ ApplicationWindow {
         ["hide_overlay", "Hide overlay:"],
         ["item_info", "Item info:"],
     ]
-    readonly property var infoSites: ["wiki", "poedb"]
+    readonly property var infoSites: ["poedb", "wiki"]
 
     function leaguesFor(key) {
         try { return JSON.parse(Backend.leagues || "{}")[key] || [] } catch (e) { return [] }
@@ -228,8 +228,8 @@ ApplicationWindow {
                         FormLabel { text: "Item info opens:" }
                         ComboBox {
                             id: infoSite
-                            // Per game: poewiki.net / poe2wiki.net, poedb.tw / poe2db.tw.
-                            model: ["Community wiki", "poedb"]
+                            // Per game: poedb.tw / poe2db.tw, poewiki.net / poe2wiki.net.
+                            model: ["poedb", "Community wiki"]
                             Layout.preferredWidth: 260
                         }
                     }
