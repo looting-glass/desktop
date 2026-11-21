@@ -33,6 +33,15 @@ const STATS: &[&str] = &[
     "Allies in your Presence deal #% increased Damage",
     "Allies in your Presence have #% increased Attack Speed",
     "+# to Level of all Minion Skills",
+    "+#% to Fire and Cold Resistances",
+    "Adds # Passive Skills",
+    "# Added Passive Skills are Jewel Sockets",
+    "1 Added Passive Skill is Prismatic Heart",
+    "1 Added Passive Skill is Burning Bright",
+];
+/// Option stats: listed with their numbers and a `|<option>` id, like the real data does.
+const OPTION_STATS: &[(&str, &str, &str)] = &[
+    ("enchant", "enchant.stat_3948993189|13", "Added Small Passive Skills grant: 12% increased Fire Damage"),
 ];
 /// The trade API's "pseudo" group: ids and texts as the real `/data/stats` lists them. Both games
 /// share most of them; only PoE 2 has the all-attributes total.
@@ -52,8 +61,20 @@ const PSEUDO: &[(&str, &str)] = &[
     ("pseudo_total_energy_shield", "+# total maximum Energy Shield"),
 ];
 const PSEUDO_POE2: &[(&str, &str)] = &[("pseudo_total_attributes", "+# total to Attributes")];
-const GROUPS: &[&str] = &["explicit", "implicit", "desecrated", "fractured", "crafted", "rune"];
-const BASES: &[&str] = &["Slink Boots", "Dragonscale Boots", "Ezomyte Axe", "Rattling Sceptre", "Ruby Ring"];
+/// PoE 1 searches influences through pseudo stats.
+const PSEUDO_POE1: &[(&str, &str)] = &[
+    ("pseudo_has_shaper_influence", "Has Shaper Influence"),
+    ("pseudo_has_elder_influence", "Has Elder Influence"),
+    ("pseudo_has_crusader_influence", "Has Crusader Influence"),
+    ("pseudo_has_redeemer_influence", "Has Redeemer Influence"),
+    ("pseudo_has_hunter_influence", "Has Hunter Influence"),
+    ("pseudo_has_warlord_influence", "Has Warlord Influence"),
+];
+const GROUPS: &[&str] = &["explicit", "implicit", "desecrated", "fractured", "crafted", "rune", "enchant"];
+const BASES: &[&str] = &[
+    "Slink Boots", "Dragonscale Boots", "Ezomyte Axe", "Rattling Sceptre", "Ruby Ring", "Astral Plate",
+    "Two-Stone Ring", "Large Cluster Jewel", "Expert Hexer's Robe",
+];
 /// (amount, currency) for the fake listings, cheapest first.
 const PRICES: &[(f64, &str)] = &[
     (1.0, "chaos"), (5.0, "chaos"), (12.0, "chaos"), (1.0, "divine"), (1.0, "divine"),
@@ -82,7 +103,7 @@ pub fn response(method: &str, url: &str) -> Option<Value> {
         let mut groups: Vec<Value> = GROUPS
             .iter()
             .map(|g| {
-                let entries: Vec<Value> = STATS
+                let mut entries: Vec<Value> = STATS
                     .iter()
                     .enumerate()
                     .map(|(i, t)| {
@@ -90,12 +111,15 @@ pub fn response(method: &str, url: &str) -> Option<Value> {
                         json!({ "id": format!("{g}.stat_mock{i}"), "text": text })
                     })
                     .collect();
+                entries.extend(
+                    OPTION_STATS.iter().filter(|(og, ..)| og == g).map(|(_, id, text)| json!({ "id": id, "text": text })),
+                );
                 json!({ "id": g, "entries": entries })
             })
             .collect();
         let pseudo: Vec<Value> = PSEUDO
             .iter()
-            .chain(if poe2 { PSEUDO_POE2 } else { &[] })
+            .chain(if poe2 { PSEUDO_POE2 } else { PSEUDO_POE1 })
             .map(|(id, text)| json!({ "id": format!("pseudo.{id}"), "text": text }))
             .collect();
         groups.insert(0, json!({ "id": "pseudo", "entries": pseudo }));

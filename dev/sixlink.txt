@@ -1,0 +1,22 @@
+Item Class: Body Armours
+Rarity: Rare
+Storm Shell
+Astral Plate
+--------
+Quality: +20% (augmented)
+Armour: 1043 (augmented)
+--------
+Requirements:
+Level: 62
+Str: 180
+--------
+Sockets: R-R-R-G-B-B 
+--------
+Item Level: 86
+--------
++12% to all Elemental Resistances (implicit)
+--------
++102 to maximum Life
++38% to Fire Resistance
++41% to Cold Resistance
++27 to Strength

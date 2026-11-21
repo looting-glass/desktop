@@ -37,7 +37,7 @@ Window {
     // Heading for a filter's group in the list: item properties, pseudo totals, then the item's own mods.
     function filterSection(tag) {
         if (tag === "pseudo") return "Totals (pseudo stats)"
-        if (tag === "property" || tag === "weapon") return "Properties"
+        if (tag === "property" || tag === "weapon" || tag === "socket" || tag === "influence") return "Properties"
         return "Mods"
     }
 
@@ -426,6 +426,8 @@ Window {
                             readonly property var modelData: fsec.modelData
                             readonly property int index: fsec.index
                             readonly property bool on: { win.rev; return win.spec.filters[index].enabled }
+                            // Yes/no filters (influences, fractured, …) have no value to bound.
+                            readonly property bool valued: !(modelData.id.startsWith("flag:") || modelData.tag === "influence")
                             Layout.fillWidth: true
                             implicitHeight: frl.implicitHeight + 8
                             radius: 4
@@ -463,6 +465,9 @@ Window {
                                 TextField {
                                     Layout.preferredWidth: 54
                                     placeholderText: "min"
+                                    // Keep the column aligned, but show nothing for yes/no filters.
+                                    opacity: frow.valued ? 1 : 0
+                                    enabled: frow.valued
                                     horizontalAlignment: Text.AlignHCenter
                                     text: frow.modelData.min != null ? frow.modelData.min : ""
                                     validator: DoubleValidator {}
@@ -474,6 +479,9 @@ Window {
                                 TextField {
                                     Layout.preferredWidth: 54
                                     placeholderText: "max"
+                                    // Keep the column aligned, but show nothing for yes/no filters.
+                                    opacity: frow.valued ? 1 : 0
+                                    enabled: frow.valued
                                     horizontalAlignment: Text.AlignHCenter
                                     text: frow.modelData.max != null ? frow.modelData.max : ""
                                     validator: DoubleValidator {}

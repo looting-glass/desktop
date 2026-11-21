@@ -1,0 +1,20 @@
+Item Class: Body Armours
+Rarity: Rare
+Gale Coat
+Expert Hexer's Robe
+--------
+Energy Shield: 412 (augmented)
+--------
+Requires: Level 75, 140 (augmented) Int
+--------
+Sockets: S S 
+--------
+Item Level: 80
+--------
++12% to Fire Resistance (rune)
++12% to Cold Resistance (rune)
+--------
++92 to maximum Life
++86 to maximum Energy Shield
++28% to Lightning Resistance
++21 to Intelligence
