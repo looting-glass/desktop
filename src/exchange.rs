@@ -102,10 +102,10 @@ pub async fn lookup(game: Game, league: &str, status: &str, name: &str, ua: &str
         return Ok(None);
     };
     let mut best = format!("{} {pay}", fmt(first.unit));
-    if pay != "divine" {
-        if let Some(d) = crate::ninja::per_divine(game, league, pay, ua).await.filter(|d| *d > 0.0) {
-            best.push_str(&format!(" · {} divine", fmt(first.unit / d)));
-        }
+    if pay != "divine"
+        && let Some(d) = crate::ninja::per_divine(game, league, pay, ua).await.filter(|d| *d > 0.0)
+    {
+        best.push_str(&format!(" · {} divine", fmt(first.unit / d)));
     }
     Ok(Some(Exchange {
         best,
