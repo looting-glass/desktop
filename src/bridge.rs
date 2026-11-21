@@ -34,6 +34,7 @@ pub mod qobject {
         #[qproperty(i32, margin_top)]
         #[qproperty(i32, margin_side)]
         #[qproperty(bool, pinned)]
+        #[qproperty(QString, version)]
         type Backend = super::BackendRust;
 
         #[qinvokable]
@@ -101,6 +102,7 @@ pub struct BackendRust {
     margin_top: i32,
     margin_side: i32,
     pinned: bool,
+    version: QString,
 }
 
 type UiFn = Box<dyn FnOnce(Pin<&mut qobject::Backend>) + Send>;
@@ -143,6 +145,7 @@ impl cxx_qt::Initialize for qobject::Backend {
                 self.as_mut().set_demo_text(q(t));
             }
         }
+        self.as_mut().set_version(q(env!("CARGO_PKG_VERSION")));
         let _ = UI.set(Mutex::new(self.qt_thread()));
         apply_config(&config());
         crate::start_background();
