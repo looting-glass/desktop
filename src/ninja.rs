@@ -114,6 +114,11 @@ fn fmt(v: f64) -> String {
     }
 }
 
+/// How many of currency `cur` ("chaos", "exalted") one Divine Orb is worth.
+pub async fn per_divine(game: Game, league: &str, cur: &str, ua: &str) -> Option<f64> {
+    table(game, league, ua).await.get("divine orb")?.values.get(cur).copied()
+}
+
 /// e.g. ("≈ 1.20 divine · 257 chaos", "▲ 5% (7d) · stack of 12: 3.1 divine"); None if unknown.
 pub async fn lookup(game: Game, league: &str, name: &str, stack: Option<u32>, ua: &str) -> Option<(String, String)> {
     let t = table(game, league, ua).await;
@@ -156,6 +161,12 @@ mod tests {
         let (main, detail) = block(lookup(Game::Poe2, "Standard", "chaos orb", None, "test")).unwrap();
         assert_eq!(main, "≈ 20.0 exalted");
         assert_eq!(detail, "▼ 1% (7d)");
+    }
+
+    #[test]
+    fn divine_rate_in_small_currency() {
+        assert_eq!(block(per_divine(Game::Poe1, "Standard", "chaos", "test")), Some(182.0));
+        assert_eq!(block(per_divine(Game::Poe2, "Standard", "exalted", "test")), Some(400.0));
     }
 
     #[test]

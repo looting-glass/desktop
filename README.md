@@ -58,6 +58,8 @@ all use the desktop's native mechanisms.
 - **Weapon DPS filters.** Physical, elemental and total DPS, attack speed and critical chance.
 - **poe.ninja prices** for currency, fragments, essences, scarabs, divination cards, runes, omens
   and other stackables, including the 7-day trend and the value of the whole stack.
+- **Bulk exchange offers.** Next to the poe.ninja average, the cheapest offers on the trade site's
+  bulk exchange right now, with stock, the price per unit and a link to the same exchange search.
 - **PoE 1 and PoE 2 in one app.** Switch game from the tray, the settings or a hotkey; each game
   remembers its own league.
 - **Results at a glance.** Price, item level, listing age and seller, with an online/any toggle and

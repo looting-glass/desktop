@@ -129,6 +129,28 @@ pub fn response(method: &str, url: &str) -> Option<Value> {
         let entries: Vec<Value> = BASES.iter().map(|b| json!({ "type": b })).collect();
         return Some(json!({ "result": [{ "label": "Mock", "entries": entries }] }));
     }
+    if path.ends_with("/data/static") {
+        let entries: Vec<Value> = [("divine", "Divine Orb"), ("chaos", "Chaos Orb"), ("exalted", "Exalted Orb")]
+            .iter()
+            .map(|(id, text)| json!({ "id": id, "text": text }))
+            .collect();
+        return Some(json!({ "result": [{ "id": "Currency", "label": "Currency", "entries": entries }] }));
+    }
+    if method == "POST" && path.contains("/exchange/") {
+        // Unsorted, like the real reply (an object keyed by listing id): units 15, 14, 16, 15.5, 17.
+        let cur = if path.contains("/trade2/") { "exalted" } else { "chaos" };
+        let result: serde_json::Map<String, Value> = [(30.0, 2.0, 12), (70.0, 5.0, 40), (16.0, 1.0, 3), (31.0, 2.0, 9), (17.0, 1.0, 100)]
+            .iter()
+            .enumerate()
+            .map(|(i, (paid, got, stock))| {
+                (format!("ex{i}"), json!({ "listing": { "offers": [{
+                    "exchange": { "currency": cur, "amount": paid },
+                    "item": { "currency": "mock", "amount": got, "stock": stock },
+                }]}}))
+            })
+            .collect();
+        return Some(json!({ "id": "mockex", "total": 5, "result": result }));
+    }
     if method == "POST" && path.contains("/search/") {
         let ids: Vec<String> = (0..13).map(|i| format!("mock{i}")).collect();
         return Some(json!({ "id": "mock", "total": 13, "result": ids }));
