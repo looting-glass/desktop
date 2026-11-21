@@ -454,12 +454,30 @@ Window {
                                         opacity: frow.on ? 1 : 0.6
                                         Layout.fillWidth: true
                                     }
-                                    Label {
+                                    RowLayout {
                                         visible: frow.modelData.tag !== "pseudo"
-                                        text: frow.modelData.tag
-                                        font.pointSize: 7
-                                        font.capitalization: Font.AllUppercase
-                                        opacity: 0.5
+                                        spacing: 0
+                                        Label {
+                                            text: frow.modelData.tag
+                                            font.pointSize: 7
+                                            font.capitalization: Font.AllUppercase
+                                            opacity: 0.5
+                                        }
+                                        // Advanced item text: tier and roll range, top tier highlighted.
+                                        Label {
+                                            visible: frow.modelData.tier != null
+                                            text: " · T" + frow.modelData.tier
+                                            font.pointSize: 7
+                                            font.bold: frow.modelData.tier === 1
+                                            color: frow.modelData.tier === 1 ? win.accent : pal.windowText
+                                            opacity: frow.modelData.tier === 1 ? 1 : 0.5
+                                        }
+                                        Label {
+                                            visible: frow.modelData.range != null
+                                            text: " · " + frow.modelData.range
+                                            font.pointSize: 7
+                                            opacity: 0.5
+                                        }
                                     }
                                 }
                                 TextField {

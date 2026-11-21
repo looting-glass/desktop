@@ -45,6 +45,7 @@ ApplicationWindow {
         infoSite.currentIndex = Math.max(0, infoSites.indexOf(cfg.links.site))
         status.currentIndex = Math.max(0, statuses.indexOf(cfg.trade.status))
         tolerance.value = cfg.trade.stat_tolerance
+        minFromTier.checked = cfg.trade.min_from_tier
         results.value = cfg.trade.max_results
         side.currentIndex = cfg.overlay.side === "left" ? 0 : 1
         width_.value = cfg.overlay.width
@@ -68,6 +69,7 @@ ApplicationWindow {
         c.links.site = infoSites[infoSite.currentIndex]
         c.trade.status = statuses[status.currentIndex]
         c.trade.stat_tolerance = tolerance.value
+        c.trade.min_from_tier = minFromTier.checked
         c.trade.max_results = results.value
         c.overlay.side = side.currentIndex === 0 ? "left" : "right"
         c.overlay.width = width_.value
@@ -244,6 +246,11 @@ ApplicationWindow {
                         SpinBox {
                             id: tolerance
                             from: 0; to: 50
+                        }
+                        Item { implicitWidth: 1 }
+                        LgCheckBox {
+                            id: minFromTier
+                            text: "Use the bottom of the mod's tier instead (Ctrl+Alt+C)"
                         }
                         FormLabel { text: "Listings shown:" }
                         SpinBox {
