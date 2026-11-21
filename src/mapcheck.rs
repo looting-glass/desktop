@@ -1,7 +1,7 @@
-//! Map check: a PoE 1 map's or PoE 2 waystone's mods, coloured by how the player marked them
-//! (deadly / annoying / neutral). Marks are mod templates stored per game in the config.
+//! Map check (PoE 1 maps): a map's mods, coloured by how the player marked them (deadly /
+//! annoying / neutral). Marks are mod templates stored in the config's `[map_check]`.
 
-use crate::config::MapMods;
+use crate::config::MapCheckConfig;
 use crate::item::Item;
 use serde::Serialize;
 
@@ -20,7 +20,7 @@ pub struct MapMod {
 /// What the overlay shows for a map check.
 #[derive(Debug, Serialize, PartialEq)]
 pub struct MapView {
-    /// Item class for the overlay header ("Maps", "Waystones").
+    /// Item class for the overlay header ("Maps").
     pub class: String,
     pub tier: Option<u32>,
     pub quantity: Option<u32>,
@@ -32,7 +32,7 @@ pub struct MapView {
     pub annoying: usize,
 }
 
-pub fn level_of(template: &str, marks: &MapMods) -> &'static str {
+pub fn level_of(template: &str, marks: &MapCheckConfig) -> &'static str {
     if marks.deadly.iter().any(|t| t == template) {
         DEADLY
     } else if marks.annoying.iter().any(|t| t == template) {
@@ -42,7 +42,7 @@ pub fn level_of(template: &str, marks: &MapMods) -> &'static str {
     }
 }
 
-pub fn view(item: &Item, marks: &MapMods) -> MapView {
+pub fn view(item: &Item, marks: &MapCheckConfig) -> MapView {
     let info = item.map.clone().unwrap_or_default();
     let mods: Vec<MapMod> = item
         .mods
@@ -63,7 +63,7 @@ pub fn view(item: &Item, marks: &MapMods) -> MapView {
 }
 
 /// Set a mod's mark: "deadly", "annoying", or anything else to clear it.
-pub fn mark(marks: &mut MapMods, template: &str, level: &str) {
+pub fn mark(marks: &mut MapCheckConfig, template: &str, level: &str) {
     marks.deadly.retain(|t| t != template);
     marks.annoying.retain(|t| t != template);
     match level {
@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn marks_colour_every_roll_of_a_mod() {
         let map = parse(include_str!("../dev/map.txt")).unwrap();
-        let mut marks = MapMods::default();
+        let mut marks = MapCheckConfig::default();
         mark(&mut marks, "Monsters reflect #% of Elemental Damage", DEADLY);
         mark(&mut marks, "Monsters have #% increased Area of Effect", ANNOYING);
         let v = view(&map, &marks);
@@ -95,13 +95,11 @@ mod tests {
     #[test]
     fn re_marking_moves_and_clears() {
         let t = "Players are Cursed with Enfeeble";
-        let mut marks = MapMods::default();
+        let mut marks = MapCheckConfig::default();
         mark(&mut marks, t, ANNOYING);
         mark(&mut marks, t, DEADLY);
         assert_eq!((marks.deadly.len(), marks.annoying.len()), (1, 0));
         mark(&mut marks, t, "");
-        assert_eq!(marks, MapMods::default());
-        let way = parse(include_str!("../dev/waystone-poe2.txt")).unwrap();
-        assert_eq!(view(&way, &marks).deadly, 0);
+        assert_eq!(marks, MapCheckConfig::default());
     }
 }

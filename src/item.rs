@@ -135,9 +135,9 @@ impl Item {
         })
     }
 
-    /// A PoE 1 map or PoE 2 waystone (what the map check works on).
+    /// A PoE 1 map: what the map check works on. (PoE 2 waystones parse too, but aren't checked.)
     pub fn is_map(&self) -> bool {
-        matches!(self.class.as_str(), "Maps" | "Waystones")
+        self.class == "Maps"
     }
 
     pub fn display_name(&self) -> String {
@@ -432,7 +432,7 @@ mod tests {
         assert_eq!(map.mods[1].template, "Monsters reflect #% of Elemental Damage");
 
         let way = parse(include_str!("../dev/waystone-poe2.txt")).unwrap();
-        assert!(way.is_map());
+        assert!(!way.is_map(), "the map check is PoE 1 only");
         assert_eq!(way.map, Some(MapInfo { tier: Some(15), quantity: Some(60), rarity: Some(38), pack_size: Some(15) }));
         assert_eq!(way.mods.len(), 5, "{:?}", way.mods);
         assert_eq!(way.mods[1].template, "Players are Cursed with Enfeeble");

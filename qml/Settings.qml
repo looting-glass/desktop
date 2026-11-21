@@ -41,7 +41,7 @@ ApplicationWindow {
     function load() {
         cfg = JSON.parse(Backend.configJson())
         game.currentIndex = cfg.game === "poe2" ? 1 : 0
-        mapGame.currentIndex = game.currentIndex
+        mapCheckOn.checked = cfg.map_check.enabled
         mapRev++
         syncLeague(league1, cfg.poe1.league)
         syncLeague(league2, cfg.poe2.league)
@@ -64,9 +64,9 @@ ApplicationWindow {
         Backend.refreshLeagues()
         Backend.refreshShortcuts()
     }
-    // Maps page: marked map mods of the game picked there, edited in `cfg` and saved with Save.
+    // Maps page: marked PoE 1 map mods, edited in `cfg` and saved with Save.
     property int mapRev: 0
-    function mapMods() { mapRev; return cfg ? cfg[mapGame.currentIndex === 1 ? "poe2" : "poe1"].map_mods : null }
+    function mapMods() { mapRev; return cfg ? cfg.map_check : null }
     function setMapMark(template, level) {
         const m = mapMods()
         m.deadly = m.deadly.filter(t => t !== template)
@@ -81,6 +81,7 @@ ApplicationWindow {
         c.poe1.league = league1.editText.trim() || "Standard"
         c.poe2.league = league2.editText.trim() || "Standard"
         c.links.site = infoSites[infoSite.currentIndex]
+        c.map_check.enabled = mapCheckOn.checked
         c.trade.status = statuses[status.currentIndex]
         c.trade.stat_tolerance = tolerance.value
         c.trade.min_from_tier = minFromTier.checked
@@ -102,7 +103,7 @@ ApplicationWindow {
     onVisibleChanged: if (visible) load()
 
     function showAbout() {
-        nav.currentIndex = categories.length - 1
+        nav.currentIndex = visibleCategories.length - 1
         show()
         raise()
         requestActivate()
@@ -130,7 +131,7 @@ ApplicationWindow {
         id: snapTimer
         property string dir
         property int step: 0
-        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1], ["settings-about.png", win.categories.length - 1]]
+        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1], ["settings-about.png", win.visibleCategories.length - 1]]
         interval: 800
         onTriggered: page.grabToImage(r => {
             r.saveToFile(dir + "/" + shots[step][0])
@@ -152,6 +153,8 @@ ApplicationWindow {
         { name: "Maps", icon: "nav-maps" },
         { name: "About", icon: "nav-about" },
     ]
+    // The map check is PoE 1 only: its page shows while PoE 1 is selected and the check is on.
+    readonly property var visibleCategories: categories.filter(c => c.name !== "Maps" || (game.currentIndex === 0 && mapCheckOn.checked))
 
     Rectangle {
         id: page
@@ -180,7 +183,7 @@ ApplicationWindow {
                         // Items start further right; their highlight reaches back (leftInset) so the
                         // accent bar has room before the icon. Breeze ignores leftPadding here.
                         anchors.leftMargin: 12
-                        model: win.categories
+                        model: win.visibleCategories
                         currentIndex: 0
                         spacing: 2
                         delegate: ItemDelegate {
@@ -220,7 +223,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.margins: 8
-                    currentIndex: nav.currentIndex
+                    currentIndex: win.categories.findIndex(c => c.name === (win.visibleCategories[nav.currentIndex] || {}).name)
 
                     FormPage {
                         FormLabel { text: "Price check against:" }
@@ -248,6 +251,12 @@ ApplicationWindow {
                             // Per game: poedb.tw / poe2db.tw, poewiki.net / poe2wiki.net.
                             model: ["poedb", "Community wiki"]
                             Layout.preferredWidth: 260
+                        }
+                        FormLabel { text: "Map check:"; visible: game.currentIndex === 0 }
+                        LgCheckBox {
+                            id: mapCheckOn
+                            visible: game.currentIndex === 0
+                            text: "Highlight deadly and annoying map mods"
                         }
                     }
 
@@ -350,17 +359,9 @@ ApplicationWindow {
 
                     ColumnLayout {
                         spacing: 8
-                        RowLayout {
-                            spacing: 12
-                            Label { text: "Marked map mods for:" }
-                            ComboBox {
-                                id: mapGame
-                                model: ["Path of Exile (maps)", "Path of Exile 2 (waystones)"]
-                                onCurrentIndexChanged: win.mapRev++
-                            }
-                        }
+                        Label { text: "Marked map mods"; font.bold: true }
                         Label {
-                            text: "The map check hotkey colours these mods. Mark them from the overlay by clicking a mod, or paste a mod line here."
+                            text: "The map check hotkey colours these mods on Path of Exile maps. Mark them from the overlay by clicking a mod, or paste a mod line here."
                             wrapMode: Text.Wrap
                             opacity: 0.7
                             Layout.fillWidth: true
