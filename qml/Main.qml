@@ -458,6 +458,14 @@ Window {
                     text: "No listings found — try disabling some filters."
                     opacity: 0.7
                 }
+                // Version footer: makes "which version is this?" answerable from any screenshot.
+                Label {
+                    text: "Looting Glass " + Backend.version
+                    font.pointSize: 8.5
+                    opacity: 0.6
+                    Layout.alignment: Qt.AlignRight
+                    Layout.topMargin: 2
+                }
             }
         }
         // Resize handles on the free edges (the other edges sit against the screen).

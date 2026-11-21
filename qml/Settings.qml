@@ -309,6 +309,7 @@ ApplicationWindow {
                     ColumnLayout {
                         spacing: 8
                         Label { text: "Looting Glass"; font.pointSize: Qt.application.font.pointSize * 1.6 }
+                        Label { text: "Version " + Backend.version; opacity: 0.7 }
                         Label {
                             text: "Wayland-native price checker for Path of Exile 1 and 2."
                             wrapMode: Text.Wrap
