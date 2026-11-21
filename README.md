@@ -22,22 +22,6 @@ all use the desktop's native mechanisms.
   <img src="docs/screenshots/demo.gif" alt="Demo: an item is price-checked, a stat filter is unticked and searched again, then a second item is pasted into the manual check" width="340">
 </p>
 
-<table align="center">
-  <tr><th colspan="2">Path of Exile</th></tr>
-  <tr>
-    <td valign="top"><img src="docs/screenshots/poe1-rare.png" alt="PoE 1 rare item price check with editable stat filters" width="300"></td>
-    <td valign="top"><img src="docs/screenshots/poe1-currency.png" alt="PoE 1 currency price check with poe.ninja value" width="300"></td>
-  </tr>
-</table>
-
-<table align="center">
-  <tr><th colspan="2">Path of Exile 2</th></tr>
-  <tr>
-    <td valign="top"><img src="docs/screenshots/poe2-rare.png" alt="PoE 2 rare item price check with editable stat filters" width="300"></td>
-    <td valign="top"><img src="docs/screenshots/poe2-currency.png" alt="PoE 2 currency price check with poe.ninja value" width="300"></td>
-  </tr>
-</table>
-
 ## Features
 
 - **Price check any item.** Uniques by name, rares and magic items by their mods, plus gems,
@@ -72,10 +56,34 @@ all use the desktop's native mechanisms.
   without a hotkey, e.g. items from a friend or a forum post.
 - **Native settings** in a KDE-style window, stored as TOML.
 
+## Screenshots
+
+### Price check overlay
+
+<table align="center">
+  <tr><th colspan="2">Path of Exile</th></tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/poe1-rare.png" alt="PoE 1 rare item price check with editable stat filters" width="300"></td>
+    <td valign="top"><img src="docs/screenshots/poe1-currency.png" alt="PoE 1 currency price check with poe.ninja value" width="300"></td>
+  </tr>
+</table>
+
+<table align="center">
+  <tr><th colspan="2">Path of Exile 2</th></tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/poe2-rare.png" alt="PoE 2 rare item price check with editable stat filters" width="300"></td>
+    <td valign="top"><img src="docs/screenshots/poe2-currency.png" alt="PoE 2 currency price check with poe.ninja value" width="300"></td>
+  </tr>
+</table>
+
+### Settings
+
 <p align="center">
   <img src="docs/screenshots/settings-game.png" alt="Settings: game and league per game" width="420">
   <img src="docs/screenshots/settings-trade.png" alt="Settings: trade options" width="420">
 </p>
+
+### Manual check
 
 <p align="center">
   <img src="docs/screenshots/manual-check.png" alt="Manual price check window with pasted item text" width="600">
