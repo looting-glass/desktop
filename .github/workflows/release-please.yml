@@ -46,3 +46,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.release-please.outputs.tag }}
         run: gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+
+      # The website's download buttons and changelog come from the latest release, filled in
+      # at deploy time. Deploy it now that the files are attached. The token is a fine-grained
+      # PAT with Actions read/write on looting-glass.github.io; without it this step is skipped
+      # and the site's daily deploy picks the release up instead.
+      - name: Refresh the website
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::SITE_DEPLOY_TOKEN is not set; the website picks this release up on its daily deploy"
+            exit 0
+          fi
+          gh workflow run Pages --repo looting-glass/looting-glass.github.io
