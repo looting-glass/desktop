@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/rockymontana/looting-glass/compare/v0.4.1...v0.5.0) (2026-11-21)
+
+
+### Features
+
+* check for updates and install them ([#21](https://github.com/rockymontana/looting-glass/issues/21)) ([8d1cd98](https://github.com/rockymontana/looting-glass/commit/8d1cd9806ddcde7d6a0e3a92bb0ea94ab4a878c6))
+* version footer and single-instance guard ([#19](https://github.com/rockymontana/looting-glass/issues/19)) ([96282ab](https://github.com/rockymontana/looting-glass/commit/96282abbf020462ccc47a4c90b2648da0b7a3d3d))
+
 ## [0.4.1](https://github.com/rockymontana/looting-glass/compare/v0.4.0...v0.4.1) (2026-11-20)
 
 
