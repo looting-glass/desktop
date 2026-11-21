@@ -18,6 +18,9 @@ const STATS: &[&str] = &[
     "+#% to Fire Resistance",
     "+#% to Cold Resistance",
     "+#% to Lightning Resistance",
+    "+#% to Chaos Resistance",
+    "+#% to all Elemental Resistances",
+    "+# to maximum Energy Shield",
     "+# to Strength",
     "+# to Dexterity",
     "+# to Intelligence",
@@ -31,8 +34,26 @@ const STATS: &[&str] = &[
     "Allies in your Presence have #% increased Attack Speed",
     "+# to Level of all Minion Skills",
 ];
+/// The trade API's "pseudo" group: ids and texts as the real `/data/stats` lists them. Both games
+/// share most of them; only PoE 2 has the all-attributes total.
+const PSEUDO: &[(&str, &str)] = &[
+    ("pseudo_total_fire_resistance", "+#% total to Fire Resistance"),
+    ("pseudo_total_cold_resistance", "+#% total to Cold Resistance"),
+    ("pseudo_total_lightning_resistance", "+#% total to Lightning Resistance"),
+    ("pseudo_total_chaos_resistance", "+#% total to Chaos Resistance"),
+    ("pseudo_total_elemental_resistance", "+#% total Elemental Resistance"),
+    ("pseudo_total_resistance", "+#% total Resistance"),
+    ("pseudo_total_strength", "+# total to Strength"),
+    ("pseudo_total_dexterity", "+# total to Dexterity"),
+    ("pseudo_total_intelligence", "+# total to Intelligence"),
+    ("pseudo_total_all_attributes", "+# total to all Attributes"),
+    ("pseudo_total_life", "+# total maximum Life"),
+    ("pseudo_total_mana", "+# total maximum Mana"),
+    ("pseudo_total_energy_shield", "+# total maximum Energy Shield"),
+];
+const PSEUDO_POE2: &[(&str, &str)] = &[("pseudo_total_attributes", "+# total to Attributes")];
 const GROUPS: &[&str] = &["explicit", "implicit", "desecrated", "fractured", "crafted", "rune"];
-const BASES: &[&str] = &["Slink Boots", "Dragonscale Boots", "Ezomyte Axe", "Rattling Sceptre"];
+const BASES: &[&str] = &["Slink Boots", "Dragonscale Boots", "Ezomyte Axe", "Rattling Sceptre", "Ruby Ring"];
 /// (amount, currency) for the fake listings, cheapest first.
 const PRICES: &[(f64, &str)] = &[
     (1.0, "chaos"), (5.0, "chaos"), (12.0, "chaos"), (1.0, "divine"), (1.0, "divine"),
@@ -58,7 +79,7 @@ pub fn response(method: &str, url: &str) -> Option<Value> {
     }
     if path.ends_with("/data/stats") {
         let poe2 = path.contains("/trade2/");
-        let groups: Vec<Value> = GROUPS
+        let mut groups: Vec<Value> = GROUPS
             .iter()
             .map(|g| {
                 let entries: Vec<Value> = STATS
@@ -72,6 +93,12 @@ pub fn response(method: &str, url: &str) -> Option<Value> {
                 json!({ "id": g, "entries": entries })
             })
             .collect();
+        let pseudo: Vec<Value> = PSEUDO
+            .iter()
+            .chain(if poe2 { PSEUDO_POE2 } else { &[] })
+            .map(|(id, text)| json!({ "id": format!("pseudo.{id}"), "text": text }))
+            .collect();
+        groups.insert(0, json!({ "id": "pseudo", "entries": pseudo }));
         return Some(json!({ "result": groups }));
     }
     if path.ends_with("/data/items") {

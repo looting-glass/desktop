@@ -2,6 +2,7 @@
 
 use crate::config::{Config, Game, urlencode};
 use crate::item::{Item, Rarity};
+use crate::pseudo;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -281,7 +282,9 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
 
     let tol = 1.0 - cfg.trade.stat_tolerance as f64 / 100.0;
     let mut stats = Vec::new();
-    for m in &item.mods {
+    // Index into `item.mods` for each entry of `stats`.
+    let mut stat_mods = Vec::new();
+    for (mi, m) in item.mods.iter().enumerate() {
         // PoE 2's trade data drops the leading "+" ("# to maximum Mana"); PoE 1 keeps it, so the
         // fallback is PoE 2-only to avoid matching a different PoE 1 stat.
         let group = m.kind.trade_type().to_string();
@@ -301,6 +304,7 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
             .map(|avg| (avg * tol).floor());
         let important = IMPORTANT.iter().any(|k| m.template.contains(k));
         stats.push(f(id, m.text.clone(), m.kind.trade_type(), important, min));
+        stat_mods.push(mi);
     }
     // Few mods: search them all. Uniques: search by name, stats are opt-in for roll checks.
     if stats.len() <= 3 {
@@ -308,6 +312,29 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
     }
     if item.rarity == Rarity::Unique {
         stats.iter_mut().for_each(|s| s.enabled = false);
+    }
+
+    // Totals over related mods. On armour and jewellery the elemental resistance and life totals
+    // replace their mods by default; the mods stay listed, unticked, for an exact search.
+    let gear = category(&item.class).is_some_and(|c| c.starts_with("armour.") || c.starts_with("accessory."));
+    for t in pseudo::totals(cfg.game, &item.mods, item.has_local_props) {
+        let known = d.stats.get(&("pseudo".to_string(), t.pseudo.text.to_string()));
+        if !known.is_some_and(|ids| ids.iter().any(|(id, _)| id == t.pseudo.id)) {
+            log::info!("no {} trade stat {}", cfg.game.short(), t.pseudo.id);
+            continue;
+        }
+        let on = gear
+            && item.rarity != Rarity::Unique
+            && matches!(t.pseudo.id, "pseudo.pseudo_total_elemental_resistance" | "pseudo.pseudo_total_life");
+        if on {
+            for (s, mi) in stats.iter_mut().zip(&stat_mods) {
+                if t.covers(&item.mods[*mi]) {
+                    s.enabled = false;
+                }
+            }
+        }
+        let min = (t.value * tol).floor();
+        filters.push(f(t.pseudo.id.to_string(), t.label(), "pseudo", on, (min > 0.0).then_some(min)));
     }
     filters.extend(stats);
 
@@ -462,12 +489,59 @@ mod tests {
         let s = spec_for(include_str!("../dev/boots.txt"), Game::Poe1);
         assert_eq!(s.category.as_deref(), Some("armour.boots"));
         assert!(!s.use_base, "rares search the whole category, not the exact base");
-        for on in ["maximum Life", "Movement Speed", "Cold Resistance", "Lightning Resistance"] {
+        for on in ["total maximum Life", "total Elemental Resistance", "Movement Speed"] {
             assert!(filter(&s, on).enabled, "{on} should be enabled by default");
         }
-        assert!(!filter(&s, "Dexterity").enabled, "attributes start unchecked");
+        for off in ["+52 to maximum Life", "Cold Resistance", "Lightning Resistance", "Dexterity"] {
+            assert!(!filter(&s, off).enabled, "{off} should start unchecked");
+        }
         // Minimum = roll minus the 10% default tolerance, rounded down.
-        assert_eq!(filter(&s, "maximum Life").min, Some(46.0));
+        assert_eq!(filter(&s, "+52 to maximum Life").min, Some(46.0));
+        assert_eq!(filter(&s, "total Elemental Resistance").min, Some(49.0));
+    }
+
+    fn pseudos(s: &Spec) -> Vec<(&str, &str, bool)> {
+        s.filters
+            .iter()
+            .filter(|f| f.tag == "pseudo")
+            .map(|f| (f.id.as_str(), f.label.as_str(), f.enabled))
+            .collect()
+    }
+
+    #[test]
+    fn poe1_ring_searches_totals() {
+        let s = spec_for(include_str!("../dev/ring.txt"), Game::Poe1);
+        assert_eq!(pseudos(&s), vec![
+            ("pseudo.pseudo_total_elemental_resistance", "+90% total Elemental Resistance", true),
+            ("pseudo.pseudo_total_life", "+58 total maximum Life", true),
+            ("pseudo.pseudo_total_resistance", "+107% total Resistance", false),
+        ]);
+        assert!(filter(&s, "Chaos Resistance").enabled, "chaos isn't part of the elemental total");
+        assert!(!filter(&s, "Fire Resistance").enabled, "implicits add to the total too");
+        assert!(!filter(&s, "+48 to maximum Life").enabled);
+        let q = build_query(&s);
+        let ids: Vec<&str> =
+            q["query"]["stats"][0]["filters"].as_array().unwrap().iter().map(|f| f["id"].as_str().unwrap()).collect();
+        assert!(ids.contains(&"pseudo.pseudo_total_elemental_resistance"));
+        assert!(!ids.iter().any(|id| id.ends_with("stat_mock4")), "cold resistance isn't searched on its own");
+    }
+
+    #[test]
+    fn poe2_ring_searches_poe2_totals() {
+        let s = spec_for(include_str!("../dev/ring-poe2.txt"), Game::Poe2);
+        assert_eq!(pseudos(&s), vec![
+            ("pseudo.pseudo_total_elemental_resistance", "+88% total Elemental Resistance", true),
+            ("pseudo.pseudo_total_life", "+61 total maximum Life", true),
+            ("pseudo.pseudo_total_attributes", "+32 total to Attributes", false),
+        ]);
+        assert_eq!(filter(&s, "total Elemental").min, Some(79.0));
+        assert!(!filter(&s, "all Elemental Resistances").enabled);
+    }
+
+    #[test]
+    fn pseudos_start_unchecked_off_armour_and_jewellery() {
+        let s = spec_for(include_str!("../dev/sceptre-poe2.txt"), Game::Poe2);
+        assert_eq!(pseudos(&s), vec![("pseudo.pseudo_total_mana", "+13 total maximum Mana", false)]);
     }
 
     #[test]
@@ -495,7 +569,7 @@ mod tests {
     fn poe2_matches_stats_listed_without_plus() {
         let s = spec_for(include_str!("../dev/sceptre-poe2.txt"), Game::Poe2);
         // The PoE 2 trade data says "# to maximum Mana"; the item says "+13 to maximum Mana".
-        assert!(filter(&s, "maximum Mana").id.starts_with("explicit."));
+        assert!(filter(&s, "+13 to maximum Mana").id.starts_with("explicit."));
         assert!(filter(&s, "Spirit").id.starts_with("desecrated."), "desecrated mods keep their group");
         assert!(!s.filters.iter().any(|f| f.label.contains("Onslaught")), "unknown stats are skipped");
     }
