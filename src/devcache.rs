@@ -38,6 +38,10 @@ where
     };
     if let Ok(s) = std::fs::read_to_string(&path) {
         log::debug!("http cache hit: {}", path.display());
+        // Recording a demo: take as long as a real request, so "Searching…" shows up.
+        if std::env::var_os("LOOTINGGLASS_RECORD").is_some() {
+            tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+        }
         return Ok(serde_json::from_str(&s)?);
     }
     let v = fetch(req).await?;

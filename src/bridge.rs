@@ -24,6 +24,8 @@ pub mod qobject {
         #[qproperty(QString, ninja_detail)]
         #[qproperty(i32, overlay_max_height)]
         #[qproperty(QString, snapshot_dir)]
+        #[qproperty(QString, record_dir)]
+        #[qproperty(QString, record_manual)]
         #[qproperty(QString, demo_text)]
         #[qproperty(QString, trade_url)]
         #[qproperty(QString, info_url)]
@@ -113,6 +115,8 @@ pub struct BackendRust {
     ninja_detail: QString,
     overlay_max_height: i32,
     snapshot_dir: QString,
+    record_dir: QString,
+    record_manual: QString,
     demo_text: QString,
     trade_url: QString,
     info_url: QString,
@@ -176,6 +180,15 @@ impl cxx_qt::Initialize for qobject::Backend {
             // Sample text for the manual check window screenshot.
             if let Some(t) = std::env::var_os("LOOTINGGLASS_DEMO").and_then(|p| std::fs::read_to_string(p).ok()) {
                 self.as_mut().set_demo_text(q(t));
+            }
+        }
+        // Dev aid: LOOTINGGLASS_RECORD=<dir> makes QML play a scripted demo and save its frames
+        // there; LOOTINGGLASS_RECORD_MANUAL=<item.txt> adds a manual check of that item.
+        if let Ok(dir) = std::env::var("LOOTINGGLASS_RECORD") {
+            let _ = std::fs::create_dir_all(&dir);
+            self.as_mut().set_record_dir(q(dir));
+            if let Some(t) = std::env::var_os("LOOTINGGLASS_RECORD_MANUAL").and_then(|p| std::fs::read_to_string(p).ok()) {
+                self.as_mut().set_record_manual(q(t.trim_end()));
             }
         }
         self.as_mut().set_version(q(env!("CARGO_PKG_VERSION")));

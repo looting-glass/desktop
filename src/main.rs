@@ -271,9 +271,9 @@ unsafe extern "C" {
 /// Holds an exclusive lock on `instance.lock` for the life of the process, so a second copy
 /// (autostart plus a manual start, say) exits instead of fighting the first for the hotkey.
 /// The OS drops the lock when the process ends, crashes included. Returns false if another
-/// copy holds it. Dev runs (`LOOTINGGLASS_DEMO`/`LOOTINGGLASS_SNAPSHOT`) skip the check.
+/// copy holds it. Dev runs (`LOOTINGGLASS_DEMO`/`_SNAPSHOT`/`_RECORD`) skip the check.
 fn single_instance() -> bool {
-    if std::env::var_os("LOOTINGGLASS_DEMO").is_some() || std::env::var_os("LOOTINGGLASS_SNAPSHOT").is_some() {
+    if ["LOOTINGGLASS_DEMO", "LOOTINGGLASS_SNAPSHOT", "LOOTINGGLASS_RECORD"].iter().any(|v| std::env::var_os(v).is_some()) {
         return true;
     }
     let Some(dir) = dirs::state_dir().or_else(dirs::data_local_dir).map(|d| d.join("lootingglass")) else {

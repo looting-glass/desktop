@@ -13,8 +13,11 @@ Window {
     color: "transparent"
     width: Backend.overlayWidth
     // A height set with the bottom resize edge is fixed (content scrolls); otherwise fit the content.
-    height: Math.min(Backend.overlayMaxHeight > 0 && Backend.snapshotDir === "" ? Backend.overlayMaxHeight : card.implicitHeight,
+    height: Math.min(Backend.overlayMaxHeight > 0 && !win.devCapture ? Backend.overlayMaxHeight : card.implicitHeight,
                      Screen.height - marginTop - 40)
+
+    // Snapshot or recording run (dev aids): full-height card, stays open, seller names blurred.
+    readonly property bool devCapture: Backend.snapshotDir !== "" || Backend.recordDir !== ""
 
     // Read from C++ for layer-shell anchors/margins.
     property int marginTop: Backend.marginTop
@@ -85,7 +88,7 @@ Window {
             activeSince = Date.now()
         } else if (wasActive && visible) {
             if (Date.now() - activeSince < 600) requestActivate()
-            else if (Backend.snapshotDir === "" && !Backend.pinned) Backend.hideOverlay()
+            else if (!win.devCapture && !Backend.pinned) Backend.hideOverlay()
         }
     }
     onVisibleChanged: if (!visible) wasActive = false
@@ -566,7 +569,7 @@ Window {
                                 Layout.fillWidth: true
                                 color: modelData.corrupted ? "#e06c6c" : pal.windowText
                                 // Snapshot mode: blur other players' account names.
-                                layer.enabled: Backend.snapshotDir !== ""
+                                layer.enabled: win.devCapture
                                 layer.effect: MultiEffect { blurEnabled: true; blurMax: 24; blur: 1.0 }
                             }
                         }
@@ -664,6 +667,53 @@ Window {
         target: Backend
         function onOverlayStateChanged() {
             if (Backend.snapshotDir !== "" && Backend.overlayState === "result") snapTimer.restart()
+        }
+    }
+
+    // Dev aid (LOOTINGGLASS_RECORD=<dir>): play a scripted demo and save it as numbered frames
+    // (frame-00000.png, …) at ~12 fps for the README GIF. The LOOTINGGLASS_DEMO item arrives,
+    // one mod filter is unticked and searched again, then (with LOOTINGGLASS_RECORD_MANUAL) a
+    // second item is typed into the manual check window. `dev/record-demo.sh` encodes the frames.
+    property int frameNo: 0
+    property var frameSource: card
+    property int recordStep: 0
+    Timer {
+        id: frameTimer
+        interval: 83
+        repeat: true
+        running: Backend.recordDir !== "" && Backend.overlayVisible
+        onTriggered: {
+            const path = Backend.recordDir + "/frame-" + String(win.frameNo++).padStart(5, "0") + ".png"
+            if (win.frameSource === card) card.grabToImage(r => r.saveToFile(path))
+            else manual.grabFrame(path)
+        }
+    }
+    Timer {
+        id: recordNext
+        interval: 2500
+        onTriggered: {
+            win.recordStep++
+            if (win.recordStep === 1) {
+                // Untick the first ticked mod filter; a fresh copy so the rows redraw.
+                const i = win.spec.filters.findIndex(f => f.enabled && win.filterSection(f.tag) === "Mods")
+                if (i < 0) { recordNext.restart(); return }
+                const s = Object.assign({}, win.spec)
+                s.filters = s.filters.slice()
+                s.filters[i] = Object.assign({}, s.filters[i], { enabled: false })
+                win.spec = s
+                win.edited()
+            } else if (win.recordStep === 2 && Backend.recordManual !== "") {
+                win.frameSource = manual
+                manual.typeDemo(Backend.recordManual, () => { win.frameSource = card })
+            } else {
+                Qt.quit()
+            }
+        }
+    }
+    Connections {
+        target: Backend
+        function onOverlayStateChanged() {
+            if (Backend.recordDir !== "" && Backend.overlayState === "result") recordNext.restart()
         }
     }
 

@@ -38,6 +38,42 @@ ApplicationWindow {
         })
     }
 
+    // LOOTINGGLASS_RECORD: save one frame of the window.
+    function grabFrame(path) { page.grabToImage(r => r.saveToFile(path)) }
+    // LOOTINGGLASS_RECORD: show the window, "paste" `text` a few lines at a time, check it, then
+    // close and call `done` (the overlay takes over the frames).
+    function typeDemo(text, done) {
+        show()
+        // Window managers keep the size they remember; size the captured page instead, about as
+        // wide as the overlay so all frames share one canvas.
+        page.anchors.fill = undefined
+        page.width = minimumWidth
+        page.height = minimumHeight + 40
+        input.text = ""
+        typer.lines = text.split("\n")
+        typer.done = done
+        typer.start()
+    }
+    Timer {
+        id: typer
+        property var lines: []
+        property var done
+        property int pause: 0
+        interval: 60
+        repeat: true
+        onTriggered: {
+            if (lines.length > 0) {
+                input.text += (input.text === "" ? "" : "\n") + lines.splice(0, 2).join("\n")
+            } else if (++pause === 15) {
+                stop()
+                pause = 0
+                check()
+                win.hide()
+                done()
+            }
+        }
+    }
+
     Rectangle {
         id: page
         anchors.fill: parent

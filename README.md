@@ -18,6 +18,10 @@ all use the desktop's native mechanisms.
 
 > Looting Glass is a fan-made tool and is not affiliated with or endorsed by Grinding Gear Games.
 
+<p align="center">
+  <img src="docs/screenshots/demo.gif" alt="Demo: an item is price-checked, a stat filter is unticked and searched again, then a second item is pasted into the manual check" width="340">
+</p>
+
 <table align="center">
   <tr><th colspan="2">Path of Exile</th></tr>
   <tr>
@@ -291,6 +295,7 @@ cargo build
 cargo test
 LOOTINGGLASS_DEMO=dev/boots.txt cargo run         # price-check an item text file without the game
 LOOTINGGLASS_SNAPSHOT=/tmp/shots LOOTINGGLASS_DEMO=dev/boots.txt cargo run   # also save README screenshots
+dev/record-demo.sh                                # re-record the README demo GIF (and the website's MP4)
 LOOTINGGLASS_GAME=poe2 LOOTINGGLASS_DEMO=dev/boots-poe2.txt cargo run       # force a game for this run
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_DEMO=dev/boots.txt cargo run              # fake API responses, no network
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_MOCK_UPDATE=1 cargo run                   # ... and a fake newer release (update UI)
