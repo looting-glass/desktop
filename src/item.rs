@@ -51,6 +51,10 @@ pub struct Mod {
     /// Text with numbers replaced by `#`, the format the trade API uses.
     pub template: String,
     pub values: Vec<f64>,
+    /// Advanced descriptions (Ctrl+Alt+C) only: the mod's tier (1 is the best, in both games)
+    /// and the possible range of each rolled value, e.g. `+52(50-59)` -> `(50, 59)`.
+    pub tier: Option<u32>,
+    pub ranges: Vec<(f64, f64)>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -207,11 +211,14 @@ pub fn parse(text: &str) -> Option<Item> {
 
     for sec in &sections[1..] {
         let is_requirements = sec[0].starts_with("Requirements");
-        // Advanced descriptions put the mod kind in a `{ … }` header above its line(s).
+        // Advanced descriptions put the mod kind and tier in a `{ … }` header above its line(s);
+        // a hybrid mod has several lines under one header.
         let mut header: Option<ModKind> = None;
+        let mut header_tier: Option<u32> = None;
         for &line in sec {
             if line.starts_with('{') {
                 header = header_kind(line);
+                header_tier = TIER.captures(line).and_then(|c| c[1].parse().ok());
             } else if let Some(v) = line.strip_prefix("Item Level: ") {
                 it.item_level = leading_num(v);
             } else if let Some(v) = line.strip_prefix("Level: ") {
@@ -260,6 +267,7 @@ pub fn parse(text: &str) -> Option<Item> {
                 }
             } else if (!line.contains(": ") || line.starts_with("Added Small Passive Skills grant: ")) && !is_requirements {
                 let mut m = parse_mod(line);
+                m.tier = header_tier;
                 if let (ModKind::Explicit, Some(k)) = (m.kind, header) {
                     m.kind = k;
                 }
@@ -285,13 +293,19 @@ fn header_kind(header: &str) -> Option<ModKind> {
 
 /// `[Presence|Presence]` / `[Presence]` keyword markup -> plain word.
 static KEYWORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[(?:[^\]|]*\|)?([^\]]*)\]").unwrap());
-/// Roll ranges from advanced descriptions: `13(10-15)` -> `13`.
+/// Roll ranges from advanced descriptions: `13(10-15)` -> `13`, keeping `10` and `15`.
 static ROLL_RANGE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(\d)\(-?\d+(?:\.\d+)?-\d+(?:\.\d+)?\)").unwrap());
+    LazyLock::new(|| Regex::new(r"(\d)\((-?\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)").unwrap());
+/// `(Tier: 4)` in an advanced description's mod header. Crafted mods have a `(Rank: N)` instead.
+static TIER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\(Tier: (\d+)\)").unwrap());
 
 fn parse_mod(line: &str) -> Mod {
     let mut kind = ModKind::Explicit;
     let clean = KEYWORD.replace_all(line, "$1");
+    let ranges = ROLL_RANGE
+        .captures_iter(&clean)
+        .filter_map(|c| Some((c[2].parse().ok()?, c[3].parse().ok()?)))
+        .collect();
     let clean = ROLL_RANGE.replace_all(&clean, "$1").into_owned();
     let line = clean.as_str();
     let mut text = line;
@@ -308,6 +322,8 @@ fn parse_mod(line: &str) -> Mod {
 
         template: NUM.replace_all(text, "#").into_owned(),
         values: NUM.find_iter(text).filter_map(|m| m.as_str().parse().ok()).collect(),
+        tier: None,
+        ranges,
     }
 }
 
@@ -352,6 +368,10 @@ mod tests {
             ("explicit", "+# to Level of all Minion Skills"),
         ]);
         assert_eq!(it.mods[1].values, vec![74.0]);
+        assert_eq!((it.mods[0].tier, it.mods[0].ranges.len()), (None, 0), "rune mods have no header");
+        assert_eq!((it.mods[1].tier, &it.mods[1].ranges), (Some(4), &vec![(65.0, 74.0)]));
+        assert_eq!((it.mods[2].tier, &it.mods[2].ranges), (Some(11), &vec![(10.0, 14.0)]));
+        assert_eq!((it.mods[6].tier, it.mods[6].ranges.len()), (Some(1), 0), "fixed value, no range");
     }
 
     #[test]
@@ -360,6 +380,19 @@ mod tests {
         let t: Vec<(&str, &str)> = it.mods.iter().map(|m| (m.kind.trade_type(), m.template.as_str())).collect();
         assert_eq!(t, vec![("explicit", "+# to maximum Life"), ("crafted", "+#% to Lightning Resistance")]);
         assert_eq!(it.mods[0].values, vec![52.0]);
+        assert_eq!((it.mods[0].tier, &it.mods[0].ranges), (Some(4), &vec![(50.0, 59.0)]));
+        assert_eq!(it.mods[1].tier, None, "crafted mods have a rank, not a tier");
+        // Plain Ctrl+C text has neither.
+        let plain = parse(RING).unwrap();
+        assert!(plain.mods.iter().all(|m| m.tier.is_none() && m.ranges.is_empty()));
+    }
+
+    #[test]
+    fn hybrid_and_two_value_mods_keep_tier_and_ranges() {
+        let it = parse("Item Class: Body Armours\nRarity: Rare\nX\nY\n--------\nItem Level: 84\n--------\n{ Prefix Modifier \"Rhino's\" (Tier: 1) — Defences, Life }\n+28(24-28) to Armour\n+27(24-28) to maximum Life\n{ Suffix Modifier \"of Ire\" (Tier: 3) — Damage }\nAdds 6(5-7) to 12(11-13) Fire Damage to Attacks\n").unwrap();
+        assert_eq!(it.mods.iter().map(|m| m.tier).collect::<Vec<_>>(), vec![Some(1), Some(1), Some(3)]);
+        assert_eq!(it.mods[2].ranges, vec![(5.0, 7.0), (11.0, 13.0)]);
+        assert_eq!(it.mods[2].values, vec![6.0, 12.0]);
     }
 
     #[test]

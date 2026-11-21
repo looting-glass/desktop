@@ -145,13 +145,16 @@ pub struct TradeConfig {
     pub status: String,
     /// Stat minimums are set to rolled value minus this percentage.
     pub stat_tolerance: u32,
+    /// With advanced item text (Ctrl+Alt+C), set a stat's minimum to the bottom of its tier's
+    /// roll range instead of applying `stat_tolerance`.
+    pub min_from_tier: bool,
     /// Number of listings to fetch and show.
     pub max_results: u32,
 }
 
 impl Default for TradeConfig {
     fn default() -> Self {
-        Self { status: "online".into(), stat_tolerance: 10, max_results: 20 }
+        Self { status: "online".into(), stat_tolerance: 10, min_from_tier: false, max_results: 20 }
     }
 }
 
@@ -292,6 +295,7 @@ mod tests {
         assert_eq!(c.league(), "Dawn");
         assert_eq!(c.poe1.league, "Standard");
         assert_eq!(c.trade.stat_tolerance, 10);
+        assert!(!c.trade.min_from_tier);
         assert_eq!(c.overlay.width, 380);
         assert!(c.updates.check);
         let off: Config = toml::from_str("[updates]\ncheck = false\n").unwrap();

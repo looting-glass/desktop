@@ -54,6 +54,12 @@ pub struct Filter {
     pub enabled: bool,
     pub min: Option<f64>,
     pub max: Option<f64>,
+    /// Mod tier and possible roll range ("50–59"), shown next to stat filters from advanced
+    /// item text (Ctrl+Alt+C).
+    #[serde(default)]
+    pub tier: Option<u32>,
+    #[serde(default)]
+    pub range: Option<String>,
 }
 
 /// Everything needed to (re)run a search; round-trips through the overlay as JSON.
@@ -254,7 +260,7 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
     let base = resolve_base(item, d);
     let mut filters = Vec::new();
     let f = |id: String, label: String, tag: &str, enabled: bool, min: Option<f64>| Filter {
-        id, label, tag: tag.into(), enabled, min, max: None,
+        id, label, tag: tag.into(), enabled, min, max: None, tier: None, range: None,
     };
 
     // The trade site compares armour/evasion/ES and physical DPS at 20% quality.
@@ -371,12 +377,23 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
         };
         let id = ids.iter().find(|(_, l)| *l == item.has_local_props).unwrap_or(&ids[0]).0.clone();
         // A stat matched by its full text has nothing left to compare ("1 Added Passive Skill is …").
-        let min = (!m.values.is_empty() && !by_text)
-            .then(|| m.values.iter().sum::<f64>() / m.values.len() as f64)
-            .filter(|avg| *avg > 0.0)
-            .map(|avg| (avg * tol).floor());
+        let avg = |v: &mut dyn Iterator<Item = f64>, n: usize| v.sum::<f64>() / n as f64;
+        // With "minimum from tier", a ranged roll's minimum is the bottom of its tier's range.
+        let tier_min = (cfg.trade.min_from_tier && !by_text && m.ranges.len() == m.values.len() && !m.ranges.is_empty())
+            .then(|| avg(&mut m.ranges.iter().map(|r| r.0), m.ranges.len()).floor());
+        let min = tier_min.or_else(|| {
+            (!m.values.is_empty() && !by_text)
+                .then(|| avg(&mut m.values.iter().copied(), m.values.len()))
+                .filter(|avg| *avg > 0.0)
+                .map(|avg| (avg * tol).floor())
+        });
         let important = IMPORTANT.iter().any(|k| m.template.contains(k));
-        stats.push(f(id, m.text.clone(), m.kind.trade_type(), important, min));
+        let mut filter = f(id, m.text.clone(), m.kind.trade_type(), important, min);
+        filter.tier = m.tier;
+        filter.range = (!m.ranges.is_empty()).then(|| {
+            m.ranges.iter().map(|(lo, hi)| format!("{}–{}", num_text(*lo), num_text(*hi))).collect::<Vec<_>>().join(", ")
+        });
+        stats.push(filter);
         stat_mods.push(mi);
     }
     // Few mods: search them all. Uniques: search by name, stats are opt-in for roll checks.
@@ -439,6 +456,11 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
 }
 
 /// Whole numbers go out as integers: some filters (links, sockets) reject `6.0`.
+/// `50` for whole numbers, `1.5` otherwise.
+fn num_text(x: f64) -> String {
+    if x.fract() == 0.0 { format!("{x:.0}") } else { format!("{x}") }
+}
+
 fn num(x: f64) -> Value {
     if x.fract() == 0.0 && x.abs() < 1e15 { json!(x as i64) } else { json!(x) }
 }
@@ -576,6 +598,22 @@ mod tests {
             .iter()
             .find(|f| f.label.contains(label_part))
             .unwrap_or_else(|| panic!("no filter with {label_part:?} in {:?}", spec.filters))
+    }
+
+    #[test]
+    fn advanced_text_shows_tiers_and_can_set_minimum_from_tier() {
+        let sample = include_str!("../dev/sceptre-poe2.txt");
+        let s = spec_for(sample, Game::Poe2);
+        let dmg = filter(&s, "increased Damage");
+        assert_eq!((dmg.tier, dmg.range.as_deref()), (Some(4), Some("65–74")));
+        assert_eq!(dmg.min, Some(66.0), "tolerance by default: 74 minus 10%");
+        assert_eq!(filter(&s, "Minion Skills").range, None, "fixed value");
+
+        let mut c = cfg(Game::Poe2);
+        c.trade.min_from_tier = true;
+        let s = block(prepare(&parse(sample).unwrap(), &c)).unwrap();
+        assert_eq!(filter(&s, "increased Damage").min, Some(65.0), "bottom of the tier's range");
+        assert_eq!(filter(&s, "Minion Skills").min, Some(3.0), "no range: tolerance as before");
     }
 
     #[test]

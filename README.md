@@ -50,6 +50,9 @@ all use the desktop's native mechanisms.
   by default), Shaper/Elder/Conqueror influences, fractured, synthesised, Searing Exarch, Eater of
   Worlds and veiled items, and cluster jewels by passive count, enchant and notables. PoE 2 rune
   sockets, with the socketed runes as their own mods.
+- **Mod tiers.** With advanced item text (Ctrl+Alt+C) each mod shows its tier and possible roll
+  range, e.g. "T2 · 50–59", with top-tier rolls highlighted. Optionally the filter minimum is the
+  bottom of the roll's tier instead of a flat tolerance.
 - **Quality-adjusted values.** Armour, evasion, energy shield and physical DPS are compared at 20%
   quality, the same way the trade site does.
 - **Weapon DPS filters.** Physical, elemental and total DPS, attack speed and critical chance.
@@ -225,6 +228,7 @@ league = "Standard"
 [trade]
 status = "online"        # "online", "any", or "securable" (PoE 2 instant buyout)
 stat_tolerance = 10      # % below your roll used as the filter minimum
+min_from_tier = false    # with Ctrl+Alt+C text: minimum = bottom of the mod's tier range
 max_results = 20
 
 [overlay]
