@@ -26,6 +26,7 @@ ApplicationWindow {
         ["settings", "Open settings:"],
         ["hide_overlay", "Hide overlay:"],
         ["item_info", "Item info:"],
+        ["map_check", "Map check:"],
     ]
     readonly property var infoSites: ["poedb", "wiki"]
 
@@ -40,6 +41,8 @@ ApplicationWindow {
     function load() {
         cfg = JSON.parse(Backend.configJson())
         game.currentIndex = cfg.game === "poe2" ? 1 : 0
+        mapGame.currentIndex = game.currentIndex
+        mapRev++
         syncLeague(league1, cfg.poe1.league)
         syncLeague(league2, cfg.poe2.league)
         infoSite.currentIndex = Math.max(0, infoSites.indexOf(cfg.links.site))
@@ -61,6 +64,17 @@ ApplicationWindow {
         Backend.refreshLeagues()
         Backend.refreshShortcuts()
     }
+    // Maps page: marked map mods of the game picked there, edited in `cfg` and saved with Save.
+    property int mapRev: 0
+    function mapMods() { mapRev; return cfg ? cfg[mapGame.currentIndex === 1 ? "poe2" : "poe1"].map_mods : null }
+    function setMapMark(template, level) {
+        const m = mapMods()
+        m.deadly = m.deadly.filter(t => t !== template)
+        m.annoying = m.annoying.filter(t => t !== template)
+        if (level === "deadly" || level === "annoying") m[level].push(template)
+        mapRev++
+    }
+
     function save() {
         const c = cfg
         c.game = game.currentIndex === 1 ? "poe2" : "poe1"
@@ -116,7 +130,7 @@ ApplicationWindow {
         id: snapTimer
         property string dir
         property int step: 0
-        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1], ["settings-about.png", 4]]
+        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1], ["settings-about.png", win.categories.length - 1]]
         interval: 800
         onTriggered: page.grabToImage(r => {
             r.saveToFile(dir + "/" + shots[step][0])
@@ -135,6 +149,7 @@ ApplicationWindow {
         { name: "Trade", icon: "nav-trade" },
         { name: "Overlay", icon: "nav-overlay" },
         { name: "Shortcuts", icon: "nav-shortcuts" },
+        { name: "Maps", icon: "nav-maps" },
         { name: "About", icon: "nav-about" },
     ]
 
@@ -330,6 +345,85 @@ ApplicationWindow {
                             opacity: 0.7
                             wrapMode: Text.Wrap
                             Layout.preferredWidth: 200
+                        }
+                    }
+
+                    ColumnLayout {
+                        spacing: 8
+                        RowLayout {
+                            spacing: 12
+                            Label { text: "Marked map mods for:" }
+                            ComboBox {
+                                id: mapGame
+                                model: ["Path of Exile (maps)", "Path of Exile 2 (waystones)"]
+                                onCurrentIndexChanged: win.mapRev++
+                            }
+                        }
+                        Label {
+                            text: "The map check hotkey colours these mods. Mark them from the overlay by clicking a mod, or paste a mod line here."
+                            wrapMode: Text.Wrap
+                            opacity: 0.7
+                            Layout.fillWidth: true
+                        }
+                        RowLayout {
+                            spacing: 8
+                            TextField {
+                                id: newMapMod
+                                placeholderText: "e.g. Monsters reflect 18% of Elemental Damage"
+                                Layout.fillWidth: true
+                            }
+                            // Numbers become `#`, so the mark covers every roll of the mod.
+                            Button {
+                                text: "Deadly"
+                                enabled: newMapMod.text.trim() !== ""
+                                onClicked: { win.setMapMark(newMapMod.text.trim().replace(/\d+(\.\d+)?/g, "#"), "deadly"); newMapMod.clear() }
+                            }
+                            Button {
+                                text: "Annoying"
+                                enabled: newMapMod.text.trim() !== ""
+                                onClicked: { win.setMapMark(newMapMod.text.trim().replace(/\d+(\.\d+)?/g, "#"), "annoying"); newMapMod.clear() }
+                            }
+                        }
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            contentWidth: availableWidth
+                            ColumnLayout {
+                                width: parent.width
+                                spacing: 2
+                                Repeater {
+                                    model: {
+                                        const m = win.mapMods()
+                                        return m ? m.deadly.map(t => [t, "deadly"]).concat(m.annoying.map(t => [t, "annoying"])) : []
+                                    }
+                                    RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        Label {
+                                            text: modelData[1] === "deadly" ? "DEADLY" : "ANNOYING"
+                                            font.pointSize: 8
+                                            font.bold: true
+                                            color: modelData[1] === "deadly" ? "#e06c6c" : "#e0b84a"
+                                            Layout.preferredWidth: 70
+                                        }
+                                        Label { text: modelData[0]; elide: Text.ElideRight; Layout.fillWidth: true }
+                                        ToolButton {
+                                            text: modelData[1] === "deadly" ? "Annoying" : "Deadly"
+                                            onClicked: win.setMapMark(modelData[0], modelData[1] === "deadly" ? "annoying" : "deadly")
+                                        }
+                                        ToolButton {
+                                            text: "Remove"
+                                            onClicked: win.setMapMark(modelData[0], "")
+                                        }
+                                    }
+                                }
+                                Label {
+                                    visible: { const m = win.mapMods(); return !m || m.deadly.length + m.annoying.length === 0 }
+                                    text: "No marked mods yet."
+                                    opacity: 0.6
+                                }
+                            }
                         }
                     }
 

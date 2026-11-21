@@ -57,6 +57,7 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
                 NewShortcut::new("manual-check", "Open manual price check").preferred_trigger(None),
                 NewShortcut::new("hide-overlay", "Hide price overlay").preferred_trigger(None),
                 NewShortcut::new("item-info", "Open hovered item on poedb or the wiki").preferred_trigger(None),
+                NewShortcut::new("map-check", "Map check: hovered map's mods").preferred_trigger(None),
             ];
             gs.bind_shortcuts(&session, &shortcuts, None, Default::default())
                 .await?
@@ -75,6 +76,7 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
             "manual-check" => Event::OpenManual,
             "hide-overlay" => Event::HideOverlay,
             "item-info" => Event::OpenItemInfo,
+            "map-check" => Event::MapCheck,
             _ => continue,
         };
         let _ = tx.send(ev).await;

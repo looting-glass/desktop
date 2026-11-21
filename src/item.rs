@@ -82,6 +82,17 @@ pub struct Item {
     /// Special item kinds as trade `misc_filters` keys: "fractured_item", "synthesised_item",
     /// "searing_item", "tangled_item", "veiled".
     pub flags: Vec<&'static str>,
+    /// PoE 1 maps and PoE 2 waystones: tier and the area's bonuses.
+    pub map: Option<MapInfo>,
+}
+
+/// Map/waystone header lines; the bonuses are percentages ("Item Quantity: +87%").
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MapInfo {
+    pub tier: Option<u32>,
+    pub quantity: Option<u32>,
+    pub rarity: Option<u32>,
+    pub pack_size: Option<u32>,
 }
 
 /// Weapon damage lines, as average damage per hit.
@@ -122,6 +133,11 @@ impl Item {
                 .max()
                 .unwrap_or(0)
         })
+    }
+
+    /// A PoE 1 map or PoE 2 waystone (what the map check works on).
+    pub fn is_map(&self) -> bool {
+        matches!(self.class.as_str(), "Maps" | "Waystones")
     }
 
     pub fn display_name(&self) -> String {
@@ -209,6 +225,7 @@ pub fn parse(text: &str) -> Option<Item> {
         }
     }
 
+    let is_map = matches!(it.class.as_str(), "Maps" | "Waystones");
     for sec in &sections[1..] {
         let is_requirements = sec[0].starts_with("Requirements");
         // Advanced descriptions put the mod kind and tier in a `{ … }` header above its line(s);
@@ -225,6 +242,16 @@ pub fn parse(text: &str) -> Option<Item> {
                 if it.rarity == Rarity::Gem && !is_requirements && it.gem_level.is_none() {
                     it.gem_level = leading_num(v);
                 }
+            } else if let Some(v) = line.strip_prefix("Map Tier: ").or(line.strip_prefix("Waystone Tier: ")) {
+                it.map.get_or_insert_with(MapInfo::default).tier = leading_num(v);
+            } else if let Some(v) = line.strip_prefix("Item Quantity: ") {
+                it.map.get_or_insert_with(MapInfo::default).quantity = leading_num(v);
+            } else if let Some(v) = line.strip_prefix("Item Rarity: ") {
+                it.map.get_or_insert_with(MapInfo::default).rarity = leading_num(v);
+            } else if let Some(v) = line.strip_prefix("Monster Pack Size: ") {
+                it.map.get_or_insert_with(MapInfo::default).pack_size = leading_num(v);
+            } else if is_map && line.ends_with('.') {
+                // "Travel to this Map by using it in a personal Map Device. …": usage text, not a mod.
             } else if let Some(v) = line.strip_prefix("Quality: ") {
                 it.quality = leading_num(v);
             } else if let Some(v) = line.strip_prefix("Stack Size: ") {
@@ -396,6 +423,24 @@ mod tests {
     }
 
     #[test]
+    fn parses_maps_and_waystones() {
+        let map = parse(include_str!("../dev/map.txt")).unwrap();
+        assert!(map.is_map());
+        assert_eq!(map.map, Some(MapInfo { tier: Some(16), quantity: Some(87), rarity: Some(45), pack_size: Some(28) }));
+        assert_eq!(map.quality, Some(20));
+        assert_eq!(map.mods.len(), 6, "usage text isn't a mod: {:?}", map.mods);
+        assert_eq!(map.mods[1].template, "Monsters reflect #% of Elemental Damage");
+
+        let way = parse(include_str!("../dev/waystone-poe2.txt")).unwrap();
+        assert!(way.is_map());
+        assert_eq!(way.map, Some(MapInfo { tier: Some(15), quantity: Some(60), rarity: Some(38), pack_size: Some(15) }));
+        assert_eq!(way.mods.len(), 5, "{:?}", way.mods);
+        assert_eq!(way.mods[1].template, "Players are Cursed with Enfeeble");
+
+        assert!(!parse(RING).unwrap().is_map());
+    }
+
+    #[test]
     fn strips_poe2_markup() {
         let m = parse_mod("[Allies|Allies] in your [Presence] deal 74(70-80)% increased Damage");
         assert_eq!(m.template, "Allies in your Presence deal #% increased Damage");
@@ -427,6 +472,8 @@ mod tests {
             ("chaos-poe2", include_str!("../dev/chaos-poe2.txt")),
             ("ring", include_str!("../dev/ring.txt")),
             ("ring-poe2", include_str!("../dev/ring-poe2.txt")),
+            ("map", include_str!("../dev/map.txt")),
+            ("waystone-poe2", include_str!("../dev/waystone-poe2.txt")),
         ] {
             let it = parse(text).unwrap_or_else(|| panic!("{name} doesn't parse"));
             assert!(!it.base.is_empty(), "{name} has no base");

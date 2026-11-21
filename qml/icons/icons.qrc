@@ -16,6 +16,7 @@
     <file>nav-trade.svg</file>
     <file>nav-overlay.svg</file>
     <file>nav-shortcuts.svg</file>
+    <file>nav-maps.svg</file>
     <file>nav-about.svg</file>
 </qresource>
 </RCC>

@@ -76,12 +76,23 @@ pub fn urlencode(s: &str) -> String {
 #[serde(default)]
 pub struct GameConfig {
     pub league: String,
+    /// Map check: mods marked as unrunnable ("deadly") or best avoided ("annoying"), as templates
+    /// with numbers replaced by `#` ("Monsters reflect #% of Elemental Damage"), so a mark covers
+    /// every roll of the mod. Per game: PoE 1 maps and PoE 2 waystones have different mods.
+    pub map_mods: MapMods,
 }
 
 impl Default for GameConfig {
     fn default() -> Self {
-        Self { league: "Standard".into() }
+        Self { league: "Standard".into(), map_mods: MapMods::default() }
     }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct MapMods {
+    pub deadly: Vec<String>,
+    pub annoying: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -122,6 +133,7 @@ pub struct ShortcutsConfig {
     pub settings: String,
     pub hide_overlay: String,
     pub item_info: String,
+    pub map_check: String,
 }
 
 #[cfg(windows)]
@@ -134,6 +146,7 @@ impl Default for ShortcutsConfig {
             settings: String::new(),
             hide_overlay: String::new(),
             item_info: String::new(),
+            map_check: String::new(),
         }
     }
 }
@@ -298,6 +311,10 @@ mod tests {
         assert!(!c.trade.min_from_tier);
         assert_eq!(c.overlay.width, 380);
         assert!(c.updates.check);
+        assert_eq!(c.poe2.map_mods, MapMods::default());
+        let marked: Config = toml::from_str("[poe1.map_mods]\ndeadly = [\"Monsters reflect #% of Elemental Damage\"]\n").unwrap();
+        assert_eq!(marked.poe1.map_mods.deadly, vec!["Monsters reflect #% of Elemental Damage"]);
+        assert_eq!(marked.poe1.league, "Standard");
         let off: Config = toml::from_str("[updates]\ncheck = false\n").unwrap();
         assert!(!off.updates.check);
     }

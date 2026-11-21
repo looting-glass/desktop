@@ -9,6 +9,7 @@ mod mock;
 mod item;
 mod links;
 mod exchange;
+mod mapcheck;
 mod ninja;
 mod platform;
 mod pseudo;
@@ -39,6 +40,12 @@ pub enum Event {
     HideOverlay,
     /// Open the hovered item's wiki/poedb page.
     OpenItemInfo,
+    /// Show the hovered map's/waystone's mods, coloured by the player's marks.
+    MapCheck,
+    /// Mark a map mod template "deadly", "annoying" or "" (clear), from the overlay.
+    MarkMapMod(String, String),
+    /// Price check the map last shown by the map check.
+    PriceCheckMap,
     Quit,
 }
 
@@ -54,6 +61,8 @@ pub static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
 });
 static EVENTS: OnceLock<async_channel::Sender<Event>> = OnceLock::new();
 static CHECK_GEN: AtomicU64 = AtomicU64::new(0);
+/// Item text of the map last shown by the map check (re-coloured on marks, price-checkable).
+static LAST_MAP: Mutex<Option<String>> = Mutex::new(None);
 
 pub fn config() -> Config {
     CONFIG.lock().unwrap().clone()
@@ -92,6 +101,16 @@ pub fn start_background() {
                 show_error(format!("Global shortcuts unavailable: {e:#}"));
             }
         });
+        // Dev aid: LOOTINGGLASS_DEMO_MAP=map.txt map-checks that file's text once at startup.
+        if let Some(path) = std::env::var_os("LOOTINGGLASS_DEMO_MAP") {
+            match std::fs::read_to_string(&path) {
+                Ok(text) => {
+                    tokio::time::sleep(Duration::from_millis(1500)).await;
+                    show_map(text);
+                }
+                Err(e) => log::error!("LOOTINGGLASS_DEMO_MAP: {e}"),
+            }
+        }
         // Dev aid: LOOTINGGLASS_DEMO=item.txt price-checks that file's text once at startup.
         if let Some(path) = std::env::var_os("LOOTINGGLASS_DEMO") {
             match std::fs::read_to_string(&path) {
@@ -140,6 +159,14 @@ async fn handle(ev: Event) {
             platform::focus_game().await;
         }
         Event::OpenItemInfo => open_item_info().await,
+        Event::MapCheck => map_check().await,
+        Event::MarkMapMod(template, level) => mark_map_mod(&template, &level),
+        Event::PriceCheckMap => {
+            let text = LAST_MAP.lock().unwrap().clone();
+            if let Some(text) = text {
+                check_text(text).await;
+            }
+        }
         Event::Quit => std::process::exit(0),
     }
 }
@@ -180,6 +207,60 @@ async fn open_item_info() {
     };
     let url = q(item_info_url(&item, &config()).await);
     ui(move |b| b.open_url(url));
+}
+
+/// Hotkey: copy the hovered map or waystone and list its mods, coloured by the player's marks.
+async fn map_check() {
+    ui(|b| b.set_overlay_visible(false));
+    tokio::time::sleep(Duration::from_millis(80)).await;
+    let text = match platform::copy_item().await {
+        Ok(t) => t,
+        Err(e) => return show_error(format!("{e:#}")),
+    };
+    show_map(text);
+}
+
+fn show_map(text: String) {
+    let Some(item) = item::parse(&text).filter(|i| i.is_map()) else {
+        return show_error("The map check works on maps (PoE 1) and waystones (PoE 2). Hover one and try again.".into());
+    };
+    *LAST_MAP.lock().unwrap() = Some(text);
+    let title = q(item.display_name());
+    let view = map_view(&item);
+    ui(move |mut b| {
+        b.as_mut().set_title(title);
+        b.as_mut().set_map_info(view);
+        b.as_mut().set_ninja(q(""));
+        b.as_mut().set_ninja_detail(q(""));
+        b.as_mut().set_exchange(q(""));
+        b.as_mut().set_spec(q(""));
+        b.as_mut().set_listings(q("[]"));
+        b.as_mut().set_trade_url(q(""));
+        b.as_mut().set_info_url(q(""));
+        b.as_mut().set_overlay_state(q("map"));
+        b.as_mut().set_overlay_visible(true);
+    });
+}
+
+fn map_view(item: &item::Item) -> cxx_qt_lib::QString {
+    let cfg = config();
+    q(serde_json::to_string(&mapcheck::view(item, &cfg.game_cfg(cfg.game).map_mods)).unwrap_or_default())
+}
+
+fn mark_map_mod(template: &str, level: &str) {
+    {
+        let mut c = CONFIG.lock().unwrap();
+        let game = c.game;
+        mapcheck::mark(&mut c.game_cfg_mut(game).map_mods, template, level);
+        if let Err(e) = c.save() {
+            log::error!("saving config: {e}");
+        }
+    }
+    let text = LAST_MAP.lock().unwrap().clone();
+    if let Some(item) = text.as_deref().and_then(item::parse) {
+        let view = map_view(&item);
+        ui(move |b| b.set_map_info(view));
+    }
 }
 
 /// Wiki/poedb page for an item; magic items are resolved to their base type first.
@@ -230,6 +311,7 @@ async fn check_text(text: String) {
         b.as_mut().set_ninja(q(""));
         b.as_mut().set_ninja_detail(q(""));
         b.as_mut().set_exchange(q(""));
+        b.as_mut().set_map_info(q(""));
         b.as_mut().set_spec(q(""));
         b.as_mut().set_overlay_state(q("loading"));
         b.as_mut().set_listings(q("[]"));
@@ -285,9 +367,9 @@ unsafe extern "C" {
 /// Holds an exclusive lock on `instance.lock` for the life of the process, so a second copy
 /// (autostart plus a manual start, say) exits instead of fighting the first for the hotkey.
 /// The OS drops the lock when the process ends, crashes included. Returns false if another
-/// copy holds it. Dev runs (`LOOTINGGLASS_DEMO`/`LOOTINGGLASS_SNAPSHOT`) skip the check.
+/// copy holds it. Dev runs (`LOOTINGGLASS_DEMO`/`_DEMO_MAP`/`_SNAPSHOT`) skip the check.
 fn single_instance() -> bool {
-    if std::env::var_os("LOOTINGGLASS_DEMO").is_some() || std::env::var_os("LOOTINGGLASS_SNAPSHOT").is_some() {
+    if ["LOOTINGGLASS_DEMO", "LOOTINGGLASS_DEMO_MAP", "LOOTINGGLASS_SNAPSHOT"].iter().any(|v| std::env::var_os(v).is_some()) {
         return true;
     }
     let Some(dir) = dirs::state_dir().or_else(dirs::data_local_dir).map(|d| d.join("lootingglass")) else {
