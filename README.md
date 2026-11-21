@@ -13,6 +13,9 @@ Built for KDE Plasma on Wayland with Rust and Qt 6, with experimental Hyprland a
 support. No Electron, no browser, no XWayland. Global hotkeys, the overlay and clipboard access
 all use the desktop's native mechanisms.
 
+**Website:** [looting-glass.github.io](https://looting-glass.github.io/), with an
+[Android version](https://looting-glass.github.io/android.html) for console players.
+
 > Looting Glass is a fan-made tool and is not affiliated with or endorsed by Grinding Gear Games.
 
 <table align="center">
@@ -82,7 +85,7 @@ A `lootingglass-bin` package for the AUR is on its way. Until it's published, bu
 from this repository with `makepkg`:
 
 ```bash
-git clone https://github.com/rockymontana/looting-glass.git
+git clone https://github.com/looting-glass/desktop.git looting-glass
 cd looting-glass/packaging/aur/lootingglass-bin
 makepkg -si
 ```
@@ -99,7 +102,7 @@ launcher entry and icon, and `pacman -R lootingglass-bin` removes it cleanly.
    ```
 
 2. Download `lootingglass-<version>-x86_64.tar.gz` from the
-   [latest release](https://github.com/rockymontana/looting-glass/releases/latest), then:
+   [latest release](https://github.com/looting-glass/desktop/releases/latest), then:
 
    ```bash
    tar xzf lootingglass-*-x86_64.tar.gz
@@ -117,7 +120,7 @@ rolling distro (Arch, CachyOS, EndeavourOS) is the safe bet. On other distros, b
 > Bug reports and fixes are very welcome.
 
 Download `lootingglass-<version>-windows-x64-setup.exe` from the
-[latest release](https://github.com/rockymontana/looting-glass/releases/latest) and run it. It
+[latest release](https://github.com/looting-glass/desktop/releases/latest) and run it. It
 installs for your user only (no admin rights), adds a Start menu entry, can start Looting Glass with
 Windows, and uninstalls from *Settings → Apps*. Prefer a portable app? Extract
 `lootingglass-<version>-windows-x64.zip` anywhere and run `lootingglass.exe`. Either way it lives in the
@@ -136,7 +139,7 @@ Needs a Rust toolchain (edition 2024) and a C++ compiler, plus the Qt packages a
 
 ```bash
 sudo pacman -S --needed rustup qt6-base qt6-declarative layer-shell-qt kirigami qqc2-desktop-style
-git clone https://github.com/rockymontana/looting-glass.git
+git clone https://github.com/looting-glass/desktop.git looting-glass
 cd looting-glass
 ./install.sh
 ```

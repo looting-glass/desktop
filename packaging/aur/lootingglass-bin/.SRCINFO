@@ -2,7 +2,7 @@ pkgbase = lootingglass-bin
 	pkgdesc = Wayland-native price checker for Path of Exile 1 and 2 (Qt 6, KDE Plasma; experimental Hyprland)
 	pkgver = 0.1.0
 	pkgrel = 1
-	url = https://github.com/rockymontana/looting-glass
+	url = https://github.com/looting-glass/desktop
 	arch = x86_64
 	license = GPL-3.0-or-later
 	depends = qt6-base
@@ -21,7 +21,7 @@ pkgbase = lootingglass-bin
 	conflicts = lootingglass
 	options = !strip
 	options = !debug
-	source = https://github.com/rockymontana/looting-glass/releases/download/v0.1.0/lootingglass-0.1.0-x86_64.tar.gz
+	source = https://github.com/looting-glass/desktop/releases/download/v0.1.0/lootingglass-0.1.0-x86_64.tar.gz
 	sha256sums = 540dd3e456241fcdb91ed48cbf30ad057594047cc8c2fe583868a890515377b9
 
 pkgname = lootingglass-bin

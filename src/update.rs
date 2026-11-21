@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
-const LATEST: &str = "https://api.github.com/repos/rockymontana/looting-glass/releases/latest";
+const LATEST: &str = "https://api.github.com/repos/looting-glass/desktop/releases/latest";
 const CURRENT: &str = env!("CARGO_PKG_VERSION");
 /// Suffix for files a Windows zip update moved aside; deleted on the next start.
 const OLD_SUFFIX: &str = ".update-old";
