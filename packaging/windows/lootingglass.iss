@@ -63,3 +63,11 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\lootingglass.exe"; Description: "Start Looting Glass now"; Flags: nowait postinstall skipifsilent
+; In-app update: the app runs this installer with /SILENT /relaunch=1 and exits; start it again.
+Filename: "{app}\lootingglass.exe"; Flags: nowait skipifnotsilent; Check: Relaunch
+
+[Code]
+function Relaunch: Boolean;
+begin
+  Result := ExpandConstant('{param:relaunch|0}') = '1';
+end;

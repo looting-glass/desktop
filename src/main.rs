@@ -10,6 +10,7 @@ mod item;
 mod ninja;
 mod platform;
 mod trade;
+mod update;
 
 use bridge::{apply_config, q, ui};
 use config::{Config, Game};
@@ -25,6 +26,10 @@ pub enum Event {
     ToggleGame,
     SetGame(Game),
     OpenSettings,
+    /// Settings window on the About page (update notice).
+    OpenAbout,
+    /// Tray "Check for updates…": About page plus a check.
+    CheckUpdates,
     OpenManual,
     /// Price check pasted item text (manual check window).
     CheckText(String),
@@ -75,6 +80,7 @@ pub fn start_background() {
     rt().spawn(async move {
         platform::init().await;
         platform::spawn_tray(config().game).await;
+        tokio::spawn(update::run());
         tokio::spawn(async move {
             if let Err(e) = platform::run_shortcuts(tx).await {
                 log::error!("{e:#}");
@@ -117,6 +123,11 @@ async fn handle(ev: Event) {
         Event::ToggleGame => set_game(config().game.other()).await,
         Event::SetGame(g) => set_game(g).await,
         Event::OpenSettings => ui(|b| b.open_settings()),
+        Event::OpenAbout => ui(|b| b.open_about()),
+        Event::CheckUpdates => {
+            ui(|b| b.open_about());
+            update::check().await;
+        }
         Event::OpenManual => ui(|b| b.open_manual()),
         Event::CheckText(text) => check_text(text).await,
         Event::HideOverlay => {
@@ -248,17 +259,25 @@ fn single_instance() -> bool {
             return true; // can't tell; don't block start-up
         }
     };
-    match file.try_lock() {
-        Ok(()) => {
-            std::mem::forget(file); // keep the lock until exit
-            true
-        }
-        Err(std::fs::TryLockError::WouldBlock) => false,
-        Err(std::fs::TryLockError::Error(e)) => {
-            log::warn!("instance lock: {e}");
-            true
+    // After an update the old copy starts the new one and exits; give it a moment to let go.
+    let tries = if std::env::var_os("LOOTINGGLASS_RESTARTED").is_some() { 50 } else { 1 };
+    for i in 0..tries {
+        match file.try_lock() {
+            Ok(()) => {
+                std::mem::forget(file); // keep the lock until exit
+                return true;
+            }
+            Err(std::fs::TryLockError::WouldBlock) if i + 1 < tries => {
+                std::thread::sleep(Duration::from_millis(200))
+            }
+            Err(std::fs::TryLockError::WouldBlock) => return false,
+            Err(std::fs::TryLockError::Error(e)) => {
+                log::warn!("instance lock: {e}");
+                return true;
+            }
         }
     }
+    false
 }
 
 fn main() {

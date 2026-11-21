@@ -49,6 +49,7 @@ ApplicationWindow {
         sideMargin.value = cfg.overlay.margin_side
         maxHeight.value = cfg.overlay.max_height
         contact.text = cfg.contact
+        checkUpdates.checked = cfg.updates.check
         if (ownShortcuts)
             for (let i = 0; i < shortcutFields.length; i++)
                 shortcutRows.itemAt(i).value = cfg.shortcuts[shortcutFields[i][0]]
@@ -70,6 +71,7 @@ ApplicationWindow {
         c.overlay.margin_side = sideMargin.value
         c.overlay.max_height = maxHeight.value
         c.contact = contact.text
+        c.updates.check = checkUpdates.checked
         if (ownShortcuts)
             for (let i = 0; i < shortcutFields.length; i++)
                 c.shortcuts[shortcutFields[i][0]] = shortcutRows.itemAt(i).value.trim()
@@ -78,6 +80,13 @@ ApplicationWindow {
     }
 
     onVisibleChanged: if (visible) load()
+
+    function showAbout() {
+        nav.currentIndex = categories.length - 1
+        show()
+        raise()
+        requestActivate()
+    }
 
     Connections {
         target: Backend
@@ -101,7 +110,7 @@ ApplicationWindow {
         id: snapTimer
         property string dir
         property int step: 0
-        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1]]
+        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1], ["settings-about.png", 4]]
         interval: 800
         onTriggered: page.grabToImage(r => {
             r.saveToFile(dir + "/" + shots[step][0])
@@ -310,6 +319,83 @@ ApplicationWindow {
                         spacing: 8
                         Label { text: "Looting Glass"; font.pointSize: Qt.application.font.pointSize * 1.6 }
                         Label { text: "Version " + Backend.version; opacity: 0.7 }
+
+                        // Update notice: release notes and, where this copy can update itself, Install.
+                        Frame {
+                            visible: Backend.updateVersion !== ""
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            ColumnLayout {
+                                anchors.fill: parent
+                                spacing: 6
+                                Label {
+                                    text: "Looting Glass " + Backend.updateVersion + " is available"
+                                    font.bold: true
+                                }
+                                ScrollView {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    Layout.minimumHeight: 40
+                                    clip: true
+                                    Label {
+                                        width: parent.width
+                                        text: Backend.updateNotes
+                                        textFormat: Text.MarkdownText
+                                        wrapMode: Text.Wrap
+                                        onLinkActivated: link => Qt.openUrlExternally(link)
+                                    }
+                                }
+                                Label {
+                                    visible: Backend.updateMode !== "install"
+                                    text: Backend.updateMode === "package"
+                                        ? "Update it with your package manager."
+                                        : "Download it from the release page."
+                                    opacity: 0.7
+                                }
+                                RowLayout {
+                                    Button {
+                                        visible: Backend.updateMode === "install" && !Backend.updateReady
+                                        enabled: !Backend.updateBusy
+                                        text: "Install update"
+                                        icon.name: Qt.platform.os === "linux" ? "system-software-update" : ""
+                                        highlighted: true
+                                        onClicked: Backend.installUpdate()
+                                    }
+                                    Button {
+                                        visible: Backend.updateReady
+                                        text: "Restart now"
+                                        icon.name: Qt.platform.os === "linux" ? "view-refresh" : ""
+                                        highlighted: true
+                                        onClicked: Backend.restartApp()
+                                    }
+                                    Button {
+                                        text: "Release page"
+                                        icon.name: Qt.platform.os === "linux" ? "internet-services" : ""
+                                        onClicked: Qt.openUrlExternally(Backend.updateUrl)
+                                    }
+                                }
+                            }
+                        }
+
+                        LgCheckBox {
+                            id: checkUpdates
+                            text: "Check for updates automatically"
+                        }
+                        RowLayout {
+                            spacing: 8
+                            Button {
+                                text: "Check for updates"
+                                enabled: !Backend.updateBusy
+                                onClicked: Backend.checkUpdates()
+                            }
+                            Label {
+                                text: Backend.updateStatus !== "" ? Backend.updateStatus
+                                    : Backend.lastChecked !== "" ? "Last checked " + Backend.lastChecked : ""
+                                opacity: 0.7
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                        }
                         Label {
                             text: "Wayland-native price checker for Path of Exile 1 and 2."
                             wrapMode: Text.Wrap

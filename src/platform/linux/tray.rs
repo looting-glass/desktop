@@ -35,6 +35,8 @@ fn decode(bytes: &[u8]) -> Option<ksni::Icon> {
 
 pub struct Tray {
     pub game: Game,
+    /// Newer version found by the update check.
+    pub update: Option<String>,
 }
 
 static HANDLE: OnceCell<ksni::Handle<Tray>> = OnceCell::const_new();
@@ -55,7 +57,20 @@ impl ksni::Tray for Tray {
         send_event(Event::OpenManual);
     }
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        vec![
+        let mut items = Vec::new();
+        if let Some(v) = &self.update {
+            items.push(
+                StandardItem {
+                    label: format!("Update to {v}…"),
+                    icon_name: "system-software-update".into(),
+                    activate: Box::new(|_: &mut Self| send_event(Event::OpenAbout)),
+                    ..Default::default()
+                }
+                .into(),
+            );
+            items.push(MenuItem::Separator);
+        }
+        items.extend([
             RadioGroup {
                 selected: self.game as usize,
                 select: Box::new(|_: &mut Self, i| send_event(Event::SetGame(Game::ALL[i]))),
@@ -81,18 +96,26 @@ impl ksni::Tray for Tray {
             }
             .into(),
             StandardItem {
+                label: "Check for updates…".into(),
+                icon_name: "system-software-update".into(),
+                activate: Box::new(|_: &mut Self| send_event(Event::CheckUpdates)),
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
                 label: "Quit".into(),
                 icon_name: "application-exit".into(),
                 activate: Box::new(|_: &mut Self| send_event(Event::Quit)),
                 ..Default::default()
             }
             .into(),
-        ]
+        ]);
+        items
     }
 }
 
 pub async fn spawn(game: Game) {
-    match (Tray { game }).spawn().await {
+    match (Tray { game, update: None }).spawn().await {
         Ok(h) => {
             let _ = HANDLE.set(h);
         }
@@ -103,5 +126,11 @@ pub async fn spawn(game: Game) {
 pub async fn set_game(game: Game) {
     if let Some(h) = HANDLE.get() {
         h.update(|t| t.game = game).await;
+    }
+}
+
+pub async fn set_update(version: Option<String>) {
+    if let Some(h) = HANDLE.get() {
+        h.update(|t| t.update = version).await;
     }
 }

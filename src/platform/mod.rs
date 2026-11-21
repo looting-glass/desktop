@@ -10,6 +10,7 @@
 //! - `async fn copy_item() -> Result<String>`  — make the game copy the hovered item, return its text
 //! - `async fn focus_game()`                   — give keyboard focus back to the game
 //! - `async fn spawn_tray(Game)` / `async fn set_tray_game(Game)` — system tray icon
+//! - `async fn set_tray_update(Option<String>)` — newer version for the tray menu ("Update to …")
 //!
 //! The overlay window itself is set up in `cpp/main.cpp` (layer-shell on Linux), as is the
 //! Windows tray icon (QSystemTrayIcon).

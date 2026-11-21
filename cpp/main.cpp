@@ -24,15 +24,20 @@
 // Implemented in Rust (src/platform/windows.rs).
 extern "C" void lootingglass_tray_action(int action);
 extern "C" int lootingglass_tray_game();
+extern "C" int lootingglass_tray_update(char *buf, size_t len);
 
 // Tray actions understood by lootingglass_tray_action.
-enum TrayAction { OpenManual = 0, OpenSettings = 1, Quit = 2, GamePoe1 = 10, GamePoe2 = 11 };
+enum TrayAction { OpenManual = 0, OpenSettings = 1, Quit = 2, OpenAbout = 3, CheckUpdates = 4, GamePoe1 = 10, GamePoe2 = 11 };
 
 static void setupTray(QApplication &app)
 {
     auto *tray = new QSystemTrayIcon(app.windowIcon(), &app);
     tray->setToolTip(QStringLiteral("Looting Glass"));
     auto *menu = new QMenu();
+    // "Update to X.Y.Z…", shown once the update check found a newer release.
+    auto *update = menu->addAction(QString());
+    auto *updateSep = menu->addSeparator();
+    QObject::connect(update, &QAction::triggered, [] { lootingglass_tray_action(OpenAbout); });
     auto *games = new QActionGroup(menu);
     auto *poe1 = menu->addAction(QStringLiteral("Path of Exile"));
     auto *poe2 = menu->addAction(QStringLiteral("Path of Exile 2"));
@@ -47,12 +52,20 @@ static void setupTray(QApplication &app)
                      [] { lootingglass_tray_action(OpenManual); });
     QObject::connect(menu->addAction(QStringLiteral("Settings…")), &QAction::triggered,
                      [] { lootingglass_tray_action(OpenSettings); });
+    QObject::connect(menu->addAction(QStringLiteral("Check for updates…")), &QAction::triggered,
+                     [] { lootingglass_tray_action(CheckUpdates); });
     menu->addSeparator();
     QObject::connect(menu->addAction(QStringLiteral("Quit")), &QAction::triggered,
                      [] { lootingglass_tray_action(Quit); });
     // The game can change from a hotkey or the settings; refresh the radio items on open.
-    QObject::connect(menu, &QMenu::aboutToShow, [poe1, poe2] {
+    QObject::connect(menu, &QMenu::aboutToShow, [poe1, poe2, update, updateSep] {
         (lootingglass_tray_game() == 2 ? poe2 : poe1)->setChecked(true);
+        char version[64];
+        const bool has = lootingglass_tray_update(version, sizeof version) != 0;
+        if (has)
+            update->setText(QStringLiteral("Update to %1…").arg(QString::fromUtf8(version)));
+        update->setVisible(has);
+        updateSep->setVisible(has);
     });
     tray->setContextMenu(menu);
     QObject::connect(tray, &QSystemTrayIcon::activated, [](QSystemTrayIcon::ActivationReason r) {

@@ -35,6 +35,14 @@ pub mod qobject {
         #[qproperty(i32, margin_side)]
         #[qproperty(bool, pinned)]
         #[qproperty(QString, version)]
+        #[qproperty(QString, update_version)]
+        #[qproperty(QString, update_url)]
+        #[qproperty(QString, update_notes)]
+        #[qproperty(QString, update_mode)]
+        #[qproperty(QString, update_status)]
+        #[qproperty(bool, update_busy)]
+        #[qproperty(bool, update_ready)]
+        #[qproperty(QString, last_checked)]
         type Backend = super::BackendRust;
 
         #[qinvokable]
@@ -61,9 +69,17 @@ pub mod qobject {
         fn open_settings_window(self: Pin<&mut Backend>);
         #[qinvokable]
         fn save_overlay_size(self: &Backend);
+        #[qinvokable]
+        fn check_updates(self: &Backend);
+        #[qinvokable]
+        fn install_update(self: &Backend);
+        #[qinvokable]
+        fn restart_app(self: &Backend);
 
         #[qsignal]
         fn open_settings(self: Pin<&mut Backend>);
+        #[qsignal]
+        fn open_about(self: Pin<&mut Backend>);
         #[qsignal]
         fn open_manual(self: Pin<&mut Backend>);
     }
@@ -103,6 +119,14 @@ pub struct BackendRust {
     margin_side: i32,
     pinned: bool,
     version: QString,
+    update_version: QString,
+    update_url: QString,
+    update_notes: QString,
+    update_mode: QString,
+    update_status: QString,
+    update_busy: bool,
+    update_ready: bool,
+    last_checked: QString,
 }
 
 type UiFn = Box<dyn FnOnce(Pin<&mut qobject::Backend>) + Send>;
@@ -245,6 +269,18 @@ impl qobject::Backend {
 
     fn open_settings_window(self: Pin<&mut Self>) {
         self.open_settings();
+    }
+
+    fn check_updates(&self) {
+        rt().spawn(crate::update::check());
+    }
+
+    fn install_update(&self) {
+        rt().spawn(crate::update::install());
+    }
+
+    fn restart_app(&self) {
+        crate::update::restart();
     }
 
     fn search(&self, spec: &QString) {

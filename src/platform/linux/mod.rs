@@ -8,7 +8,7 @@ mod portal;
 mod tray;
 
 pub use portal::{configure_shortcuts, copy_item, describe_shortcuts, run_shortcuts};
-pub use tray::{set_game as set_tray_game, spawn as spawn_tray};
+pub use tray::{set_game as set_tray_game, set_update as set_tray_update, spawn as spawn_tray};
 
 pub async fn init() {
     portal::register().await;
