@@ -1,6 +1,8 @@
 name: Build
 
-# Builds, tests and packages Linux and Windows; the packages are uploaded as run artifacts.
+# Builds and packages Linux and Windows; the packages are uploaded as run artifacts. Tests
+# run in CI (ci.yml) on the same platforms, for every PR and push to main, so a release build
+# compiles once instead of again for the tests.
 # - Manual run (Actions tab or `gh workflow run build.yml --ref <branch>`): a test build of
 #   any branch, versioned "<Cargo.toml version>-dev".
 # - Called by release-please.yml with a release tag: builds that tag for the GitHub release.
@@ -37,9 +39,6 @@ jobs:
         with:
           key: release
 
-      - name: Test
-        run: cargo test --release --locked
-
       - name: Package
         env:
           TAG: ${{ inputs.tag }}
@@ -73,9 +72,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: release
-
-      - name: Test
-        run: cargo test --release --locked
 
       - name: Build
         run: cargo build --release --locked
