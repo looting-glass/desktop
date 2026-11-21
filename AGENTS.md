@@ -16,8 +16,10 @@ written down anywhere else.
   `docs`/`ci`/`chore` → no release). Merging that PR tags `vX.Y.Z`, publishes the GitHub
   release and builds the Linux and Windows downloads. Leave the version and changelog to it.
 - The website shows the latest release's changelog and download links, and a daily deploy
-  picks up new releases. After merging a release PR, once the downloads are attached, start
-  `gh workflow run Pages --repo looting-glass/looting-glass.github.io` to show it right away;
+  picks up new releases. The Release workflow deploys it right after attaching the downloads
+  (needs the `SITE_DEPLOY_TOKEN` secret: a fine-grained token with Actions read/write on
+  looting-glass.github.io). If that step was skipped or failed, start
+  `gh workflow run Pages --repo looting-glass/looting-glass.github.io` by hand;
   the website's `AGENTS.md` says what to check.
 - Commit and push when the maintainer asks; leave changes uncommitted otherwise. Already-pushed
   history stays as it is.
