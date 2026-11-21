@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/looting-glass/desktop/compare/v0.5.0...v0.6.0) (2026-11-21)
+
+
+### Features
+
+* open the hovered item on the wiki or poedb ([#32](https://github.com/looting-glass/desktop/issues/32)) ([fc55126](https://github.com/looting-glass/desktop/commit/fc551265b0d40610da3ce1a5d352f36f19326473))
+* search on pseudo stat totals (resistances, life, attributes) ([#31](https://github.com/looting-glass/desktop/issues/31)) ([c807438](https://github.com/looting-glass/desktop/commit/c80743896689b29745690f77293085887b693fc0))
+
 ## [0.5.0](https://github.com/rockymontana/looting-glass/compare/v0.4.1...v0.5.0) (2026-11-21)
 
 
