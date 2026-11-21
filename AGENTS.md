@@ -8,13 +8,16 @@ written down anywhere else.
 
 - **GitHub Flow**: `main` is always releasable; work happens on short-lived branches named
   after the change type (`feat/…`, `fix/…`, `ci/…`, `docs/…`) and lands through a PR that is
-  **squash-merged**.
+  **squash-merged**. Changes that don't touch the program or its builds (docs, `AGENTS.md`)
+  are committed straight to `main` as a `docs:` commit instead.
 - Commit messages and PR titles use **Conventional Commits** (`feat(windows): …`, `fix: …`,
   `ci: …`, `docs: …`). The PR title becomes the squash commit on `main` and drives releases.
 - Releases come from **release-please**: after each merge it updates a release PR that bumps
   the version in `Cargo.toml` and writes `CHANGELOG.md` (`fix` → patch, `feat` → minor,
   `docs`/`ci`/`chore` → no release). Merging that PR tags `vX.Y.Z`, publishes the GitHub
   release and builds the Linux and Windows downloads. Leave the version and changelog to it.
+- Releases are batched: the release PR stays open and collects several features and fixes.
+  Merge it only when the maintainer says it's time for a release, not after every feature.
 - The website shows the latest release's changelog and download links, and a daily deploy
   picks up new releases. The Release workflow deploys it right after attaching the downloads
   (needs the `SITE_DEPLOY_TOKEN` secret: a fine-grained token with Actions read/write on
