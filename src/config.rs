@@ -76,23 +76,33 @@ pub fn urlencode(s: &str) -> String {
 #[serde(default)]
 pub struct GameConfig {
     pub league: String,
-    /// Map check: mods marked as unrunnable ("deadly") or best avoided ("annoying"), as templates
-    /// with numbers replaced by `#` ("Monsters reflect #% of Elemental Damage"), so a mark covers
-    /// every roll of the mod. Per game: PoE 1 maps and PoE 2 waystones have different mods.
-    pub map_mods: MapMods,
+    /// 0.8.0 kept map check marks per game (`[poe1.map_mods]`); read once and moved to
+    /// `Config::map_check` on load, never written back.
+    #[serde(default, skip_serializing)]
+    pub map_mods: Option<MapCheckConfig>,
 }
 
 impl Default for GameConfig {
     fn default() -> Self {
-        Self { league: "Standard".into(), map_mods: MapMods::default() }
+        Self { league: "Standard".into(), map_mods: None }
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+/// Map check (PoE 1 maps): mods marked as unrunnable ("deadly") or best avoided ("annoying"), as
+/// templates with numbers replaced by `#` ("Monsters reflect #% of Elemental Damage"), so a mark
+/// covers every roll of the mod.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
-pub struct MapMods {
+pub struct MapCheckConfig {
+    pub enabled: bool,
     pub deadly: Vec<String>,
     pub annoying: Vec<String>,
+}
+
+impl Default for MapCheckConfig {
+    fn default() -> Self {
+        Self { enabled: true, deadly: Vec::new(), annoying: Vec::new() }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -114,6 +124,7 @@ pub struct Config {
     pub overlay: OverlayConfig,
     pub updates: UpdatesConfig,
     pub links: LinksConfig,
+    pub map_check: MapCheckConfig,
     /// Optional contact info appended to the User-Agent (GGG asks API clients to identify themselves).
     pub contact: String,
     /// Global hotkeys, on platforms where Looting Glass registers them itself (Windows). On Linux
@@ -220,6 +231,7 @@ impl Default for Config {
             overlay: OverlayConfig::default(),
             updates: UpdatesConfig::default(),
             links: LinksConfig::default(),
+            map_check: MapCheckConfig::default(),
             contact: String::new(),
             #[cfg(windows)]
             shortcuts: ShortcutsConfig::default(),
@@ -238,7 +250,7 @@ impl Config {
     pub fn load() -> Self {
         Self::migrate_from_old_names();
         match std::fs::read_to_string(Self::path()) {
-            Ok(s) => toml::from_str(&s).unwrap_or_else(|e| {
+            Ok(s) => toml::from_str::<Self>(&s).map(Self::migrate_map_marks).unwrap_or_else(|e| {
                 log::error!("invalid config, using defaults: {e}");
                 Self::default()
             }),
@@ -248,6 +260,21 @@ impl Config {
                 c
             }
         }
+    }
+
+    /// 0.8.0's PoE 1 map marks (`[poe1.map_mods]`) become `[map_check]`. The map check is PoE 1
+    /// only now, so PoE 2 waystone marks are dropped.
+    fn migrate_map_marks(mut self) -> Self {
+        let old = self.poe1.map_mods.take();
+        self.poe2.map_mods = None;
+        if let Some(old) = old
+            && self.map_check.deadly.is_empty()
+            && self.map_check.annoying.is_empty()
+        {
+            self.map_check.deadly = old.deadly;
+            self.map_check.annoying = old.annoying;
+        }
+        self
     }
 
     /// One-time carry-over of settings from the app's previous names (Loot Lens, Glimmer).
@@ -311,10 +338,20 @@ mod tests {
         assert!(!c.trade.min_from_tier);
         assert_eq!(c.overlay.width, 380);
         assert!(c.updates.check);
-        assert_eq!(c.poe2.map_mods, MapMods::default());
-        let marked: Config = toml::from_str("[poe1.map_mods]\ndeadly = [\"Monsters reflect #% of Elemental Damage\"]\n").unwrap();
-        assert_eq!(marked.poe1.map_mods.deadly, vec!["Monsters reflect #% of Elemental Damage"]);
-        assert_eq!(marked.poe1.league, "Standard");
+        assert!(c.map_check.enabled, "map check is on by default");
+        let off: Config = toml::from_str("[map_check]\nenabled = false\n").unwrap();
+        assert!(!off.map_check.enabled);
+        // 0.8.0 kept marks per game; PoE 1's move to [map_check], PoE 2's are dropped.
+        let old: Config = toml::from_str(
+            "[poe1.map_mods]\ndeadly = [\"Monsters reflect #% of Elemental Damage\"]\n[poe2.map_mods]\nannoying = [\"x\"]\n",
+        )
+        .unwrap();
+        let old = old.migrate_map_marks();
+        assert_eq!(old.map_check.deadly, vec!["Monsters reflect #% of Elemental Damage"]);
+        assert!(old.map_check.annoying.is_empty() && old.map_check.enabled);
+        let saved = toml::to_string(&old).unwrap();
+        assert!(!saved.contains("map_mods"), "old keys aren't written back: {saved}");
+        assert_eq!(old.poe1.league, "Standard");
         let off: Config = toml::from_str("[updates]\ncheck = false\n").unwrap();
         assert!(!off.updates.check);
     }

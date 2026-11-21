@@ -356,8 +356,8 @@ Window {
                 }
 
                 // ── Filters ──────────────────────────────────────────
-                // Map check: a map's/waystone's mods coloured by the player's marks. Clicking a mod
-                // cycles it neutral → annoying → deadly → neutral; marks are stored per game.
+                // Map check (PoE 1): a map's mods coloured by the player's marks. Clicking a mod
+                // cycles it neutral → annoying → deadly → neutral; marks are stored in `[map_check]`.
                 ColumnLayout {
                     id: mapView
                     readonly property var m: {
@@ -437,7 +437,7 @@ Window {
                     RowLayout {
                         Layout.fillWidth: true
                         Label {
-                            text: "Click a mod to mark it. Marks are kept per game."
+                            text: "Click a mod to mark it. Marks are kept for your next maps."
                             font.pointSize: 8
                             opacity: 0.6
                             wrapMode: Text.Wrap

@@ -69,10 +69,10 @@ all use the desktop's native mechanisms.
   Space or by clicking back into the game, or pin it to keep it open until you close it.
 - **Item info.** A hotkey and an overlay button open the item's page on poedb (poedb.tw /
   poe2db.tw), or the community wiki if you prefer: uniques by name, everything else by base type.
-- **Map check.** A separate hotkey lists a map's (PoE 1) or waystone's (PoE 2) mods with its tier,
-  quantity, rarity and pack size, coloured by how you marked them: deadly (red) or annoying (yellow).
-  Click a mod in the overlay to mark it, or manage the marks in *Settings → Maps*; each game keeps
-  its own. A button price-checks the map as usual.
+- **Map check (PoE 1).** A separate hotkey lists a map's mods with its tier, quantity, rarity and
+  pack size, coloured by how you marked them: deadly (red) or annoying (yellow). Click a mod in the
+  overlay to mark it, or manage the marks in *Settings → Maps*. A button price-checks the map as
+  usual. Turn it on or off under *Settings → Game* while Path of Exile is selected.
 - **Manual check.** Paste item text into a native window (click the tray icon) and check it
   without a hotkey, e.g. items from a friend or a forum post.
 - **Native settings** in a KDE-style window, stored as TOML.
@@ -191,10 +191,12 @@ click the tray icon (or use *Manual check…* in its menu). Paste the item text 
 
 ### Map check
 
-Assign the *Map check* shortcut (it starts unassigned), hover a map or waystone and press it. The
-overlay lists the map's mods: click one to mark it annoying, click again for deadly, and once more
-to clear it. Marks cover every roll of a mod and are kept per game, so the next map with a mod you
-can't run shows it in red right away. *Settings → Maps* lists the marks and takes pasted mod lines.
+For Path of Exile 1 maps. Assign the *Map check* shortcut (it starts unassigned), hover a map and
+press it. The overlay lists the map's mods: click one to mark it annoying, click again for deadly,
+and once more to clear it. Marks cover every roll of a mod, so the next map with a mod you can't run
+shows it in red right away. *Settings → Maps* lists the marks and takes pasted mod lines. The map
+check is on by default; *Settings → Game* turns it off (the option shows while Path of Exile is
+selected).
 
 ### Shortcuts
 
@@ -240,12 +242,13 @@ contact = ""             # optional, appended to the User-Agent sent to the trad
 [poe1]
 league = "Standard"
 
-[poe1.map_mods]          # map check marks (mod text, numbers as #); also [poe2.map_mods]
-deadly = ["Monsters reflect #% of Elemental Damage"]
-annoying = []
-
 [poe2]
 league = "Standard"
+
+[map_check]              # PoE 1 maps
+enabled = true
+deadly = ["Monsters reflect #% of Elemental Damage"]   # mod text, numbers as #
+annoying = []
 
 [trade]
 status = "online"        # "online", "any", or "securable" (PoE 2 instant buyout)
@@ -318,7 +321,7 @@ cargo build
 cargo test
 LOOTINGGLASS_DEMO=dev/boots.txt cargo run         # price-check an item text file without the game
 LOOTINGGLASS_SNAPSHOT=/tmp/shots LOOTINGGLASS_DEMO=dev/boots.txt cargo run   # also save README screenshots
-LOOTINGGLASS_DEMO_MAP=dev/map.txt cargo run                         # map-check a map/waystone file without the game
+LOOTINGGLASS_DEMO_MAP=dev/map.txt cargo run                         # map-check a PoE 1 map file without the game
 LOOTINGGLASS_GAME=poe2 LOOTINGGLASS_DEMO=dev/boots-poe2.txt cargo run       # force a game for this run
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_DEMO=dev/boots.txt cargo run              # fake API responses, no network
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_MOCK_UPDATE=1 cargo run                   # ... and a fake newer release (update UI)

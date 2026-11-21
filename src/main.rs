@@ -40,7 +40,7 @@ pub enum Event {
     HideOverlay,
     /// Open the hovered item's wiki/poedb page.
     OpenItemInfo,
-    /// Show the hovered map's/waystone's mods, coloured by the player's marks.
+    /// Show the hovered PoE 1 map's mods, coloured by the player's marks.
     MapCheck,
     /// Mark a map mod template "deadly", "annoying" or "" (clear), from the overlay.
     MarkMapMod(String, String),
@@ -209,7 +209,7 @@ async fn open_item_info() {
     ui(move |b| b.open_url(url));
 }
 
-/// Hotkey: copy the hovered map or waystone and list its mods, coloured by the player's marks.
+/// Hotkey: copy the hovered PoE 1 map and list its mods, coloured by the player's marks.
 async fn map_check() {
     ui(|b| b.set_overlay_visible(false));
     tokio::time::sleep(Duration::from_millis(80)).await;
@@ -221,8 +221,15 @@ async fn map_check() {
 }
 
 fn show_map(text: String) {
-    let Some(item) = item::parse(&text).filter(|i| i.is_map()) else {
-        return show_error("The map check works on maps (PoE 1) and waystones (PoE 2). Hover one and try again.".into());
+    let cfg = config();
+    if cfg.game != Game::Poe1 {
+        return show_error("The map check is for Path of Exile 1 maps. Switch to PoE 1 to use it.".into());
+    }
+    if !cfg.map_check.enabled {
+        return show_error("The map check is off. Turn it on in Settings → Game.".into());
+    }
+    let Some(item) = item::parse(&text).filter(item::Item::is_map) else {
+        return show_error("The map check works on maps. Hover one and try again.".into());
     };
     *LAST_MAP.lock().unwrap() = Some(text);
     let title = q(item.display_name());
@@ -243,15 +250,13 @@ fn show_map(text: String) {
 }
 
 fn map_view(item: &item::Item) -> cxx_qt_lib::QString {
-    let cfg = config();
-    q(serde_json::to_string(&mapcheck::view(item, &cfg.game_cfg(cfg.game).map_mods)).unwrap_or_default())
+    q(serde_json::to_string(&mapcheck::view(item, &config().map_check)).unwrap_or_default())
 }
 
 fn mark_map_mod(template: &str, level: &str) {
     {
         let mut c = CONFIG.lock().unwrap();
-        let game = c.game;
-        mapcheck::mark(&mut c.game_cfg_mut(game).map_mods, template, level);
+        mapcheck::mark(&mut c.map_check, template, level);
         if let Err(e) = c.save() {
             log::error!("saving config: {e}");
         }
