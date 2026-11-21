@@ -109,7 +109,7 @@ pub fn response(method: &str, url: &str) -> Option<Value> {
 /// update notice can be seen.
 fn release() -> Value {
     let v = if std::env::var_os("LOOTINGGLASS_MOCK_UPDATE").is_some() { "99.0.0" } else { env!("CARGO_PKG_VERSION") };
-    let base = "https://github.com/rockymontana/looting-glass/releases";
+    let base = "https://github.com/looting-glass/desktop/releases";
     let assets: Vec<Value> = ["windows-x64-setup.exe", "windows-x64.zip", "x86_64.tar.gz"]
         .iter()
         .flat_map(|s| [format!("lootingglass-{v}-{s}"), format!("lootingglass-{v}-{s}.sha256")])

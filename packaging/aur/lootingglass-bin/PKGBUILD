@@ -6,7 +6,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="Wayland-native price checker for Path of Exile 1 and 2 (Qt 6, KDE Plasma; experimental Hyprland)"
 arch=('x86_64')
-url="https://github.com/rockymontana/looting-glass"
+url="https://github.com/looting-glass/desktop"
 license=('GPL-3.0-or-later')
 depends=(
   'qt6-base'

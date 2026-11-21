@@ -54,6 +54,8 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 
 ## Screenshots
 
+The website ([looting-glass/looting-glass.github.io](https://github.com/looting-glass/looting-glass.github.io))
+uses the same `docs/screenshots`; it picks up changes weekly or on a manual Pages run there.
 README screenshots come from `LOOTINGGLASS_SNAPSHOT`, cropped to the app with seller names
 blurred. Show new screenshots to the maintainer before committing them. Desktop screenshots
 taken while debugging are cropped to the app window and deleted after use: the desktop can show
