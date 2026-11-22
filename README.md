@@ -292,6 +292,10 @@ tray menu and on the About page, with its release notes. Nothing installs until 
 the Linux `install.sh` install replace their files after checking the download's SHA-256, and
 then offer a restart. Package-managed installs (AUR) are only told about the new version.
 
+On Linux, a new version also shows up as a desktop notification (once per version), the tray's
+*Check for updates…* answers with one ("up to date" or "… is available"; click it for the About
+page), and after an update the new version says it was updated.
+
 ## Troubleshooting
 
 - **The overlay has a title bar or isn't on top.** Looting Glass has to run as a native Wayland client.

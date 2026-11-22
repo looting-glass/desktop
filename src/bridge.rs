@@ -331,7 +331,10 @@ impl qobject::Backend {
     }
 
     fn check_updates(&self) {
-        rt().spawn(crate::update::check());
+        // The About page shows the result itself.
+        rt().spawn(async {
+            crate::update::check().await;
+        });
     }
 
     fn install_update(&self) {

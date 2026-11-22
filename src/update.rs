@@ -174,6 +174,38 @@ async fn latest(ua: &str) -> Result<Release> {
 /// Newer release found by the last check.
 static FOUND: Mutex<Option<Release>> = Mutex::new(None);
 
+/// What a check found, for whoever asked (the tray answers with a notification).
+pub enum Checked {
+    UpToDate,
+    Available(String),
+    Failed(String),
+}
+
+/// Left by an update before restarting: the version it replaced. The new version reads it on
+/// start to say "updated", then deletes it.
+fn updated_marker() -> Option<PathBuf> {
+    dirs::state_dir().or_else(dirs::data_local_dir).map(|d| d.join("lootingglass/updated-from"))
+}
+
+/// After an update and restart: tell the user it worked.
+async fn announce_update() {
+    let Some(path) = updated_marker() else { return };
+    let Ok(old) = std::fs::read_to_string(&path) else { return };
+    let _ = std::fs::remove_file(&path);
+    let old = old.trim();
+    if old == CURRENT {
+        return; // the update didn't take; the About page said so when it failed
+    }
+    log::info!("updated from {old} to {CURRENT}");
+    status(format!("Updated from {old} to {CURRENT}."), false);
+    crate::platform::notify(
+        &format!("Looting Glass updated to {CURRENT}"),
+        &format!("You were on {old}. Click to see the About page."),
+        Some(crate::Event::OpenAbout),
+    )
+    .await;
+}
+
 fn status(msg: impl Into<String>, busy: bool) {
     let msg = q(msg.into());
     ui(move |mut b| {
@@ -191,18 +223,30 @@ pub async fn run() {
             remove_old_files(dir);
         }
     }
+    announce_update().await;
     let delay = if crate::mock::enabled() { 1 } else { 30 };
     tokio::time::sleep(Duration::from_secs(delay)).await;
+    let mut announced: Option<String> = None;
     loop {
-        if crate::config().updates.check {
-            check().await;
+        if crate::config().updates.check
+            && let Checked::Available(v) = check().await
+            && announced.as_ref() != Some(&v)
+        {
+            // Once per version, not every day.
+            crate::platform::notify(
+                &format!("Looting Glass {v} is available"),
+                "Click to see what's new and install it.",
+                Some(crate::Event::OpenAbout),
+            )
+            .await;
+            announced = Some(v);
         }
         tokio::time::sleep(Duration::from_secs(24 * 60 * 60)).await;
     }
 }
 
 /// Ask GitHub for the latest release and publish the result to QML and the tray.
-pub async fn check() {
+pub async fn check() -> Checked {
     status("Checking for updates…", true);
     let res = latest(&crate::config().user_agent()).await;
     let checked = q(chrono::Local::now().format("%Y-%m-%d %H:%M").to_string());
@@ -211,12 +255,14 @@ pub async fn check() {
         Ok(r) => r,
         Err(e) => {
             log::warn!("update check: {e:#}");
-            return status(format!("Update check failed: {e:#}"), false);
+            status(format!("Update check failed: {e:#}"), false);
+            return Checked::Failed(format!("{e:#}"));
         }
     };
     if !is_newer(&rel.tag_name, CURRENT) {
+        log::info!("up to date ({CURRENT})");
         status("Looting Glass is up to date.", false);
-        return;
+        return Checked::UpToDate;
     }
     let version = rel.tag_name.trim_start_matches('v').to_string();
     log::info!("update available: {version}");
@@ -230,7 +276,8 @@ pub async fn check() {
         b.as_mut().set_update_mode(mode);
     });
     status("", false);
-    crate::platform::set_tray_update(Some(version)).await;
+    crate::platform::set_tray_update(Some(version.clone())).await;
+    Checked::Available(version)
 }
 
 /// Download, verify and install the release found by `check`. Reports progress and errors
@@ -280,6 +327,10 @@ async fn try_install() -> Result<()> {
     std::fs::write(&file, &data)?;
 
     status("Installing…", true);
+    if let Some(m) = updated_marker() {
+        let _ = std::fs::create_dir_all(m.parent().unwrap());
+        let _ = std::fs::write(&m, CURRENT);
+    }
     match kind {
         Install::WindowsInstaller => {
             // The installer closes this copy anyway; /relaunch=1 starts the new one when done.
@@ -305,6 +356,8 @@ async fn try_install() -> Result<()> {
         }
         Install::Package | Install::Manual => unreachable!("no asset for {kind:?}"),
     }
+    // An install that fails above leaves the marker; the next start sees the same version and
+    // says nothing.
     status(format!("Looting Glass {version} is installed. Restart to use it."), false);
     ui(|b| b.set_update_ready(true));
     Ok(())
