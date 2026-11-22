@@ -22,7 +22,6 @@ pub const APP_ID: &str = "dev.lootingglass.LootingGlass";
 pub const SHORTCUT_DEFS: &[(&str, &str, Option<&str>)] = &[
     ("price-check", "Price check hovered item", Some("CTRL+D")),
     ("item-info", "Open hovered item on poedb or the wiki", None),
-    ("map-check", "Map check: hovered map's mods", None),
     ("toggle-game", "Switch between PoE 1 and PoE 2", None),
     ("manual-check", "Open manual price check", None),
     ("settings", "Open Looting Glass settings", None),
@@ -68,6 +67,10 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
             gs.bind_shortcuts(&session, &shortcuts, None, Default::default())
                 .await?
                 .response()?;
+            // 0.8/0.9 had a separate map check shortcut; maps are now checked by the price check.
+            if !super::hyprland::detected() {
+                let _ = super::kglobalaccel::forget("map-check").await;
+            }
             anyhow::Ok(Shortcuts { gs, session })
         })
         .await
@@ -82,7 +85,6 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
             "manual-check" => Event::OpenManual,
             "hide-overlay" => Event::HideOverlay,
             "item-info" => Event::OpenItemInfo,
-            "map-check" => Event::MapCheck,
             _ => continue,
         };
         let _ = tx.send(ev).await;

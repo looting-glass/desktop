@@ -144,7 +144,6 @@ pub struct ShortcutsConfig {
     pub settings: String,
     pub hide_overlay: String,
     pub item_info: String,
-    pub map_check: String,
 }
 
 #[cfg(windows)]
@@ -157,7 +156,6 @@ impl Default for ShortcutsConfig {
             settings: String::new(),
             hide_overlay: String::new(),
             item_info: String::new(),
-            map_check: String::new(),
         }
     }
 }

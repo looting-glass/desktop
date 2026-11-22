@@ -1,23 +1,23 @@
 Item Class: Maps
 Rarity: Rare
-Dread Trap
-Cemetery Map
+Remote Voyage
+Map (Tier 12)
 --------
-Map Tier: 16
-Item Quantity: +87% (augmented)
-Item Rarity: +45% (augmented)
-Monster Pack Size: +28% (augmented)
-Quality: +20% (augmented)
+Atlas Drops: +46% (augmented)
+Item Rarity: +28% (augmented)
+Monster Pack Size: +18% (augmented)
 --------
-Item Level: 83
+Item Level: 79
 --------
-Monster Level: 83
+Monster Level: 79
 --------
-Players cannot Regenerate Life, Mana or Energy Shield
-Monsters reflect 18% of Elemental Damage
-Monsters have 70% increased Area of Effect
-Area contains two Unique Bosses
-Monsters deal 102% extra Physical Damage as Fire
-Players have 60% less Recovery Rate of Life and Energy Shield
+{ Prefix Modifier "Multifarious" (Tier: 1) }
+Area has increased monster variety — Unscalable Value
+{ Prefix Modifier "Fecund" (Tier: 1) — Life }
+44(40-49)% more Monster Life
+{ Rare-only Suffix Modifier "of Zarokh" (Tier: 1) }
+Area contains a Mirage
+{ Suffix Modifier "of Bloodlines" (Tier: 1) }
+20(20-30)% increased Magic Monsters
 --------
-Travel to this Map by using it in a personal Map Device. Maps can only be used once.
+Travel to a Map of this tier or lower by using this in a personal Map Device. Maps can only be used once.

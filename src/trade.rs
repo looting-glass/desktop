@@ -213,6 +213,8 @@ fn category(class: &str) -> Option<&'static str> {
         "Wands" => "weapon.wand",
         "Talismans" => "weapon.talisman",
         "Jewels" | "Abyss Jewels" => "jewel",
+        "Maps" => "map",
+        "Waystones" => "map.waystone",
         _ => return None,
     })
 }
@@ -349,6 +351,13 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
             filters.push(f(id, format!("{name} influence"), "influence", !unique, None));
         }
     }
+    // Maps and waystones are priced by tier: their base ("Map (Tier 12)") names nothing else.
+    if let Some(t) = item.map.as_ref().and_then(|m| m.tier) {
+        let what = if item.class == "Waystones" { "Waystone" } else { "Map" };
+        let mut tier = f("map:map_tier".into(), format!("{what} Tier: {t}"), "property", true, Some(t as f64));
+        tier.max = Some(t as f64);
+        filters.push(tier);
+    }
     for flag in item.flags.iter().filter(|k| flag_supported(cfg.game, k)) {
         let label = FLAG_LABELS.iter().find(|(k, _)| k == flag).map_or(*flag, |(_, l)| *l);
         filters.push(f(format!("flag:{flag}"), label.into(), "property", !unique && *flag != "veiled", None));
@@ -442,10 +451,12 @@ pub async fn prepare(item: &Item, cfg: &Config) -> Result<Spec> {
         league: cfg.league().to_string(),
         online: cfg.trade.status != "any",
         name: (item.rarity == Rarity::Unique).then(|| item.name.clone()).flatten(),
-        base,
+        // A map's base is only its tier, which the map tier filter covers.
+        base: if item.map.is_some() { None } else { base },
         // Rares are about their mods, not the exact base: search the whole category by
-        // default (like Awakened PoE Trade); exact base stays one click away.
-        use_base: !(item.rarity == Rarity::Rare && item_category(item).is_some()),
+        // default (like Awakened PoE Trade); exact base stays one click away. Maps always
+        // search their category.
+        use_base: item.map.is_none() && !(item.rarity == Rarity::Rare && item_category(item).is_some()),
         category: item_category(item).map(str::to_string),
         corrupted: item.corrupted,
         filter_corrupted: matches!(item.rarity, Rarity::Unique | Rarity::Gem),
@@ -509,6 +520,8 @@ fn build_query(spec: &Spec) -> Value {
         } else if let Some(k) = f.id.strip_prefix("misc:") {
             let g = if k == "gem_level" { "misc_filters" } else { lvl_group };
             put(g, k, range(f));
+        } else if let Some(k) = f.id.strip_prefix("map:") {
+            put("map_filters", k, range(f));
         } else if let Some(k) = f.id.strip_prefix("socket:") {
             put("socket_filters", k, range(f));
         } else if let Some(k) = f.id.strip_prefix("flag:") {
@@ -614,6 +627,23 @@ mod tests {
         let s = block(prepare(&parse(sample).unwrap(), &c)).unwrap();
         assert_eq!(filter(&s, "increased Damage").min, Some(65.0), "bottom of the tier's range");
         assert_eq!(filter(&s, "Minion Skills").min, Some(3.0), "no range: tolerance as before");
+    }
+
+    #[test]
+    fn maps_and_waystones_search_their_category_by_tier() {
+        for (sample, game, cat, label, tier) in [
+            (include_str!("../dev/map.txt"), Game::Poe1, "map", "Map Tier: 12", 12.0),
+            (include_str!("../dev/waystone-poe2.txt"), Game::Poe2, "map.waystone", "Waystone Tier: 15", 15.0),
+        ] {
+            let s = spec_for(sample, game);
+            assert_eq!((s.base.as_deref(), s.use_base), (None, false), "{label}: the base names only the tier");
+            let t = filter(&s, label);
+            assert_eq!((t.enabled, t.min, t.max), (true, Some(tier), Some(tier)));
+            let q = build_query(&s);
+            assert_eq!(q["query"]["filters"]["type_filters"]["filters"]["category"]["option"], cat);
+            assert_eq!(q["query"]["filters"]["map_filters"]["filters"]["map_tier"], json!({ "min": tier as u32, "max": tier as u32 }));
+            assert!(q["query"].get("type").is_none());
+        }
     }
 
     #[test]

@@ -82,6 +82,15 @@ pub async fn set(id: &str, description: &str, key: i32, take_over: bool) -> Resu
     Ok(())
 }
 
+/// Remove a shortcut the app no longer registers, so it leaves System Settings too.
+pub async fn forget(id: &str) -> Result<()> {
+    conn()
+        .await?
+        .call_method(Some(SERVICE), "/kglobalaccel", Some(IFACE), "unregister", &(COMPONENT, id))
+        .await?;
+    Ok(())
+}
+
 /// Pause all global shortcuts while the user presses a new key combination in the settings
 /// window, so pressing it there doesn't also trigger whatever it's bound to.
 pub async fn block(on: bool) -> Result<()> {
