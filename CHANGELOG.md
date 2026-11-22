@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/looting-glass/desktop/compare/v0.9.1...v0.9.2) (2026-11-22)
+
+
+### Bug Fixes
+
+* tell the user what the update check found and when an update is done ([#52](https://github.com/looting-glass/desktop/issues/52)) ([986ec5c](https://github.com/looting-glass/desktop/commit/986ec5c53c7796d5e8882d8516dc2b6a76f8522f))
+
 ## [0.9.1](https://github.com/looting-glass/desktop/compare/v0.9.0...v0.9.1) (2026-11-22)
 
 
