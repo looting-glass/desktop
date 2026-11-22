@@ -31,7 +31,9 @@ pub mod qobject {
         #[qproperty(QString, info_url)]
         #[qproperty(QString, info_label)]
         #[qproperty(QString, game_label)]
-        #[qproperty(QString, shortcuts_text)]
+        #[qproperty(QString, shortcuts)]
+        #[qproperty(QString, shortcut_error)]
+        #[qproperty(QString, shortcut_check)]
         #[qproperty(QString, leagues)]
         #[qproperty(i32, side)]
         #[qproperty(i32, overlay_width)]
@@ -60,6 +62,14 @@ pub mod qobject {
         #[qinvokable]
         fn refresh_shortcuts(self: &Backend);
         #[qinvokable]
+        fn price_check_map(self: &Backend);
+        #[qinvokable]
+        fn set_shortcut(self: &Backend, id: &QString, key: i32);
+        #[qinvokable]
+        fn check_shortcut(self: &Backend, id: &QString, key: i32);
+        #[qinvokable]
+        fn block_shortcuts(self: &Backend, on: bool);
+        #[qinvokable]
         fn refresh_leagues(self: &Backend);
         #[qinvokable]
         fn hide_overlay(self: Pin<&mut Backend>);
@@ -71,8 +81,7 @@ pub mod qobject {
         fn check_text(self: &Backend, text: &QString) -> QString;
         #[qinvokable]
         fn mark_map_mod(self: &Backend, mod_template: &QString, level: &QString);
-        #[qinvokable]
-        fn price_check_map(self: &Backend);
+
         #[qinvokable]
         fn open_settings_window(self: Pin<&mut Backend>);
         #[qinvokable]
@@ -128,7 +137,12 @@ pub struct BackendRust {
     info_url: QString,
     info_label: QString,
     game_label: QString,
-    shortcuts_text: QString,
+    /// Global shortcuts for the settings window, as JSON (`platform::ShortcutList`).
+    shortcuts: QString,
+    /// Why the last shortcut change didn't apply (e.g. the key is taken), or empty.
+    shortcut_error: QString,
+    /// The last recorded key combination, checked for conflicts (JSON `platform::ShortcutCheck`).
+    shortcut_check: QString,
     leagues: QString,
     side: i32,
     overlay_width: i32,
@@ -229,10 +243,34 @@ impl qobject::Backend {
     }
 
     fn refresh_shortcuts(&self) {
-        rt().spawn(async {
-            let s = q(crate::platform::describe_shortcuts().await);
-            ui(move |b| b.set_shortcuts_text(s));
+        rt().spawn(refresh_shortcuts());
+    }
+
+    /// Bind a Qt key combination (0 = none) to a shortcut, then show the updated list.
+    fn set_shortcut(&self, id: &QString, key: i32) {
+        let id = id.to_string();
+        rt().spawn(async move {
+            let err = match crate::platform::set_shortcut(&id, key).await {
+                Ok(()) => String::new(),
+                Err(e) => format!("{e:#}"),
+            };
+            ui(move |b| b.set_shortcut_error(q(err)));
+            refresh_shortcuts().await;
         });
+    }
+
+    /// Text and conflicts for a recorded key combination; the answer arrives as `shortcut_check`.
+    fn check_shortcut(&self, id: &QString, key: i32) {
+        let id = id.to_string();
+        rt().spawn(async move {
+            let c = crate::platform::check_shortcut(&id, key).await;
+            let json = q(serde_json::to_string(&c).unwrap_or_default());
+            ui(move |b| b.set_shortcut_check(json));
+        });
+    }
+
+    fn block_shortcuts(&self, on: bool) {
+        rt().spawn(crate::platform::block_shortcuts(on));
     }
 
     fn refresh_leagues(&self) {
@@ -319,4 +357,10 @@ impl qobject::Backend {
 #[allow(unused)]
 fn _assert(b: &qobject::Backend) -> &BackendRust {
     b.rust()
+}
+
+async fn refresh_shortcuts() {
+    let list = crate::platform::shortcut_list().await;
+    let json = q(serde_json::to_string(&list).unwrap_or_default());
+    ui(move |b| b.set_shortcuts(json));
 }
