@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.1](https://github.com/looting-glass/desktop/compare/v0.9.0...v0.9.1) (2026-11-22)
+
+
+### Features
+
+* **linux:** edit global shortcuts in settings, synced with KDE ([#48](https://github.com/looting-glass/desktop/issues/48)) ([803c9c9](https://github.com/looting-glass/desktop/commit/803c9c91b20de56448c9d50980d37a0b97f8524e))
+* map check inside the price check; maps priced by tier ([#51](https://github.com/looting-glass/desktop/issues/51)) ([8745440](https://github.com/looting-glass/desktop/commit/8745440ee82b9340682460f69f58d0731e74073b))
+
+
+### Miscellaneous
+
+* release 0.9.1 ([8c7e8bb](https://github.com/looting-glass/desktop/commit/8c7e8bb2d9d0a4de27f5c585bc7dd800f035df4b))
+
 ## [0.9.0](https://github.com/looting-glass/desktop/compare/v0.8.0...v0.9.0) (2026-11-21)
 
 
