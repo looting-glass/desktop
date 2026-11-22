@@ -109,9 +109,19 @@ pub fn reload_shortcuts() {
     }
 }
 
-pub async fn describe_shortcuts() -> String {
-    let s = crate::config().shortcuts;
-    format!("Price check: {}", if s.price_check.is_empty() { "unassigned" } else { &s.price_check })
+/// Windows hotkeys are edited as text in the settings window (`[shortcuts]` in the config).
+pub async fn shortcut_list() -> super::ShortcutList {
+    super::ShortcutList { mode: "app", ..Default::default() }
+}
+
+pub async fn set_shortcut(_id: &str, _key: i32) -> anyhow::Result<()> {
+    anyhow::bail!("Windows hotkeys are set in the settings fields")
+}
+
+pub async fn block_shortcuts(_on: bool) {}
+
+pub async fn check_shortcut(id: &str, key: i32) -> super::ShortcutCheck {
+    super::ShortcutCheck { id: id.into(), key, ..Default::default() }
 }
 
 /// Hotkeys are edited directly in the settings window on Windows.

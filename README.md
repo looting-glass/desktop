@@ -210,8 +210,10 @@ selected).
 | Open hovered item on poedb or the wiki | unassigned |
 | Map check: hovered map's mods | unassigned |
 
-Change them in *System Settings → Shortcuts → Looting Glass*, or via *Settings → Shortcuts*. On
-Windows, type them straight into *Settings → Shortcuts* (e.g. `Ctrl+D`, `Ctrl+Shift+F7`).
+On KDE, change them right in *Settings → Shortcuts*: click a shortcut, press the keys you want (Esc
+cancels, Backspace clears) and Save. A key another app already uses is shown with its name, and
+Save moves it over. They're the same shortcuts as in *System Settings → Shortcuts → Looting
+Glass*. On Windows, type them into *Settings → Shortcuts* (e.g. `Ctrl+D`, `Ctrl+Shift+F7`).
 
 #### Hyprland (experimental)
 

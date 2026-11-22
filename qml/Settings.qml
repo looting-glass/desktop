@@ -64,6 +64,24 @@ ApplicationWindow {
         Backend.refreshLeagues()
         Backend.refreshShortcuts()
     }
+    // Shortcuts page (KDE): recorded keys wait here until Save; Close discards them.
+    // id -> { key, keys: "Ctrl+D" (empty = none), conflict: who else uses it }
+    property var pendingShortcuts: ({})
+    function stageShortcut(id, key, keys, conflict) {
+        const p = Object.assign({}, pendingShortcuts)
+        p[id] = { key: key, keys: keys, conflict: conflict }
+        pendingShortcuts = p
+    }
+    Connections {
+        target: Backend
+        function onShortcutCheckChanged() {
+            try {
+                const c = JSON.parse(Backend.shortcutCheck)
+                win.stageShortcut(c.id, c.key, c.keys, c.conflict)
+            } catch (e) {}
+        }
+    }
+
     // Maps page: marked PoE 1 map mods, edited in `cfg` and saved with Save.
     property int mapRev: 0
     function mapMods() { mapRev; return cfg ? cfg.map_check : null }
@@ -96,11 +114,75 @@ ApplicationWindow {
         if (ownShortcuts)
             for (let i = 0; i < shortcutFields.length; i++)
                 c.shortcuts[shortcutFields[i][0]] = shortcutRows.itemAt(i).value.trim()
+        for (const id in pendingShortcuts)
+            Backend.setShortcut(id, pendingShortcuts[id].key)
+        pendingShortcuts = {}
         const err = Backend.saveConfig(JSON.stringify(c))
         saveStatus.text = err === "" ? "Saved." : "Error: " + err
     }
 
-    onVisibleChanged: if (visible) load()
+    onVisibleChanged: {
+        if (visible) {
+            Backend.shortcutError = ""
+            load()
+        } else {
+            Backend.blockShortcuts(false)
+            pendingShortcuts = {}
+        }
+    }
+
+    // A global shortcut's keys (KDE): click, then press the combination. Global shortcuts are
+    // paused meanwhile, so the keys don't also trigger what they're bound to.
+    component KeyButton: Button {
+        id: kb
+        property string shortcutId
+        property string keys
+        property bool changed: false
+        property bool recording: false
+        property int mods: 0
+        readonly property int modMask: Qt.ControlModifier | Qt.ShiftModifier | Qt.AltModifier | Qt.MetaModifier
+        Layout.preferredWidth: 170
+        highlighted: recording
+        text: recording ? win.modText(mods) + "…" : (keys || "None") + (changed ? " •" : "")
+        font.bold: changed && !recording
+        onClicked: {
+            if (recording) return
+            recording = true
+            mods = 0
+            Backend.shortcutError = ""
+            Backend.blockShortcuts(true)
+            forceActiveFocus()
+        }
+        function stop() {
+            if (!recording) return
+            recording = false
+            Backend.blockShortcuts(false)
+        }
+        onActiveFocusChanged: if (!activeFocus) stop()
+        Keys.onPressed: e => {
+            if (!recording) return
+            e.accepted = true
+            const m = e.modifiers & modMask
+            if ([Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta, Qt.Key_AltGr, Qt.Key_Super_L, Qt.Key_Super_R].indexOf(e.key) >= 0) {
+                mods = m
+                return
+            }
+            if (e.key === Qt.Key_Escape && m === 0) { stop(); return }
+            const clear = (e.key === Qt.Key_Backspace || e.key === Qt.Key_Delete) && m === 0
+            stop()
+            if (clear) win.stageShortcut(shortcutId, 0, "", "")
+            else Backend.checkShortcut(shortcutId, m | e.key)
+        }
+        Keys.onReleased: e => { if (recording) { mods = e.modifiers & modMask; e.accepted = true } }
+    }
+    function modText(m) {
+        const parts = []
+        if (m & Qt.MetaModifier) parts.push("Meta")
+        if (m & Qt.ControlModifier) parts.push("Ctrl")
+        if (m & Qt.AltModifier) parts.push("Alt")
+        if (m & Qt.ShiftModifier) parts.push("Shift")
+        return parts.length ? parts.join("+") + "+" : "Press keys"
+    }
 
     function showAbout() {
         nav.currentIndex = visibleCategories.length - 1
@@ -313,47 +395,139 @@ ApplicationWindow {
                     }
 
                     // Linux: shortcuts live in the desktop (portal); show them with a button to edit.
-                    // Windows: Looting Glass registers them itself, so edit them right here.
-                    FormPage {
-                        FormLabel { text: "Current:"; visible: !win.ownShortcuts }
-                        Label {
-                            visible: !win.ownShortcuts
-                            text: Backend.shortcutsText || "…"
-                            wrapMode: Text.Wrap
-                            Layout.preferredWidth: 300
-                        }
-                        Item { visible: !win.ownShortcuts }
-                        Button {
-                            visible: !win.ownShortcuts
-                            text: "Change shortcuts…"
-                            icon.name: Qt.platform.os === "linux" ? "input-keyboard" : ""
-                            onClicked: Backend.configureShortcuts()
-                        }
-
-                        Repeater {
-                            id: shortcutRows
-                            model: win.ownShortcuts ? win.shortcutFields : []
-                            delegate: RowLayout {
-                                required property var modelData
-                                property alias value: field.text
-                                Layout.columnSpan: 2
-                                Layout.alignment: Qt.AlignRight
-                                spacing: 12
-                                Label { text: modelData[1] }
-                                TextField {
-                                    id: field
-                                    placeholderText: "unassigned"
-                                    Layout.preferredWidth: 200
+                    Item {
+                        // Windows: Looting Glass registers the hotkeys itself, so they're typed here
+                        // and saved with the other settings.
+                        FormPage {
+                            anchors.fill: parent
+                            visible: win.ownShortcuts
+                            Repeater {
+                                id: shortcutRows
+                                model: win.ownShortcuts ? win.shortcutFields : []
+                                delegate: RowLayout {
+                                    required property var modelData
+                                    property alias value: field.text
+                                    Layout.columnSpan: 2
+                                    Layout.alignment: Qt.AlignRight
+                                    spacing: 12
+                                    Label { text: modelData[1] }
+                                    TextField {
+                                        id: field
+                                        placeholderText: "unassigned"
+                                        Layout.preferredWidth: 200
+                                    }
                                 }
                             }
+                            Item { visible: win.ownShortcuts }
+                            Label {
+                                visible: win.ownShortcuts
+                                text: "Examples: Ctrl+D, Ctrl+Shift+F7, Alt+W. Leave empty to unassign."
+                                opacity: 0.7
+                                wrapMode: Text.Wrap
+                                Layout.preferredWidth: 200
+                            }
                         }
-                        Item { visible: win.ownShortcuts }
-                        Label {
-                            visible: win.ownShortcuts
-                            text: "Examples: Ctrl+D, Ctrl+Shift+F7, Alt+W. Leave empty to unassign."
-                            opacity: 0.7
-                            wrapMode: Text.Wrap
-                            Layout.preferredWidth: 200
+
+                        // Linux: the desktop owns global shortcuts. On KDE they're edited right here
+                        // (kglobalaccel, applied at once); Hyprland binds them in hyprland.conf.
+                        ColumnLayout {
+                            id: scPage
+                            anchors.fill: parent
+                            visible: !win.ownShortcuts
+                            spacing: 4
+                            readonly property var sc: {
+                                try { return Backend.shortcuts ? JSON.parse(Backend.shortcuts) : null } catch (e) { return null }
+                            }
+                            readonly property string mode: sc ? sc.mode : ""
+                            readonly property var rows: sc ? sc.rows : []
+
+                            Label {
+                                text: scPage.mode === "kde"
+                                    ? "Click a shortcut and press the keys you want (Esc cancels, Backspace clears). Save applies them; they're the same shortcuts as in System Settings."
+                                    : scPage.mode === "hyprland"
+                                    ? "Hyprland binds global shortcuts in hyprland.conf. Add a line for each one you want, with your own keys:"
+                                    : "Your desktop manages these shortcuts."
+                                wrapMode: Text.Wrap
+                                opacity: 0.75
+                                Layout.fillWidth: true
+                                Layout.bottomMargin: 6
+                            }
+                            Repeater {
+                                model: scPage.mode === "hyprland" ? [] : scPage.rows
+                                ColumnLayout {
+                                    id: scRow
+                                    required property var modelData
+                                    readonly property var pending: win.pendingShortcuts[modelData.id]
+                                    readonly property string keys: pending ? pending.keys : modelData.keys
+                                    Layout.fillWidth: true
+                                    spacing: 0
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        Label {
+                                            text: scRow.modelData.description
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        KeyButton {
+                                            visible: scPage.mode === "kde"
+                                            shortcutId: scRow.modelData.id
+                                            keys: scRow.keys
+                                            changed: scRow.pending !== undefined && scRow.pending.keys !== scRow.modelData.keys
+                                        }
+                                        ToolButton {
+                                            visible: scPage.mode === "kde"
+                                            enabled: scRow.keys !== ""
+                                            opacity: enabled ? 1 : 0
+                                            icon.name: "edit-clear"
+                                            icon.source: "qrc:/lootingglass/icons/close.svg"
+                                            ToolTip.visible: hovered
+                                            ToolTip.text: "Remove this shortcut"
+                                            onClicked: win.stageShortcut(scRow.modelData.id, 0, "", "")
+                                        }
+                                        Label {
+                                            visible: scPage.mode !== "kde"
+                                            text: scRow.modelData.keys || "unassigned"
+                                            opacity: scRow.modelData.keys ? 1 : 0.5
+                                        }
+                                    }
+                                    Label {
+                                        visible: scRow.pending !== undefined && scRow.pending.conflict !== ""
+                                        text: scRow.pending ? scRow.pending.keys + " is used by " + scRow.pending.conflict + ". Save moves it here." : ""
+                                        color: "#e0b84a"
+                                        font.pointSize: 8
+                                        wrapMode: Text.Wrap
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                            }
+                            TextArea {
+                                visible: scPage.mode === "hyprland"
+                                readOnly: true
+                                selectByMouse: true
+                                font.family: "monospace"
+                                wrapMode: TextEdit.NoWrap
+                                Layout.fillWidth: true
+                                // Price check gets its usual Ctrl+D; the rest a placeholder key to replace.
+                                text: scPage.rows.map(r => "bind = " + (r.id === "price-check" ? "CTRL, D" : ", KEY")
+                                    + ", global, dev.lootingglass.LootingGlass:" + r.id + "   # " + r.description).join("\n")
+                            }
+                            Label {
+                                visible: text !== ""
+                                text: Backend.shortcutError || (scPage.sc ? scPage.sc.error : "")
+                                color: "#e06c6c"
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                                Layout.topMargin: 6
+                            }
+                            Button {
+                                visible: scPage.mode === "portal"
+                                text: "Change shortcuts…"
+                                icon.name: "input-keyboard"
+                                onClicked: Backend.configureShortcuts()
+                                Layout.topMargin: 6
+                            }
+                            Item { Layout.fillHeight: true }
                         }
                     }
 

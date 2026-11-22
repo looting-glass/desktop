@@ -18,6 +18,17 @@ use tokio::sync::{Mutex, OnceCell};
 
 pub const APP_ID: &str = "dev.lootingglass.LootingGlass";
 
+/// Shortcut id, description (shown in System Settings), preferred trigger; in settings order.
+pub const SHORTCUT_DEFS: &[(&str, &str, Option<&str>)] = &[
+    ("price-check", "Price check hovered item", Some("CTRL+D")),
+    ("item-info", "Open hovered item on poedb or the wiki", None),
+    ("map-check", "Map check: hovered map's mods", None),
+    ("toggle-game", "Switch between PoE 1 and PoE 2", None),
+    ("manual-check", "Open manual price check", None),
+    ("settings", "Open Looting Glass settings", None),
+    ("hide-overlay", "Hide price overlay", None),
+];
+
 const KEY_LEFTCTRL: i32 = 29;
 const KEY_C: i32 = 46;
 
@@ -50,15 +61,10 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
         .get_or_try_init(|| async {
             let gs = GlobalShortcuts::new().await?;
             let session = gs.create_session(Default::default()).await?;
-            let shortcuts = [
-                NewShortcut::new("price-check", "Price check hovered item").preferred_trigger("CTRL+D"),
-                NewShortcut::new("toggle-game", "Switch between PoE 1 and PoE 2").preferred_trigger(None),
-                NewShortcut::new("settings", "Open Looting Glass settings").preferred_trigger(None),
-                NewShortcut::new("manual-check", "Open manual price check").preferred_trigger(None),
-                NewShortcut::new("hide-overlay", "Hide price overlay").preferred_trigger(None),
-                NewShortcut::new("item-info", "Open hovered item on poedb or the wiki").preferred_trigger(None),
-                NewShortcut::new("map-check", "Map check: hovered map's mods").preferred_trigger(None),
-            ];
+            let shortcuts: Vec<NewShortcut> = SHORTCUT_DEFS
+                .iter()
+                .map(|(id, desc, trigger)| NewShortcut::new(*id, *desc).preferred_trigger(*trigger))
+                .collect();
             gs.bind_shortcuts(&session, &shortcuts, None, Default::default())
                 .await?
                 .response()?;
@@ -84,39 +90,20 @@ pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
     Ok(())
 }
 
-/// Human readable list of current bindings, e.g. "Price check: Ctrl+D".
-pub async fn describe_shortcuts() -> String {
-    let Some(sc) = SHORTCUTS.get() else { return "Global shortcuts portal not connected".into() };
-    let res = async {
-        let list = sc.gs.list_shortcuts(&sc.session, Default::default()).await?.response()?;
-        anyhow::Ok(
-            list.shortcuts()
-                .iter()
-                .map(|s| {
-                    let t = s.trigger_description();
-                    format!("{}: {}", s.description(), if t.is_empty() { "unassigned" } else { t })
-                })
-                .collect::<Vec<_>>()
-                .join("\n"),
-        )
-    }
-    .await;
-    let text = res.unwrap_or_else(|e| format!("Could not list shortcuts: {e}"));
-    if super::hyprland::detected() {
-        format!("{text}\n\nOn Hyprland, bind keys in hyprland.conf, e.g.\n{}", super::hyprland::BIND_HINT)
-    } else {
-        text
-    }
+/// Current triggers as the portal describes them ("Ctrl+D"), by shortcut id.
+pub async fn triggers() -> Result<std::collections::HashMap<String, String>> {
+    let sc = SHORTCUTS.get().context("Global shortcuts portal not connected")?;
+    let list = sc.gs.list_shortcuts(&sc.session, Default::default()).await?.response()?;
+    Ok(list.shortcuts().iter().map(|s| (s.id().to_string(), s.trigger_description().to_string())).collect())
 }
 
-/// Open the compositor's shortcut editor; falls back to KDE's shortcuts KCM.
 pub async fn configure_shortcuts() {
     if let Some(sc) = SHORTCUTS.get() {
         if sc.gs.configure_shortcuts(&sc.session, None, Default::default()).await.is_ok() {
             return;
         }
     }
-    // Hyprland has no shortcut editor: bindings live in hyprland.conf (see describe_shortcuts).
+    // Hyprland has no shortcut editor: bindings live in hyprland.conf (see platform::shortcut_list).
     if !super::hyprland::detected() {
         let _ = std::process::Command::new("systemsettings").arg("kcm_keys").spawn();
     }
