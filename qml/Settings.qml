@@ -121,6 +121,7 @@ ApplicationWindow {
     }
 
     onVisibleChanged: {
+        if (reopening) return
         if (visible) {
             Backend.shortcutError = ""
             load()
@@ -185,7 +186,21 @@ ApplicationWindow {
 
     function showAbout() {
         nav.currentIndex = visibleCategories.length - 1
-        show()
+        bringToFront()
+    }
+
+    // Wayland doesn't let an app raise its own window from the tray, so an open window behind
+    // others is closed and shown again, keeping unsaved edits (no reload, nothing discarded).
+    property bool reopening: false
+    function bringToFront() {
+        if (visible) {
+            reopening = true
+            hide()
+            show()
+            reopening = false
+        } else {
+            show()
+        }
         raise()
         requestActivate()
     }

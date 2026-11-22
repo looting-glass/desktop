@@ -5,10 +5,12 @@
 mod hyprland;
 mod kglobalaccel;
 mod kwin;
+mod notify;
 mod portal;
 mod tray;
 
 use super::{ShortcutList, ShortcutRow};
+pub use notify::show as notify;
 pub use portal::{configure_shortcuts, copy_item, run_shortcuts};
 pub use tray::{set_game as set_tray_game, set_update as set_tray_update, spawn as spawn_tray};
 

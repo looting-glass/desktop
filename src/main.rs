@@ -134,9 +134,29 @@ async fn handle(ev: Event) {
         Event::SetGame(g) => set_game(g).await,
         Event::OpenSettings => ui(|b| b.open_settings()),
         Event::OpenAbout => ui(|b| b.open_about()),
+        // Tray "Check for updates…": answer with a notification; the About page (where updates
+        // are installed) opens on a click, or right away where there are no notifications.
         Event::CheckUpdates => {
-            ui(|b| b.open_about());
-            update::check().await;
+            let v = env!("CARGO_PKG_VERSION");
+            let shown = match update::check().await {
+                update::Checked::UpToDate => {
+                    platform::notify("Looting Glass is up to date", &format!("You have the latest version, {v}."), None).await
+                }
+                update::Checked::Available(new) => {
+                    platform::notify(
+                        &format!("Looting Glass {new} is available"),
+                        &format!("You have {v}. Click to see what's new and install it."),
+                        Some(Event::OpenAbout),
+                    )
+                    .await
+                }
+                update::Checked::Failed(e) => {
+                    platform::notify("Couldn't check for updates", &e, Some(Event::OpenAbout)).await
+                }
+            };
+            if !shown {
+                ui(|b| b.open_about());
+            }
         }
         Event::OpenManual => ui(|b| b.open_manual()),
         Event::CheckText(text) => check_text(text).await,

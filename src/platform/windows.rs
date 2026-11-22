@@ -119,6 +119,11 @@ pub async fn set_shortcut(_id: &str, _key: i32) -> anyhow::Result<()> {
 
 pub async fn block_shortcuts(_on: bool) {}
 
+/// No desktop notifications on Windows yet: callers show the information in the app instead.
+pub async fn notify(_summary: &str, _body: &str, _on_click: Option<crate::Event>) -> bool {
+    false
+}
+
 pub async fn check_shortcut(id: &str, key: i32) -> super::ShortcutCheck {
     super::ShortcutCheck { id: id.into(), key, ..Default::default() }
 }

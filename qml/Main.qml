@@ -818,11 +818,7 @@ Window {
             manual.raise()
             manual.requestActivate()
         }
-        function onOpenSettings() {
-            settings.show()
-            settings.raise()
-            settings.requestActivate()
-        }
+        function onOpenSettings() { settings.bringToFront() }
         function onOpenAbout() { settings.showAbout() }
         function onOpenUrl(url) { Qt.openUrlExternally(url) }
     }

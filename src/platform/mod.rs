@@ -10,6 +10,7 @@
 //! - `async fn block_shortcuts(bool)`          — pause global shortcuts while recording keys
 //! - `async fn configure_shortcuts()`          — open the desktop's hotkey editor
 //! - `fn reload_shortcuts()`                   — config changed; re-register app-owned hotkeys
+//! - `async fn notify(&str, &str, Option<Event>) -> bool` — desktop notification (false: none shown)
 //! - `async fn copy_item() -> Result<String>`  — make the game copy the hovered item, return its text
 //! - `async fn focus_game()`                   — give keyboard focus back to the game
 //! - `async fn spawn_tray(Game)` / `async fn set_tray_game(Game)` — system tray icon
