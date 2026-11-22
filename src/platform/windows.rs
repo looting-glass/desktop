@@ -55,7 +55,6 @@ fn bindings() -> Vec<(String, Event)> {
         (s.settings, Event::OpenSettings),
         (s.hide_overlay, Event::HideOverlay),
         (s.item_info, Event::OpenItemInfo),
-        (s.map_check, Event::MapCheck),
     ]
 }
 
