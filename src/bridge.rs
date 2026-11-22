@@ -62,8 +62,6 @@ pub mod qobject {
         #[qinvokable]
         fn refresh_shortcuts(self: &Backend);
         #[qinvokable]
-        fn price_check_map(self: &Backend);
-        #[qinvokable]
         fn set_shortcut(self: &Backend, id: &QString, key: i32);
         #[qinvokable]
         fn check_shortcut(self: &Backend, id: &QString, key: i32);
@@ -326,10 +324,6 @@ impl qobject::Backend {
 
     fn mark_map_mod(&self, mod_template: &QString, level: &QString) {
         send_event(Event::MarkMapMod(mod_template.to_string(), level.to_string()));
-    }
-
-    fn price_check_map(&self) {
-        send_event(Event::PriceCheckMap);
     }
 
     fn open_settings_window(self: Pin<&mut Self>) {

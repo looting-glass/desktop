@@ -23,9 +23,8 @@ pub struct MapView {
     /// Item class for the overlay header ("Maps").
     pub class: String,
     pub tier: Option<u32>,
-    pub quantity: Option<u32>,
-    pub rarity: Option<u32>,
-    pub pack_size: Option<u32>,
+    /// Area bonuses as ("Atlas Drops", 46).
+    pub bonuses: Vec<(String, u32)>,
     pub corrupted: bool,
     pub mods: Vec<MapMod>,
     pub deadly: usize,
@@ -52,9 +51,7 @@ pub fn view(item: &Item, marks: &MapCheckConfig) -> MapView {
     MapView {
         class: item.class.clone(),
         tier: info.tier,
-        quantity: info.quantity,
-        rarity: info.rarity,
-        pack_size: info.pack_size,
+        bonuses: info.bonuses,
         corrupted: item.corrupted,
         deadly: mods.iter().filter(|m| m.level == DEADLY).count(),
         annoying: mods.iter().filter(|m| m.level == ANNOYING).count(),
@@ -82,14 +79,14 @@ mod tests {
     fn marks_colour_every_roll_of_a_mod() {
         let map = parse(include_str!("../dev/map.txt")).unwrap();
         let mut marks = MapCheckConfig::default();
-        mark(&mut marks, "Monsters reflect #% of Elemental Damage", DEADLY);
-        mark(&mut marks, "Monsters have #% increased Area of Effect", ANNOYING);
+        mark(&mut marks, "#% more Monster Life", DEADLY);
+        mark(&mut marks, "Area contains a Mirage", ANNOYING);
         let v = view(&map, &marks);
-        assert_eq!((v.tier, v.quantity, v.rarity, v.pack_size), (Some(16), Some(87), Some(45), Some(28)));
+        assert_eq!((v.tier, v.bonuses.len()), (Some(12), 3));
         let levels: Vec<&str> = v.mods.iter().map(|m| m.level).collect();
-        assert_eq!(levels, vec!["", DEADLY, ANNOYING, "", "", ""]);
+        assert_eq!(levels, vec!["", DEADLY, ANNOYING, ""]);
         assert_eq!((v.deadly, v.annoying), (1, 1));
-        assert_eq!(v.mods[1].text, "Monsters reflect 18% of Elemental Damage");
+        assert_eq!(v.mods[1].text, "44% more Monster Life");
     }
 
     #[test]

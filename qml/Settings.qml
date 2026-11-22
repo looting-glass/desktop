@@ -26,7 +26,6 @@ ApplicationWindow {
         ["settings", "Open settings:"],
         ["hide_overlay", "Hide overlay:"],
         ["item_info", "Item info:"],
-        ["map_check", "Map check:"],
     ]
     readonly property var infoSites: ["poedb", "wiki"]
 

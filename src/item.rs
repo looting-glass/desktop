@@ -86,13 +86,13 @@ pub struct Item {
     pub map: Option<MapInfo>,
 }
 
-/// Map/waystone header lines; the bonuses are percentages ("Item Quantity: +87%").
+/// Map/waystone tier (from "Map (Tier 12)") and the area's bonus lines as (label, percent):
+/// ("Atlas Drops", 46), ("Item Rarity", 28), ("Monster Pack Size", 18) in PoE 1; "Pack Size",
+/// "Monster Rarity", "Waystone Drop Chance" … in PoE 2.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct MapInfo {
     pub tier: Option<u32>,
-    pub quantity: Option<u32>,
-    pub rarity: Option<u32>,
-    pub pack_size: Option<u32>,
+    pub bonuses: Vec<(String, u32)>,
 }
 
 /// Weapon damage lines, as average damage per hit.
@@ -226,6 +226,12 @@ pub fn parse(text: &str) -> Option<Item> {
     }
 
     let is_map = matches!(it.class.as_str(), "Maps" | "Waystones");
+    if is_map {
+        // "Map (Tier 12)" / "Waystone (Tier 15)": the base names only the tier.
+        if let Some(t) = it.base.split("(Tier ").nth(1).and_then(leading_num) {
+            it.map.get_or_insert_with(MapInfo::default).tier = Some(t);
+        }
+    }
     for sec in &sections[1..] {
         let is_requirements = sec[0].starts_with("Requirements");
         // Advanced descriptions put the mod kind and tier in a `{ … }` header above its line(s);
@@ -244,12 +250,9 @@ pub fn parse(text: &str) -> Option<Item> {
                 }
             } else if let Some(v) = line.strip_prefix("Map Tier: ").or(line.strip_prefix("Waystone Tier: ")) {
                 it.map.get_or_insert_with(MapInfo::default).tier = leading_num(v);
-            } else if let Some(v) = line.strip_prefix("Item Quantity: ") {
-                it.map.get_or_insert_with(MapInfo::default).quantity = leading_num(v);
-            } else if let Some(v) = line.strip_prefix("Item Rarity: ") {
-                it.map.get_or_insert_with(MapInfo::default).rarity = leading_num(v);
-            } else if let Some(v) = line.strip_prefix("Monster Pack Size: ") {
-                it.map.get_or_insert_with(MapInfo::default).pack_size = leading_num(v);
+            } else if let Some(c) = MAP_BONUS.captures(line).filter(|_| is_map) {
+                let bonus = (c[1].to_string(), c[2].parse().unwrap_or(0));
+                it.map.get_or_insert_with(MapInfo::default).bonuses.push(bonus);
             } else if is_map && line.ends_with('.') {
                 // "Travel to this Map by using it in a personal Map Device. …": usage text, not a mod.
             } else if let Some(v) = line.strip_prefix("Quality: ") {
@@ -323,15 +326,23 @@ static KEYWORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[(?:[^\]|]*\|)?
 /// Roll ranges from advanced descriptions: `13(10-15)` -> `13`, keeping `10` and `15`.
 static ROLL_RANGE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(\d)\((-?\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)").unwrap());
+/// A map's area bonus line: "Atlas Drops: +46% (augmented)".
+static MAP_BONUS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([A-Z][A-Za-z ]+): \+(\d+)%").unwrap());
 /// `(Tier: 4)` in an advanced description's mod header. Crafted mods have a `(Rank: N)` instead.
 static TIER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\(Tier: (\d+)\)").unwrap());
 
 fn parse_mod(line: &str) -> Mod {
     let mut kind = ModKind::Explicit;
+    // Advanced descriptions flag some map mods: "Area has increased monster variety — Unscalable Value".
+    let line = line.strip_suffix(" — Unscalable Value").unwrap_or(line);
     let clean = KEYWORD.replace_all(line, "$1");
     let ranges = ROLL_RANGE
         .captures_iter(&clean)
-        .filter_map(|c| Some((c[2].parse().ok()?, c[3].parse().ok()?)))
+        .filter_map(|c| {
+            let (a, b): (f64, f64) = (c[2].parse().ok()?, c[3].parse().ok()?);
+            // Some ranges are listed high to low ("28(30-25)% less Cooldown Recovery Rate").
+            Some((a.min(b), a.max(b)))
+        })
         .collect();
     let clean = ROLL_RANGE.replace_all(&clean, "$1").into_owned();
     let line = clean.as_str();
@@ -424,18 +435,31 @@ mod tests {
 
     #[test]
     fn parses_maps_and_waystones() {
+        // Real Ctrl+Alt+C text from the game (PoE 1 3.27, PoE 2 0.4).
         let map = parse(include_str!("../dev/map.txt")).unwrap();
         assert!(map.is_map());
-        assert_eq!(map.map, Some(MapInfo { tier: Some(16), quantity: Some(87), rarity: Some(45), pack_size: Some(28) }));
-        assert_eq!(map.quality, Some(20));
-        assert_eq!(map.mods.len(), 6, "usage text isn't a mod: {:?}", map.mods);
-        assert_eq!(map.mods[1].template, "Monsters reflect #% of Elemental Damage");
+        let info = map.map.clone().unwrap();
+        assert_eq!(info.tier, Some(12), "from the base, Map (Tier 12)");
+        let b = |l: &str, v: u32| (l.to_string(), v);
+        assert_eq!(info.bonuses, vec![b("Atlas Drops", 46), b("Item Rarity", 28), b("Monster Pack Size", 18)]);
+        let t: Vec<&str> = map.mods.iter().map(|m| m.template.as_str()).collect();
+        assert_eq!(t, vec![
+            "Area has increased monster variety",
+            "#% more Monster Life",
+            "Area contains a Mirage",
+            "#% increased Magic Monsters",
+        ], "usage text isn't a mod; Unscalable Value is cut off");
+        assert_eq!(map.mods[1].ranges, vec![(40.0, 49.0)]);
 
         let way = parse(include_str!("../dev/waystone-poe2.txt")).unwrap();
         assert!(!way.is_map(), "the map check is PoE 1 only");
-        assert_eq!(way.map, Some(MapInfo { tier: Some(15), quantity: Some(60), rarity: Some(38), pack_size: Some(15) }));
-        assert_eq!(way.mods.len(), 5, "{:?}", way.mods);
-        assert_eq!(way.mods[1].template, "Players are Cursed with Enfeeble");
+        let info = way.map.clone().unwrap();
+        assert_eq!(info.tier, Some(15));
+        assert_eq!(info.bonuses, vec![b("Item Rarity", 51), b("Pack Size", 18), b("Monster Rarity", 37), b("Waystone Drop Chance", 115)]);
+        assert_eq!(way.mods.len(), 9, "{:?}", way.mods);
+        assert!(way.corrupted);
+        let fatigue = way.mods.iter().find(|m| m.template.contains("Cooldown Recovery")).unwrap();
+        assert_eq!(fatigue.ranges, vec![(25.0, 30.0)], "a range listed high to low is put in order");
 
         assert!(!parse(RING).unwrap().is_map());
     }

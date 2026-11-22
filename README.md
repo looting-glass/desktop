@@ -53,6 +53,8 @@ all use the desktop's native mechanisms.
 - **Mod tiers.** With advanced item text (Ctrl+Alt+C) each mod shows its tier and possible roll
   range, e.g. "T2 · 50–59", with top-tier rolls highlighted. Optionally the filter minimum is the
   bottom of the roll's tier instead of a flat tolerance.
+- **Maps and waystones by tier.** Maps (PoE 1) and waystones (PoE 2) are searched by their tier
+  within their category, with their mods as optional filters.
 - **Quality-adjusted values.** Armour, evasion, energy shield and physical DPS are compared at 20%
   quality, the same way the trade site does.
 - **Weapon DPS filters.** Physical, elemental and total DPS, attack speed and critical chance.
@@ -69,10 +71,10 @@ all use the desktop's native mechanisms.
   Space or by clicking back into the game, or pin it to keep it open until you close it.
 - **Item info.** A hotkey and an overlay button open the item's page on poedb (poedb.tw /
   poe2db.tw), or the community wiki if you prefer: uniques by name, everything else by base type.
-- **Map check (PoE 1).** A separate hotkey lists a map's mods with its tier, quantity, rarity and
-  pack size, coloured by how you marked them: deadly (red) or annoying (yellow). Click a mod in the
-  overlay to mark it, or manage the marks in *Settings → Maps*. A button price-checks the map as
-  usual. Turn it on or off under *Settings → Game* while Path of Exile is selected.
+- **Map check (PoE 1).** Price-checking a map also lists its mods with its tier and bonuses (atlas
+  drops, rarity, pack size), coloured by how you marked them: deadly (red) or annoying (yellow),
+  above the listings. Click a mod in the overlay to mark it, or manage the marks in *Settings → Maps*. Turn it
+  on or off under *Settings → Game* while Path of Exile is selected.
 - **Manual check.** Paste item text into a native window (click the tray icon) and check it
   without a hotkey, e.g. items from a friend or a forum post.
 - **Native settings** in a KDE-style window, stored as TOML.
@@ -191,12 +193,12 @@ click the tray icon (or use *Manual check…* in its menu). Paste the item text 
 
 ### Map check
 
-For Path of Exile 1 maps. Assign the *Map check* shortcut (it starts unassigned), hover a map and
-press it. The overlay lists the map's mods: click one to mark it annoying, click again for deadly,
-and once more to clear it. Marks cover every roll of a mod, so the next map with a mod you can't run
-shows it in red right away. *Settings → Maps* lists the marks and takes pasted mod lines. The map
-check is on by default; *Settings → Game* turns it off (the option shows while Path of Exile is
-selected).
+For Path of Exile 1 maps: price-check a map as usual and the overlay also lists its mods, above the
+listings. Click one to mark it annoying, click again for deadly, and once more to clear it. Marks
+cover every roll of a mod, so the next map with a mod you can't run shows it in red right away.
+*Settings → Maps* lists the marks and takes pasted mod lines. The map check is on by default;
+*Settings → Game* turns it off (the option shows while Path of Exile is selected). The price check
+works on maps either way.
 
 ### Shortcuts
 
@@ -208,7 +210,6 @@ selected).
 | Open manual price check | unassigned |
 | Hide overlay | unassigned |
 | Open hovered item on poedb or the wiki | unassigned |
-| Map check: hovered map's mods | unassigned |
 
 On KDE, change them right in *Settings → Shortcuts*: click a shortcut, press the keys you want (Esc
 cancels, Backspace clears) and Save. A key another app already uses is shown with its name, and
@@ -228,7 +229,7 @@ bind = CTRL, D, global, dev.lootingglass.LootingGlass:price-check
 bind = , F7, global, dev.lootingglass.LootingGlass:toggle-game     # optional
 ```
 
-The shortcut ids are `price-check`, `toggle-game`, `settings`, `manual-check`, `hide-overlay`, `item-info` and `map-check`. If a bind does
+The shortcut ids are `price-check`, `toggle-game`, `settings`, `manual-check`, `hide-overlay` and `item-info`. If a bind does
 nothing, run `hyprctl globalshortcuts` to see the exact names your portal registered.
 Copying and refocusing go through `hyprctl`, so no permission dialog appears.
 
@@ -279,7 +280,6 @@ manual_check = ""
 settings = ""
 hide_overlay = ""
 item_info = ""
-map_check = ""
 ```
 
 ### Updates
@@ -323,7 +323,6 @@ cargo build
 cargo test
 LOOTINGGLASS_DEMO=dev/boots.txt cargo run         # price-check an item text file without the game
 LOOTINGGLASS_SNAPSHOT=/tmp/shots LOOTINGGLASS_DEMO=dev/boots.txt cargo run   # also save README screenshots
-LOOTINGGLASS_DEMO_MAP=dev/map.txt cargo run                         # map-check a PoE 1 map file without the game
 LOOTINGGLASS_GAME=poe2 LOOTINGGLASS_DEMO=dev/boots-poe2.txt cargo run       # force a game for this run
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_DEMO=dev/boots.txt cargo run              # fake API responses, no network
 LOOTINGGLASS_MOCK=1 LOOTINGGLASS_MOCK_UPDATE=1 cargo run                   # ... and a fake newer release (update UI)

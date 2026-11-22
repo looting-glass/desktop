@@ -356,7 +356,8 @@ Window {
                 }
 
                 // ── Filters ──────────────────────────────────────────
-                // Map check (PoE 1): a map's mods coloured by the player's marks. Clicking a mod
+                // Map check (PoE 1, shown above a map's price check): its mods coloured by the
+                // player's marks. Clicking a mod
                 // cycles it neutral → annoying → deadly → neutral; marks are stored in `[map_check]`.
                 ColumnLayout {
                     id: mapView
@@ -368,7 +369,7 @@ Window {
                     function levelColor(level) {
                         return level === "deadly" ? deadlyColor : level === "annoying" ? annoyingColor : pal.windowText
                     }
-                    visible: Backend.overlayState === "map" && m !== null
+                    visible: m !== null && Backend.overlayState !== "error"
                     Layout.fillWidth: true
                     spacing: 6
 
@@ -376,9 +377,10 @@ Window {
                         Layout.fillWidth: true
                         spacing: 6
                         Chip { visible: mapView.m && mapView.m.tier != null; text: "Tier " + (mapView.m ? mapView.m.tier : "") }
-                        Chip { visible: mapView.m && mapView.m.quantity != null; text: "Quantity +" + (mapView.m ? mapView.m.quantity : "") + "%" }
-                        Chip { visible: mapView.m && mapView.m.rarity != null; text: "Rarity +" + (mapView.m ? mapView.m.rarity : "") + "%" }
-                        Chip { visible: mapView.m && mapView.m.pack_size != null; text: "Pack size +" + (mapView.m ? mapView.m.pack_size : "") + "%" }
+                        Repeater {
+                            model: mapView.m ? mapView.m.bonuses : []
+                            Chip { required property var modelData; text: modelData[0] + " +" + modelData[1] + "%" }
+                        }
                         Chip { visible: mapView.m && mapView.m.corrupted; text: "Corrupted"; warn: true }
                     }
                     Label {
@@ -434,20 +436,12 @@ Window {
                             ToolTip.text: "Click to mark: annoying → deadly → clear"
                         }
                     }
-                    RowLayout {
+                    Label {
+                        text: "Click a mod to mark it. Marks are kept for your next maps."
+                        font.pointSize: 8
+                        opacity: 0.6
+                        wrapMode: Text.Wrap
                         Layout.fillWidth: true
-                        Label {
-                            text: "Click a mod to mark it. Marks are kept for your next maps."
-                            font.pointSize: 8
-                            opacity: 0.6
-                            wrapMode: Text.Wrap
-                            Layout.fillWidth: true
-                        }
-                        Button {
-                            text: "Price check"
-                            focusPolicy: Qt.NoFocus
-                            onClicked: Backend.priceCheckMap()
-                        }
                     }
                 }
 
@@ -794,7 +788,7 @@ Window {
         id: snapTimer
         interval: 1000
         onTriggered: card.grabToImage(r => {
-            r.saveToFile(Backend.snapshotDir + (Backend.overlayState === "map" ? "/map-check.png" : "/overlay.png"))
+            r.saveToFile(Backend.snapshotDir + (Backend.mapInfo !== "" ? "/map-check.png" : "/overlay.png"))
             console.warn("snapshot: overlay saved")
             // Palette in use, to diagnose colours on other platforms from the snapshot log.
             console.warn("snapshot: palette", ["window", "windowText", "base", "alternateBase", "text",
@@ -813,7 +807,7 @@ Window {
     Connections {
         target: Backend
         function onOverlayStateChanged() {
-            if (Backend.snapshotDir !== "" && (Backend.overlayState === "result" || Backend.overlayState === "map")) snapTimer.restart()
+            if (Backend.snapshotDir !== "" && Backend.overlayState === "result") snapTimer.restart()
         }
     }
 
