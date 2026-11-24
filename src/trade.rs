@@ -90,8 +90,18 @@ pub(crate) async fn send(req: reqwest::RequestBuilder, ua: &str) -> Result<Value
 async fn send_live(req: reqwest::RequestBuilder, ua: &str) -> Result<Value> {
     let req = req.header(reqwest::header::USER_AGENT, ua).build()?;
     let endpoint = ratelimit::endpoint(req.url().path());
-    ratelimit::acquire(&endpoint).await?;
-    let r = HTTP.execute(req).await?;
+    let sent = ratelimit::acquire(&endpoint).await?;
+    let r = match HTTP.execute(req).await {
+        Ok(r) => r,
+        Err(e) => {
+            // No connection: the server never saw it, so it doesn't count. (A timeout may have
+            // reached it, so that stays counted.)
+            if e.is_connect() {
+                ratelimit::unsend(&endpoint, sent);
+            }
+            return Err(e.into());
+        }
+    };
     let status = r.status();
     if let Some(e) = ratelimit::observe(&endpoint, status.as_u16(), r.headers()) {
         return Err(e);
