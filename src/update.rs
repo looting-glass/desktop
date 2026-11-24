@@ -52,6 +52,32 @@ pub fn is_newer(latest: &str, current: &str) -> bool {
     }
 }
 
+/// What the latest release means for this copy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Offer {
+    UpToDate,
+    /// Newer, but its downloads aren't attached yet: published before its builds finished, or a
+    /// platform's build failed. Not offered; a later check tries again.
+    NotReady,
+    Available,
+}
+
+/// Whether to offer `rel` to a copy running `current` that was installed as `kind`. A newer
+/// release counts only once this copy can update from it: the file it updates from and its
+/// checksum are attached (or, for installs that are only told about new versions, at least one
+/// download is), so "Update" never fails on a missing file.
+pub fn offer(rel: &Release, current: &str, kind: Install) -> Offer {
+    if !is_newer(&rel.tag_name, current) {
+        return Offer::UpToDate;
+    }
+    let has = |name: &str| rel.assets.iter().any(|a| a.name == name);
+    let ready = match kind.asset(rel.tag_name.trim().trim_start_matches('v')) {
+        Some(file) => has(&file) && has(&format!("{file}.sha256")),
+        None => !rel.assets.is_empty(),
+    };
+    if ready { Offer::Available } else { Offer::NotReady }
+}
+
 /// How this copy was installed, which decides whether it can update itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Install {
@@ -177,6 +203,8 @@ static FOUND: Mutex<Option<Release>> = Mutex::new(None);
 /// What a check found, for whoever asked (the tray answers with a notification).
 pub enum Checked {
     UpToDate,
+    /// A newer version is out but its downloads aren't ready yet.
+    NotReady(String),
     Available(String),
     Failed(String),
 }
@@ -228,9 +256,9 @@ pub async fn run() {
     tokio::time::sleep(Duration::from_secs(delay)).await;
     let mut announced: Option<String> = None;
     loop {
-        if crate::config().updates.check
-            && let Checked::Available(v) = check().await
-            && announced.as_ref() != Some(&v)
+        let checked = if crate::config().updates.check { Some(check().await) } else { None };
+        if let Some(Checked::Available(v)) = &checked
+            && announced.as_ref() != Some(v)
         {
             // Once per version, not every day.
             crate::platform::notify(
@@ -239,9 +267,18 @@ pub async fn run() {
                 Some(crate::Event::OpenAbout),
             )
             .await;
-            announced = Some(v);
+            announced = Some(v.clone());
         }
-        tokio::time::sleep(Duration::from_secs(24 * 60 * 60)).await;
+        tokio::time::sleep(next_check(checked.as_ref())).await;
+    }
+}
+
+/// When to check again: daily, but soon while a new release's downloads are still being
+/// attached (the builds take a few minutes).
+fn next_check(last: Option<&Checked>) -> Duration {
+    match last {
+        Some(Checked::NotReady(_)) => Duration::from_secs(15 * 60),
+        _ => Duration::from_secs(24 * 60 * 60),
     }
 }
 
@@ -259,12 +296,20 @@ pub async fn check() -> Checked {
             return Checked::Failed(format!("{e:#}"));
         }
     };
-    if !is_newer(&rel.tag_name, CURRENT) {
-        log::info!("up to date ({CURRENT})");
-        status("Looting Glass is up to date.", false);
-        return Checked::UpToDate;
-    }
     let version = rel.tag_name.trim_start_matches('v').to_string();
+    match offer(&rel, CURRENT, Install::detect()) {
+        Offer::UpToDate => {
+            log::info!("up to date ({CURRENT})");
+            status("Looting Glass is up to date.", false);
+            return Checked::UpToDate;
+        }
+        Offer::NotReady => {
+            log::info!("{version} is out, but its downloads aren't attached yet");
+            status(format!("Looting Glass {version} is on its way; its downloads aren't ready yet."), false);
+            return Checked::NotReady(version);
+        }
+        Offer::Available => {}
+    }
     log::info!("update available: {version}");
     let (v, url, notes, mode) =
         (q(&version), q(&rel.html_url), q(notes(&rel.body)), q(Install::detect().mode()));
@@ -533,11 +578,51 @@ mod tests {
         assert_eq!(Install::WindowsZip.asset("1.0.0").as_deref(), Some("lootingglass-1.0.0-windows-x64.zip"));
     }
 
+    fn release(tag: &str, files: &[&str]) -> Release {
+        let assets = files
+            .iter()
+            .map(|n| Asset { name: n.to_string(), browser_download_url: format!("https://x/{n}") })
+            .collect();
+        Release { tag_name: tag.into(), html_url: String::new(), body: String::new(), assets }
+    }
+
+    #[test]
+    fn offers_a_newer_release_only_with_its_downloads() {
+        let zip = "lootingglass-0.9.4-windows-x64.zip";
+        let full = release("v0.9.4", &[zip, "lootingglass-0.9.4-windows-x64.zip.sha256"]);
+        assert_eq!(offer(&full, "0.9.3", Install::WindowsZip), Offer::Available);
+        assert_eq!(offer(&full, "0.9.4", Install::WindowsZip), Offer::UpToDate);
+        assert_eq!(offer(&full, "0.10.0", Install::WindowsZip), Offer::UpToDate);
+        // Published before the builds attached anything.
+        let bare = release("v0.9.4", &[]);
+        assert_eq!(offer(&bare, "0.9.3", Install::WindowsZip), Offer::NotReady);
+        assert_eq!(offer(&bare, "0.9.3", Install::Package), Offer::NotReady);
+        // The file without its checksum (upload still running) isn't enough either.
+        assert_eq!(offer(&release("v0.9.4", &[zip]), "0.9.3", Install::WindowsZip), Offer::NotReady);
+        // Another platform's files only: the Linux build failed, say.
+        assert_eq!(offer(&full, "0.9.3", Install::LinuxUser), Offer::NotReady);
+        // Installs that are only told about it need some download, not a specific one.
+        assert_eq!(offer(&full, "0.9.3", Install::Package), Offer::Available);
+        assert_eq!(offer(&full, "0.9.3", Install::Manual), Offer::Available);
+    }
+
+    #[test]
+    fn checks_again_soon_while_a_release_isnt_ready() {
+        assert_eq!(next_check(Some(&Checked::NotReady("0.9.4".into()))), Duration::from_secs(900));
+        assert_eq!(next_check(Some(&Checked::UpToDate)), Duration::from_secs(86400));
+        assert_eq!(next_check(Some(&Checked::Failed("offline".into()))), Duration::from_secs(86400));
+        assert_eq!(next_check(None), Duration::from_secs(86400), "checks turned off");
+    }
+
     #[test]
     fn mock_release_parses() {
         let v = crate::mock::response("GET", LATEST).unwrap();
         let r: Release = serde_json::from_value(v).unwrap();
         assert!(parse_version(&r.tag_name).is_some());
+        // Complete, like a published release: every install kind could update from it.
+        for kind in [Install::WindowsInstaller, Install::WindowsZip, Install::LinuxUser] {
+            assert_eq!(offer(&r, "0.0.1", kind), Offer::Available, "{kind:?}");
+        }
     }
 
     #[test]

@@ -161,6 +161,14 @@ async fn handle(ev: Event) {
                 update::Checked::UpToDate => {
                     platform::notify("Looting Glass is up to date", &format!("You have the latest version, {v}."), None).await
                 }
+                update::Checked::NotReady(new) => {
+                    platform::notify(
+                        &format!("Looting Glass {new} is on its way"),
+                        &format!("You have {v}. Its downloads aren't ready yet; try again in a few minutes."),
+                        None,
+                    )
+                    .await
+                }
                 update::Checked::Available(new) => {
                     platform::notify(
                         &format!("Looting Glass {new} is available"),
