@@ -13,6 +13,7 @@ mod mapcheck;
 mod ninja;
 mod platform;
 mod pseudo;
+mod ratelimit;
 mod trade;
 mod update;
 
@@ -57,6 +58,19 @@ pub static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
 });
 static EVENTS: OnceLock<async_channel::Sender<Event>> = OnceLock::new();
 static CHECK_GEN: AtomicU64 = AtomicU64::new(0);
+/// The running price search and bulk exchange lookup. A new check or re-search cancels the old
+/// ones, so requests whose results would be thrown away don't spend the trade site's rate limit
+/// (or wait for it).
+static SEARCH_TASK: Mutex<Option<tokio::task::AbortHandle>> = Mutex::new(None);
+static EXCHANGE_TASK: Mutex<Option<tokio::task::AbortHandle>> = Mutex::new(None);
+
+/// Puts `task` in `slot` (None to just empty it) and cancels the task it replaces.
+fn replace_task(slot: &Mutex<Option<tokio::task::AbortHandle>>, task: Option<tokio::task::AbortHandle>) {
+    if let Some(old) = std::mem::replace(&mut *slot.lock().unwrap(), task) {
+        old.abort();
+    }
+}
+
 /// Item text of the map last shown by the map check (re-coloured when a mod is marked).
 static LAST_MAP: Mutex<Option<String>> = Mutex::new(None);
 
@@ -87,6 +101,11 @@ pub fn start_background() {
     if EVENTS.set(tx.clone()).is_err() {
         return;
     }
+    ratelimit::on_wait(|secs| {
+        let secs = i32::try_from(secs).unwrap_or(i32::MAX);
+        ui(move |b| b.set_rate_wait(secs));
+    });
+    ratelimit::on_warning(|text| ui(move |b| b.set_rate_warning(q(text))));
     rt().spawn(async move {
         platform::init().await;
         platform::spawn_tray(config().game).await;
@@ -249,6 +268,10 @@ async fn check_text(text: String) {
     let Some(item) = item::parse(&text) else {
         return show_error("The clipboard does not contain a Path of Exile item.".into());
     };
+    // A new item: the previous one's search and exchange lookup are no longer wanted.
+    replace_task(&SEARCH_TASK, None);
+    replace_task(&EXCHANGE_TASK, None);
+    ratelimit::refresh_warning();
     let cfg = config();
     let title = q(item.display_name());
     // PoE 1 maps: the map check (marked mods) shows above the usual price check.
@@ -273,7 +296,7 @@ async fn check_text(text: String) {
             }
         });
         // The trade site's bulk exchange: what people ask right now, next to the poe.ninja average.
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             match exchange::lookup(game, &league2, &status, &name2, &ua2).await {
                 Ok(Some(ex)) => {
                     let json = q(serde_json::to_string(&ex).unwrap_or_default());
@@ -283,6 +306,7 @@ async fn check_text(text: String) {
                 Err(e) => log::warn!("bulk exchange: {e:#}"),
             }
         });
+        replace_task(&EXCHANGE_TASK, Some(task.abort_handle()));
     }
     ui(move |mut b| {
         b.as_mut().set_title(title);
@@ -311,7 +335,12 @@ async fn check_text(text: String) {
 async fn run_search(spec: trade::Spec) {
     let generation = CHECK_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     ui(|b| b.set_overlay_state(q("loading")));
-    let res = trade::search(&spec, &config()).await;
+    let cfg = config();
+    let task = tokio::spawn(async move { trade::search(&spec, &cfg).await });
+    replace_task(&SEARCH_TASK, Some(task.abort_handle()));
+    let Ok(res) = task.await else {
+        return; // cancelled: a newer search or check replaced it
+    };
     if CHECK_GEN.load(Ordering::SeqCst) != generation {
         return; // a newer search superseded this one
     }

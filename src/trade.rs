@@ -3,6 +3,7 @@
 use crate::config::{Config, Game, urlencode};
 use crate::item::{Item, ModKind, Rarity};
 use crate::pseudo;
+use crate::ratelimit;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -84,17 +85,26 @@ pub(crate) async fn send(req: reqwest::RequestBuilder, ua: &str) -> Result<Value
     crate::devcache::json(req, |req| send_live(req, ua)).await
 }
 
+/// Sends a trade API request over the network, after the rate limiter allows it (see
+/// `ratelimit.rs`); every reply's limit headers feed back into the limiter.
 async fn send_live(req: reqwest::RequestBuilder, ua: &str) -> Result<Value> {
-    let r = req.header(reqwest::header::USER_AGENT, ua).send().await?;
+    let req = req.header(reqwest::header::USER_AGENT, ua).build()?;
+    let endpoint = ratelimit::endpoint(req.url().path());
+    let sent = ratelimit::acquire(&endpoint).await?;
+    let r = match HTTP.execute(req).await {
+        Ok(r) => r,
+        Err(e) => {
+            // No connection: the server never saw it, so it doesn't count. (A timeout may have
+            // reached it, so that stays counted.)
+            if e.is_connect() {
+                ratelimit::unsend(&endpoint, sent);
+            }
+            return Err(e.into());
+        }
+    };
     let status = r.status();
-    if status.as_u16() == 429 {
-        let wait = r
-            .headers()
-            .get("retry-after")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("?")
-            .to_string();
-        bail!("Rate limited by the trade API — retry in {wait}s");
+    if let Some(e) = ratelimit::observe(&endpoint, status.as_u16(), r.headers()) {
+        return Err(e);
     }
     let body = r.text().await?;
     let v: Value = serde_json::from_str(&body)

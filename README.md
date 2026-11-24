@@ -304,6 +304,13 @@ page), and after an update the new version says it was updated.
 - **"The game didn't copy anything".** Make sure the cursor is over an item and that you allowed
   keyboard control when KDE asked. To reset that permission, delete
   `~/.local/state/lootingglass/remote-desktop.token` and restart Looting Glass.
+- **"Rate limit: waiting …" or "Trade site busy".** GGG limits how often an IP
+  may search the trade site (about 5 searches per 10 seconds, with longer limits on top), and
+  locks you out for longer each time you go over. Looting Glass reads those limits from every
+  reply and paces its requests to stay one under them: when only a couple of searches are left,
+  the overlay's footer says so; a short wait is sat out, a longer one shows "Trade site busy,
+  try again in Ns" instead of sending. Other trade tools on the same
+  connection count towards the same limits.
 - **Debug output.** Run `RUST_LOG=lootingglass=debug QT_FORCE_STDERR_LOGGING=1 lootingglass` in a terminal.
 
 ## How it works on Wayland
