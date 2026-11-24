@@ -655,7 +655,9 @@ Window {
                     visible: win.hasSpec
                     Layout.fillWidth: true
                     Label {
-                        text: Backend.overlayState === "loading" ? "Searching…" : (Backend.overlayState === "result" ? Backend.message : "")
+                        text: Backend.overlayState === "loading"
+                              ? (Backend.rateWait > 0 ? "Rate limit: waiting " + Backend.rateWait + " s…" : "Searching…")
+                              : (Backend.overlayState === "result" ? Backend.message : "")
                         opacity: 0.8
                     }
                     ToolButton {
@@ -725,8 +727,38 @@ Window {
                 // A newer release shows up next to it; clicking it opens Settings → About.
                 RowLayout {
                     spacing: 0
-                    Layout.alignment: Qt.AlignRight
+                    Layout.fillWidth: true
                     Layout.topMargin: 2
+                    // Close to the trade site's rate limit: say so before checks start waiting.
+                    // Amber pill (the map check's "annoying" colour); text in the normal text colour
+                    // so it stays readable in light mode too.
+                    Rectangle {
+                        id: rateWarn
+                        readonly property color amber: "#e0b84a"
+                        visible: Backend.rateWarning !== ""
+                        radius: height / 2
+                        color: Qt.rgba(amber.r, amber.g, amber.b, 0.18)
+                        border.color: amber
+                        implicitHeight: warnRow.implicitHeight + 4
+                        implicitWidth: warnRow.implicitWidth + 16
+                        Layout.maximumWidth: implicitWidth
+                        Layout.fillWidth: true
+                        Layout.rightMargin: 8
+                        RowLayout {
+                            id: warnRow
+                            spacing: 4
+                            anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                            Label { text: "⚠"; font.bold: true; font.pointSize: 9; color: rateWarn.amber }
+                            Label {
+                                text: Backend.rateWarning
+                                font.bold: true
+                                font.pointSize: 8.5
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
+                    }
+                    Item { visible: Backend.rateWarning === ""; Layout.fillWidth: true }
                     Label {
                         text: "Looting Glass " + Backend.version
                         font.pointSize: 8.5

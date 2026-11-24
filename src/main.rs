@@ -13,6 +13,7 @@ mod mapcheck;
 mod ninja;
 mod platform;
 mod pseudo;
+mod ratelimit;
 mod trade;
 mod update;
 
@@ -87,6 +88,11 @@ pub fn start_background() {
     if EVENTS.set(tx.clone()).is_err() {
         return;
     }
+    ratelimit::on_wait(|secs| {
+        let secs = i32::try_from(secs).unwrap_or(i32::MAX);
+        ui(move |b| b.set_rate_wait(secs));
+    });
+    ratelimit::on_warning(|text| ui(move |b| b.set_rate_warning(q(text))));
     rt().spawn(async move {
         platform::init().await;
         platform::spawn_tray(config().game).await;

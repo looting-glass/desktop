@@ -15,6 +15,10 @@ pub mod qobject {
         #[qml_singleton]
         #[qproperty(bool, overlay_visible)]
         #[qproperty(QString, overlay_state)]
+        /// Seconds left of a trade rate-limit wait, shown in the loading row; 0 when not waiting.
+        #[qproperty(i32, rate_wait)]
+        /// Near-limit warning for the overlay footer ("2 searches left …"), or empty.
+        #[qproperty(QString, rate_warning)]
         #[qproperty(QString, title)]
         #[qproperty(QString, subtitle)]
         #[qproperty(QString, message)]
@@ -117,6 +121,8 @@ use std::sync::{Mutex, OnceLock};
 pub struct BackendRust {
     overlay_visible: bool,
     overlay_state: QString,
+    rate_wait: i32,
+    rate_warning: QString,
     title: QString,
     subtitle: QString,
     message: QString,
