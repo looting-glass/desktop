@@ -68,6 +68,13 @@ changed code meets these; existing code is brought up to them when you touch it.
   unclear, and show users a plain-language message. `unwrap`/`expect` only where failure would be
   a bug in our own code (a fixed regex, a poisoned lock), never on outside data. Background tasks
   log errors and keep running.
+- **Mindful of memory and resources.** Safe Rust prevents leaks of freed memory and data races;
+  what it doesn't prevent is memory and work that pile up in a process running for days in the
+  tray. Every cache has a bound or expiry (like poe.ninja's 15 minutes), every spawned task has an
+  end (a timeout or a closed channel), and queues stay bounded. Share large data with `Arc` or
+  references instead of cloning it. `Box::leak`/`mem::forget` only for true app-lifetime statics.
+  Keep blocking work (file I/O, process waits, heavy parsing) off the async runtime and the Qt
+  thread (`spawn_blocking`).
 - **Stable Rust only**: no nightly features, `unsafe` only for platform FFI (the Windows API),
   each block with a `// SAFETY:` comment saying why it's sound. New dependencies only when they
   save real work, and well maintained.
