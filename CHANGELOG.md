@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.4](https://github.com/looting-glass/desktop/compare/v0.9.3...v0.9.4) (2026-11-24)
+
+
+### Bug Fixes
+
+* **update:** only offer a release once its downloads are attached ([#60](https://github.com/looting-glass/desktop/issues/60)) ([22e3a41](https://github.com/looting-glass/desktop/commit/22e3a412c0f220babd28b7787c8995cc88e7cf75))
+
 ## [0.9.3](https://github.com/looting-glass/desktop/compare/v0.9.2...v0.9.3) (2026-11-24)
 
 
