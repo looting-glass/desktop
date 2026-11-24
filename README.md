@@ -359,9 +359,11 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 Changes land on `main` as squash-merged PRs with [Conventional Commit](https://www.conventionalcommits.org)
 titles. After each merge, release-please keeps a release PR up to date: it bumps the version
 in `Cargo.toml` (`fix:` → patch, `feat:` → minor) and adds the changes to `CHANGELOG.md`.
-Merging the release PR tags `vX.Y.Z`, creates the GitHub release and runs the
-[Build workflow](.github/workflows/build.yml), which attaches the Linux tarball and the Windows
-installer and zip, each with a SHA-256 checksum.
+Merging the release PR tags `vX.Y.Z`, creates the GitHub release as a draft and runs the
+[Build workflow](.github/workflows/build.yml). The Linux tarball and the Windows installer and
+zip, each with a SHA-256 checksum, are attached to the draft, and only then is it published, so
+the update check and the website never see a release without its downloads. If a build fails
+the release stays a draft; re-run the failed jobs to finish it.
 
 To test a branch on both platforms without releasing, run the Build workflow manually
 (`gh workflow run build.yml --ref <branch>`) and download the packages from the run's artifacts.

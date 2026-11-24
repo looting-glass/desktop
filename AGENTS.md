@@ -14,8 +14,10 @@ written down anywhere else.
   `ci: …`, `docs: …`). The PR title becomes the squash commit on `main` and drives releases.
 - Releases come from **release-please**: after each merge it updates a release PR that bumps
   the version in `Cargo.toml` and writes `CHANGELOG.md` (`fix` → patch, `feat` → minor,
-  `docs`/`ci`/`chore` → no release). Merging that PR tags `vX.Y.Z`, publishes the GitHub
-  release and builds the Linux and Windows downloads. Leave the version and changelog to it.
+  `docs`/`ci`/`chore` → no release). Merging that PR tags `vX.Y.Z`, creates the GitHub release
+  as a draft, builds the Linux and Windows downloads, attaches them and then publishes it. A
+  release left as a draft means a build failed: re-run the failed jobs of the Release run.
+  Leave the version and changelog to it.
 - Releases are batched: the release PR stays open and collects several features and fixes.
   Merge it only when the maintainer says it's time for a release, not after every feature.
 - The website shows the latest release's changelog and download links, and a daily deploy
