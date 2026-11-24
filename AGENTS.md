@@ -50,6 +50,29 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 - Windows code can't be built locally. Build any branch for both platforms with
   `gh workflow run build.yml --ref <branch>`; the packages appear as run artifacts.
 
+## Code quality
+
+Write idiomatic Rust on the stable toolchain, and make every change testable and robust. New and
+changed code meets these; existing code is brought up to them when you touch it.
+
+- **Testable by design.** Put each decision in a plain function that takes what it needs as
+  arguments (text, headers, the current time, previous state) and returns a result, with no I/O,
+  clock, globals or Qt inside; keep the networking, file and UI code around it thin. That function
+  gets unit tests for the normal case and the edge cases (empty, malformed, boundary values).
+- **Tests come with the change.** Every new behaviour or fixed bug gets a test in the module's
+  `mod tests`, on real game text (`dev/*.txt`) or canned API replies (`src/mock.rs`). A change
+  that can't be tested that way says why in its PR, and is checked by hand as *Verifying
+  changes* describes.
+- **Robust at runtime.** Input from the game, the clipboard, the network and files can always be
+  wrong: handle it with `Result` and `?`, add `.context(…)` (anyhow) where the error would be
+  unclear, and show users a plain-language message. `unwrap`/`expect` only where failure would be
+  a bug in our own code (a fixed regex, a poisoned lock), never on outside data. Background tasks
+  log errors and keep running.
+- **Stable Rust only**: no nightly features, `unsafe` only for platform FFI (the Windows API),
+  each block with a `// SAFETY:` comment saying why it's sound. New dependencies only when they
+  save real work, and well maintained.
+- **Clean builds.** No new `cargo clippy` warnings and no compiler warnings; `cargo test` passes.
+
 ## Verifying changes
 
 - `cargo test` for the parser and hotkey logic.
