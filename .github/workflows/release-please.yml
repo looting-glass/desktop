@@ -2,7 +2,10 @@ name: Release
 
 # After every push to main, release-please updates a release PR (version bump in Cargo.toml +
 # CHANGELOG.md, from Conventional Commit titles). Merging that PR tags vX.Y.Z and creates the
-# GitHub release; the jobs below then build both platforms and attach the downloads to it.
+# GitHub release as a draft; the jobs below build both platforms, attach the downloads and only
+# then publish it. Until then the release is invisible to `releases/latest`, which the in-app
+# update check and the website read, so nobody is offered a release without its files. If a
+# build fails, the release stays a draft: re-run the failed jobs to finish it.
 on:
   push:
     branches: [main]
@@ -47,8 +50,14 @@ jobs:
           TAG: ${{ needs.release-please.outputs.tag }}
         run: gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
 
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: gh release edit "$TAG" --draft=false --latest --repo "$GITHUB_REPOSITORY"
+
       # The website's download buttons and changelog come from the latest release, filled in
-      # at deploy time. Deploy it now that the files are attached. The token is a fine-grained
+      # at deploy time. Deploy it now that the release is published with its files. The token is a fine-grained
       # PAT with Actions read/write on looting-glass.github.io; without it this step is skipped
       # and the site's daily deploy picks the release up instead.
       - name: Refresh the website
