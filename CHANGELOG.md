@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.3](https://github.com/looting-glass/desktop/compare/v0.9.2...v0.9.3) (2026-11-24)
+
+
+### Bug Fixes
+
+* **trade:** wait for the trade API's rate limits instead of hitting them ([966a8cf](https://github.com/looting-glass/desktop/commit/966a8cf29c1c066e108c3d1c7e8a42669cd94ccc))
+
 ## [0.9.2](https://github.com/looting-glass/desktop/compare/v0.9.1...v0.9.2) (2026-11-22)
 
 
