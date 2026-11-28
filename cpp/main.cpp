@@ -9,6 +9,7 @@
 #include <QCursor>
 #include <QScreen>
 #ifdef LOOTINGGLASS_QT_TRAY
+#include <atomic>
 #include <QActionGroup>
 #include <QMenu>
 #include <QSystemTrayIcon>
@@ -28,6 +29,27 @@ extern "C" int lootingglass_tray_update(char *buf, size_t len);
 
 // Tray actions understood by lootingglass_tray_action.
 enum TrayAction { OpenManual = 0, OpenSettings = 1, Quit = 2, OpenAbout = 3, CheckUpdates = 4, GamePoe1 = 10, GamePoe2 = 11 };
+
+// Set once the tray icon is showing; read from Rust's threads by lootingglass_tray_notify.
+static std::atomic<QSystemTrayIcon *> trayIcon = nullptr;
+// TrayAction of the latest message, or -1. messageClicked doesn't say which message was
+// clicked, so an older one still on screen gets the latest one's action. Qt thread only.
+static int messageAction = -1;
+
+// Called from Rust (any thread): show a message from the tray icon, a toast on Windows 10/11.
+// Returns false when there's no system tray to show it from.
+extern "C" bool lootingglass_tray_notify(const char *title, const char *body, int action)
+{
+    QSystemTrayIcon *tray = trayIcon.load();
+    if (!tray)
+        return false;
+    const QString t = QString::fromUtf8(title), b = QString::fromUtf8(body);
+    QMetaObject::invokeMethod(tray, [tray, t, b, action] {
+        messageAction = action;
+        tray->showMessage(t, b, tray->icon());
+    }, Qt::QueuedConnection);
+    return true;
+}
 
 static void setupTray(QApplication &app)
 {
@@ -72,7 +94,14 @@ static void setupTray(QApplication &app)
         if (r == QSystemTrayIcon::Trigger)
             lootingglass_tray_action(OpenManual);
     });
+    QObject::connect(tray, &QSystemTrayIcon::messageClicked, [] {
+        if (messageAction >= 0)
+            lootingglass_tray_action(messageAction);
+    });
     tray->show();
+    if (QSystemTrayIcon::isSystemTrayAvailable())
+        trayIcon = tray;
+    QObject::connect(tray, &QObject::destroyed, [] { trayIcon = nullptr; });
 }
 #endif
 

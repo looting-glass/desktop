@@ -246,10 +246,10 @@ fn status(msg: impl Into<String>, busy: bool) {
 /// once a day while `[updates] check` is on.
 pub async fn run() {
     LazyLock::force(&EXE);
-    if Install::detect() == Install::WindowsZip {
-        if let Some(dir) = EXE.as_deref().and_then(Path::parent) {
-            remove_old_files(dir);
-        }
+    if Install::detect() == Install::WindowsZip
+        && let Some(dir) = EXE.as_deref().and_then(Path::parent)
+    {
+        remove_old_files(dir);
     }
     announce_update().await;
     let delay = if crate::mock::enabled() { 1 } else { 30 };
@@ -258,9 +258,8 @@ pub async fn run() {
     loop {
         let checked = if crate::config().updates.check { Some(check().await) } else { None };
         if let Some(Checked::Available(v)) = &checked
-            && announced.as_ref() != Some(v)
+            && should_announce(v, announced.as_deref(), crate::config().updates.check)
         {
-            // Once per version, not every day.
             crate::platform::notify(
                 &format!("Looting Glass {v} is available"),
                 "Click to see what's new and install it.",
@@ -271,6 +270,13 @@ pub async fn run() {
         }
         tokio::time::sleep(next_check(checked.as_ref())).await;
     }
+}
+
+/// Whether the background check notifies about `found`, the newer version it just found, given
+/// the version it last notified about this run. Once per version, not every day; and not when
+/// checks were turned off in Settings while this one was running.
+fn should_announce(found: &str, announced: Option<&str>, checks_on: bool) -> bool {
+    checks_on && announced != Some(found)
 }
 
 /// When to check again: daily, but soon while a new release's downloads are still being
@@ -618,6 +624,14 @@ mod tests {
         assert_eq!(next_check(Some(&Checked::UpToDate)), Duration::from_secs(86400));
         assert_eq!(next_check(Some(&Checked::Failed("offline".into()))), Duration::from_secs(86400));
         assert_eq!(next_check(None), Duration::from_secs(86400), "checks turned off");
+    }
+
+    #[test]
+    fn announces_each_new_version_once() {
+        assert!(should_announce("0.9.4", None, true), "first find this run");
+        assert!(!should_announce("0.9.4", Some("0.9.4"), true), "the next day's check");
+        assert!(should_announce("0.9.5", Some("0.9.4"), true), "a newer one since");
+        assert!(!should_announce("0.9.4", None, false), "checks turned off meanwhile");
     }
 
     #[test]

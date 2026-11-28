@@ -5,6 +5,7 @@
 //! - copy_item: SendInput Ctrl+C to the game, then read the Win32 clipboard
 //! - focus:     SetForegroundWindow on the game window (class `POEWindowClass`)
 //! - tray:      QSystemTrayIcon in cpp/main.cpp, calling back into `lootingglass_tray_*` below
+//! - notify:    the tray icon's messages, shown as toasts
 //! - overlay:   frameless always-on-top Qt::Tool window (cpp/main.cpp); PoE must run in
 //!              windowed fullscreen, exclusive fullscreen can't be overlaid
 
@@ -12,6 +13,7 @@ use super::hotkey;
 use crate::Event;
 use crate::config::Game;
 use anyhow::{Result, bail};
+use std::ffi::{CString, c_char};
 use std::sync::OnceLock;
 use std::time::Duration;
 use windows_sys::Win32::Foundation::{HANDLE, HWND};
@@ -124,9 +126,23 @@ pub async fn set_shortcut(_id: &str, _key: i32) -> anyhow::Result<()> {
 
 pub async fn block_shortcuts(_on: bool) {}
 
-/// No desktop notifications on Windows yet: callers show the information in the app instead.
-pub async fn notify(_summary: &str, _body: &str, _on_click: Option<crate::Event>) -> bool {
-    false
+unsafe extern "C" {
+    /// Shows a tray balloon, which Windows 10 and 11 turn into a toast (cpp/main.cpp). `action` is
+    /// sent back through `lootingglass_tray_action` when it's clicked; -1 for none. False when
+    /// there's no system tray.
+    fn lootingglass_tray_notify(title: *const c_char, body: *const c_char, action: i32) -> bool;
+}
+
+/// A toast from the tray icon. Windows only tells us that *a* message was clicked, so a click
+/// sends the latest message's `on_click`.
+pub async fn notify(summary: &str, body: &str, on_click: Option<Event>) -> bool {
+    let (Ok(title), Ok(body)) = (CString::new(summary), CString::new(body)) else {
+        log::warn!("notification text contains a NUL byte: {summary:?}");
+        return false;
+    };
+    let action = on_click.as_ref().and_then(tray_action).unwrap_or(-1);
+    // SAFETY: both strings are NUL-terminated and live through the call; C++ copies them.
+    unsafe { lootingglass_tray_notify(title.as_ptr(), body.as_ptr(), action) }
 }
 
 pub async fn check_shortcut(id: &str, key: i32) -> super::ShortcutCheck {
@@ -259,19 +275,27 @@ extern "C" fn lootingglass_tray_update(buf: *mut u8, len: usize) -> i32 {
     1
 }
 
+/// Tray actions by their number in cpp/main.cpp's `TrayAction`.
+const TRAY_ACTIONS: [(i32, Event); 7] = [
+    (0, Event::OpenManual),
+    (1, Event::OpenSettings),
+    (2, Event::Quit),
+    (3, Event::OpenAbout),
+    (4, Event::CheckUpdates),
+    (10, Event::SetGame(Game::Poe1)),
+    (11, Event::SetGame(Game::Poe2)),
+];
+
+/// The `TrayAction` number that sends `ev`, if the tray has one.
+fn tray_action(ev: &Event) -> Option<i32> {
+    TRAY_ACTIONS.iter().find(|(_, e)| e == ev).map(|&(n, _)| n)
+}
+
 #[unsafe(no_mangle)]
 extern "C" fn lootingglass_tray_action(action: i32) {
-    let ev = match action {
-        0 => Event::OpenManual,
-        1 => Event::OpenSettings,
-        2 => Event::Quit,
-        3 => Event::OpenAbout,
-        4 => Event::CheckUpdates,
-        10 => Event::SetGame(Game::Poe1),
-        11 => Event::SetGame(Game::Poe2),
-        _ => return,
-    };
-    crate::send_event(ev);
+    if let Some((_, ev)) = TRAY_ACTIONS.iter().find(|(n, _)| *n == action) {
+        crate::send_event(ev.clone());
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -279,5 +303,17 @@ extern "C" fn lootingglass_tray_game() -> i32 {
     match crate::config().game {
         Game::Poe1 => 1,
         Game::Poe2 => 2,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn notification_clicks_map_to_tray_actions() {
+        assert_eq!(tray_action(&Event::OpenAbout), Some(3));
+        assert_eq!(tray_action(&Event::SetGame(Game::Poe2)), Some(11));
+        assert_eq!(tray_action(&Event::PriceCheck), None);
     }
 }
