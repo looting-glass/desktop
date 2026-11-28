@@ -128,8 +128,8 @@ pub async fn block_shortcuts(_on: bool) {}
 
 unsafe extern "C" {
     /// Shows a tray balloon, which Windows 10 and 11 turn into a toast (cpp/main.cpp). `action` is
-    /// sent back through `lootingglass_tray_action` when it's clicked; -1 for none. False when
-    /// there's no system tray.
+    /// sent back through `lootingglass_tray_action` when it's clicked, or `NO_TRAY_ACTION`. False
+    /// when there's no system tray.
     fn lootingglass_tray_notify(title: *const c_char, body: *const c_char, action: i32) -> bool;
 }
 
@@ -140,7 +140,7 @@ pub async fn notify(summary: &str, body: &str, on_click: Option<Event>) -> bool 
         log::warn!("notification text contains a NUL byte: {summary:?}");
         return false;
     };
-    let action = on_click.as_ref().and_then(tray_action).unwrap_or(-1);
+    let action = on_click.as_ref().and_then(tray_action).unwrap_or(NO_TRAY_ACTION);
     // SAFETY: both strings are NUL-terminated and live through the call; C++ copies them.
     unsafe { lootingglass_tray_notify(title.as_ptr(), body.as_ptr(), action) }
 }
@@ -276,7 +276,7 @@ extern "C" fn lootingglass_tray_update(buf: *mut u8, len: usize) -> i32 {
 }
 
 /// Tray actions by their number in cpp/main.cpp's `TrayAction`.
-const TRAY_ACTIONS: [(i32, Event); 7] = [
+static TRAY_ACTIONS: [(i32, Event); 7] = [
     (0, Event::OpenManual),
     (1, Event::OpenSettings),
     (2, Event::Quit),
@@ -286,14 +286,22 @@ const TRAY_ACTIONS: [(i32, Event); 7] = [
     (11, Event::SetGame(Game::Poe2)),
 ];
 
+/// `TrayAction::NoAction`: a message that does nothing when clicked.
+const NO_TRAY_ACTION: i32 = -1;
+
 /// The `TrayAction` number that sends `ev`, if the tray has one.
 fn tray_action(ev: &Event) -> Option<i32> {
     TRAY_ACTIONS.iter().find(|(_, e)| e == ev).map(|&(n, _)| n)
 }
 
+/// The event a `TrayAction` number sends.
+fn tray_event(action: i32) -> Option<&'static Event> {
+    TRAY_ACTIONS.iter().find(|&&(n, _)| n == action).map(|(_, e)| e)
+}
+
 #[unsafe(no_mangle)]
 extern "C" fn lootingglass_tray_action(action: i32) {
-    if let Some((_, ev)) = TRAY_ACTIONS.iter().find(|(n, _)| *n == action) {
+    if let Some(ev) = tray_event(action) {
         crate::send_event(ev.clone());
     }
 }
@@ -311,9 +319,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn notification_clicks_map_to_tray_actions() {
-        assert_eq!(tray_action(&Event::OpenAbout), Some(3));
-        assert_eq!(tray_action(&Event::SetGame(Game::Poe2)), Some(11));
+    fn tray_actions_map_both_ways() {
+        // A number or event listed twice would make one direction disagree with the other.
+        for (n, ev) in &TRAY_ACTIONS {
+            assert_eq!(tray_action(ev), Some(*n), "{ev:?}");
+            assert_eq!(tray_event(*n), Some(ev), "{n}");
+        }
         assert_eq!(tray_action(&Event::PriceCheck), None);
+        assert_eq!(tray_event(NO_TRAY_ACTION), None);
     }
 }
