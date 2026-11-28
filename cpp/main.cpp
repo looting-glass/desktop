@@ -15,9 +15,9 @@
 #include <QSystemTrayIcon>
 #endif
 #include <QIcon>
-#include <QMargins>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QRegion>
 #include <QTimer>
 #include <QWindow>
 
@@ -107,6 +107,27 @@ static void setupTray(QApplication &app)
 }
 #endif
 
+// The monitor called `name` (QScreen::name, like "DP-1"), or null when there's none.
+static QScreen *screenNamed(const QString &name)
+{
+    if (name.isEmpty())
+        return nullptr;
+    for (QScreen *s : QGuiApplication::screens()) {
+        if (s->name() == name)
+            return s;
+    }
+    return nullptr;
+}
+
+#ifndef LOOTINGGLASS_LAYER_SHELL
+// The overlay's size (QML's overlayWidth/Height): the window is that size here, while the
+// layer-shell surface covers its monitor.
+static QSize overlaySize(const QWindow *w)
+{
+    return QSize(w->property("overlayWidth").toInt(), w->property("overlayHeight").toInt());
+}
+#endif
+
 // Without KDE's Breeze, use Qt Quick's Fusion style: unlike the native Windows controls it
 // draws everything from the palette (the system's, or the theme's), so the overlay follows it
 // consistently. Only the Qt Quick style changes: switching the widget
@@ -174,57 +195,65 @@ extern "C" int lootingglass_qt_main(bool breeze)
         ls->setLayer(LayerShellQt::Window::LayerOverlay);
         ls->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
         ls->setActivateOnShow(true);
-        // Open on the active screen (the game's screen when the hotkey is pressed).
-        // The surface is recreated on every show, so this is re-evaluated each time.
-        ls->setWantsToBeOnActiveScreen(true);
-        // Anchors and margins come from config (QML properties); reapply on every show.
+        // The surface covers its whole monitor (over panels) and is transparent. QML draws the
+        // overlay's card where its margins put it, and the input region is the card, so clicks
+        // beside it reach the game. Moving or resizing the overlay then only redraws the card:
+        // moving the surface itself would need the compositor, which applies it a frame or more
+        // after the pointer events that asked for it, so a drag would fight its own moves.
+        using LayerShellQt::Window;
+        ls->setAnchors(Window::Anchors(Window::AnchorTop | Window::AnchorBottom | Window::AnchorLeft
+                                       | Window::AnchorRight));
+        ls->setExclusiveZone(-1);
+        w->setProperty("coversMonitor", true);
+        // The monitor and input region come from QML properties; reapply on every show. The
+        // surface is recreated on every show, so its monitor is chosen each time.
         auto apply = [w, ls] {
-            const int top = w->property("marginTop").toInt();
-            const int side = w->property("marginSide").toInt();
-            const bool left = w->property("side").toInt() == 0;
-            const LayerShellQt::Window::Anchors anchors(
-                LayerShellQt::Window::AnchorTop
-                | (left ? LayerShellQt::Window::AnchorLeft : LayerShellQt::Window::AnchorRight));
-            const QMargins margins(side, top, side, side);
-            if (ls->anchors() != anchors)
-                ls->setAnchors(anchors);
-            if (ls->margins() != margins)
-                ls->setMargins(margins);
+            if (QScreen *s = screenNamed(w->property("overlayScreen").toString())) {
+                if (ls->screen() != s)
+                    ls->setScreen(s);
+            } else if (!ls->wantsToBeOnActiveScreen()) {
+                // The active screen: the game's when the hotkey is pressed.
+                ls->setWantsToBeOnActiveScreen(true);
+            }
+            const QRegion card(w->property("cardRect").toRect());
+            if (w->mask() != card)
+                w->setMask(card);
         };
         apply();
         QObject::connect(w, &QWindow::visibleChanged, w, apply);
         // QML-declared properties can't be connected to a lambda from here, so poll cheaply
-        // while visible to pick up drag-to-move / side changes.
+        // while visible to pick up moves, resizes and monitor changes.
         auto *timer = new QTimer(w);
         timer->setInterval(16);
         QObject::connect(timer, &QTimer::timeout, w, [w, ls, apply] {
             if (!w->isVisible())
                 return;
-            const QMargins before = ls->margins();
-            const auto anchorsBefore = ls->anchors();
+            QScreen *screenBefore = ls->screen();
             apply();
-            if (ls->margins() != before || ls->anchors() != anchorsBefore)
-                w->requestUpdate();
+            // A layer surface can't change monitors: moved to another one, show it again there.
+            if (ls->screen() != screenBefore) {
+                w->hide();
+                w->show();
+            }
         });
         timer->start();
     }
 #else
-    // Other platforms: frameless always-on-top tool window, placed like the layer-shell
-    // surface: on the screen under the cursor (the game's), top margin, left or right side.
+    // Other platforms: frameless always-on-top tool window the size of the overlay, on the
+    // monitor it was moved to or else the one under the cursor (the game's), where QML puts it.
     if (auto *w = qobject_cast<QWindow *>(engine.rootObjects().first())) {
         w->setFlags(w->flags() | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
         auto place = [w](bool pickScreen) {
-            if (pickScreen) {
-                if (QScreen *s = QGuiApplication::screenAt(QCursor::pos()))
-                    w->setScreen(s);
-            }
+            QScreen *s = screenNamed(w->property("overlayScreen").toString());
+            if (!s && pickScreen)
+                s = QGuiApplication::screenAt(QCursor::pos());
+            if (s && w->screen() != s)
+                w->setScreen(s);
             const QRect g = w->screen()->geometry();
-            const int top = w->property("marginTop").toInt();
-            const int side = w->property("marginSide").toInt();
-            const bool left = w->property("side").toInt() == 0;
-            const QPoint pos(left ? g.x() + side : g.x() + g.width() - w->width() - side, g.y() + top);
-            if (w->position() != pos)
-                w->setPosition(pos);
+            const QRect placed(g.topLeft() + QPoint(w->property("cardX").toInt(), w->property("marginTop").toInt()),
+                               overlaySize(w));
+            if (w->geometry() != placed)
+                w->setGeometry(placed);
         };
         QObject::connect(w, &QWindow::visibleChanged, w, [w, place](bool visible) {
             if (visible) {
@@ -232,7 +261,7 @@ extern "C" int lootingglass_qt_main(bool breeze)
                 w->requestActivate();
             }
         });
-        // Follow drag-to-move / resize / side changes while visible (see the Linux branch).
+        // Follow moves, resizes and side or monitor changes while visible.
         auto *timer = new QTimer(w);
         timer->setInterval(16);
         QObject::connect(timer, &QTimer::timeout, w, [w, place] {

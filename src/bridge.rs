@@ -6,6 +6,10 @@ pub mod qobject {
     unsafe extern "C++" {
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
+        include!("cxx-qt-lib/qpointf.h");
+        type QPointF = cxx_qt_lib::QPointF;
+        include!("cxx-qt-lib/qsizef.h");
+        type QSizeF = cxx_qt_lib::QSizeF;
     }
 
     #[auto_cxx_name]
@@ -39,6 +43,8 @@ pub mod qobject {
         #[qproperty(QString, shortcut_error)]
         #[qproperty(QString, shortcut_check)]
         #[qproperty(QString, leagues)]
+        /// The monitor the overlay opens on (`OverlayConfig::screen`); empty = the game's.
+        #[qproperty(QString, overlay_screen)]
         #[qproperty(i32, side)]
         #[qproperty(i32, overlay_width)]
         #[qproperty(i32, margin_top)]
@@ -95,7 +101,17 @@ pub mod qobject {
         #[qinvokable]
         fn open_settings_window(self: Pin<&mut Backend>);
         #[qinvokable]
-        fn save_overlay_size(self: &Backend);
+        fn save_overlay(self: &Backend);
+        #[qinvokable]
+        fn place_overlay(self: Pin<&mut Backend>, corner: &QPointF, screen: &QSizeF);
+        #[qinvokable]
+        fn overlay_left_edge(self: &Backend, side: i32, margin_side: i32, width: i32, screen: &QSizeF) -> i32;
+        #[qinvokable]
+        fn overlay_height_limit(self: &Backend, top: i32, screen: &QSizeF) -> i32;
+        #[qinvokable]
+        fn dragged_width(self: &Backend, x: f64, width: f64, dx: f64, screen: &QSizeF) -> i32;
+        #[qinvokable]
+        fn dragged_height(self: &Backend, y: f64, height: f64, dy: f64, screen: &QSizeF) -> i32;
         #[qinvokable]
         fn check_updates(self: &Backend);
         #[qinvokable]
@@ -122,9 +138,9 @@ pub mod qobject {
 
 use crate::config::{Config, Game};
 use crate::theme::{self, Theme};
-use crate::{Event, config, rt, send_event};
+use crate::{Event, config, placement, rt, send_event};
 use cxx_qt::{CxxQtType, Threading};
-use cxx_qt_lib::QString;
+use cxx_qt_lib::{QPointF, QSizeF, QString};
 use std::pin::Pin;
 use std::sync::{Mutex, OnceLock};
 
@@ -159,6 +175,7 @@ pub struct BackendRust {
     /// The last recorded key combination, checked for conflicts (JSON `platform::ShortcutCheck`).
     shortcut_check: QString,
     leagues: QString,
+    overlay_screen: QString,
     side: i32,
     overlay_width: i32,
     margin_top: i32,
@@ -192,6 +209,10 @@ pub fn q(s: impl AsRef<str>) -> QString {
     QString::from(s.as_ref())
 }
 
+fn to_screen(size: &QSizeF) -> placement::ScreenSize {
+    placement::ScreenSize { width: size.width().round() as i32, height: size.height().round() as i32 }
+}
+
 /// Push config-derived values (game label, overlay geometry, colours) to QML.
 pub fn apply_config(cfg: &Config) {
     ui(config_values(cfg));
@@ -206,6 +227,7 @@ fn config_values(cfg: &Config) -> impl FnOnce(Pin<&mut qobject::Backend>) + Send
     move |mut b| {
         b.as_mut().set_game_label(label);
         b.as_mut().set_info_label(info_label);
+        b.as_mut().set_overlay_screen(q(&o.screen));
         b.as_mut().set_side(o.side as i32);
         b.as_mut().set_overlay_width(o.width);
         b.as_mut().set_overlay_max_height(o.max_height);
@@ -339,9 +361,10 @@ impl qobject::Backend {
         send_event(Event::ToggleGame);
     }
 
-    /// Persist the size/position chosen with the overlay's resize grip and drag handle.
-    fn save_overlay_size(&self) {
+    /// Persist the monitor, size and position chosen by moving and resizing the overlay.
+    fn save_overlay(&self) {
         let mut c = crate::CONFIG.lock().unwrap();
+        c.overlay.screen = self.overlay_screen().to_string();
         c.overlay.width = *self.overlay_width();
         c.overlay.max_height = *self.overlay_max_height();
         c.overlay.margin_top = *self.margin_top();
@@ -350,6 +373,39 @@ impl qobject::Backend {
         if let Err(e) = c.save() {
             log::error!("saving config: {e}");
         }
+    }
+
+    /// Move the overlay's top-left corner to `corner` on a monitor of the given size, kept on
+    /// it. Saving is left to the caller.
+    fn place_overlay(mut self: Pin<&mut Self>, corner: &QPointF, screen: &QSizeF) {
+        let width = *self.overlay_width();
+        let side = config::Side::from_index(*self.side());
+        let margins = placement::margins_at(corner.x(), corner.y(), side, to_screen(screen), width);
+        self.as_mut().set_margin_top(margins.top);
+        self.as_mut().set_margin_side(margins.side);
+    }
+
+    // The next two take everything they depend on as arguments, so QML bindings on them follow
+    // changes to any of it.
+
+    /// Where the overlay's left edge is on a monitor of the given size.
+    fn overlay_left_edge(&self, side: i32, margin_side: i32, width: i32, screen: &QSizeF) -> i32 {
+        placement::left_edge(margin_side, config::Side::from_index(side), to_screen(screen), width)
+    }
+
+    /// The tallest the overlay may be with its top `top` pixels down the monitor.
+    fn overlay_height_limit(&self, top: i32, screen: &QSizeF) -> i32 {
+        placement::height_limit(top, to_screen(screen))
+    }
+
+    /// The overlay's width for its free side edge dragged `dx` pixels, from `width` at `x`.
+    fn dragged_width(&self, x: f64, width: f64, dx: f64, screen: &QSizeF) -> i32 {
+        placement::dragged_width(x, width, dx, config::Side::from_index(*self.side()), to_screen(screen))
+    }
+
+    /// The overlay's height for its bottom edge dragged `dy` pixels, from `height` at `y`.
+    fn dragged_height(&self, y: f64, height: f64, dy: f64, screen: &QSizeF) -> i32 {
+        placement::dragged_height(y, height, dy, to_screen(screen))
     }
 
     /// Manual check: validate pasted text, then price check it like a hotkey copy.

@@ -4,6 +4,7 @@ fn main() {
     let builder = CxxQtBuilder::new_qml_module(
         QmlModule::new("dev.lootingglass").qml_files([
             "qml/Main.qml",
+            "qml/OverlayDrag.qml",
             "qml/Settings.qml",
             "qml/ManualCheck.qml",
             "qml/FormPage.qml",

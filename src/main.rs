@@ -11,6 +11,7 @@ mod links;
 mod exchange;
 mod mapcheck;
 mod ninja;
+mod placement;
 mod platform;
 mod pseudo;
 mod ratelimit;

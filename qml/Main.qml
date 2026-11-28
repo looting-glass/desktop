@@ -11,15 +11,27 @@ Window {
     objectName: "overlay"
     visible: Backend.overlayVisible
     color: "transparent"
-    width: Backend.overlayWidth
+    // Read from C++ to place the window: its monitor, and on Windows its size and position.
+    readonly property string overlayScreen: Backend.overlayScreen
+    readonly property int overlayWidth: Backend.overlayWidth
     // A height set with the bottom resize edge is fixed (content scrolls); otherwise fit the content.
-    height: Math.min(Backend.overlayMaxHeight > 0 && Backend.snapshotDir === "" ? Backend.overlayMaxHeight : card.implicitHeight,
-                     Screen.height - marginTop - 40)
-
-    // Read from C++ for layer-shell anchors/margins.
+    readonly property int overlayHeight: Math.min(Backend.overlayMaxHeight > 0 && Backend.snapshotDir === "" ? Backend.overlayMaxHeight : card.implicitHeight,
+                                                  Backend.overlayHeightLimit(marginTop, monitorSize))
     property int marginTop: Backend.marginTop
     property int marginSide: Backend.marginSide
     property int side: Backend.side
+    // Set from C++ on Linux, where the window covers its monitor and the card is drawn at
+    // `cardRect` (the input region). Elsewhere the window is the card, placed by C++.
+    property bool coversMonitor: false
+    // The monitor's size. When the window covers it, that's the window's size, which comes with
+    // the surface; Qt's Screen can name another monitor until the surface has entered its own.
+    readonly property size monitorSize: coversMonitor ? Qt.size(width, height) : Qt.size(Screen.width, Screen.height)
+    // Where the overlay is on its monitor (read from C++ on Windows), and where the card is
+    // drawn in the window.
+    readonly property int cardX: Backend.overlayLeftEdge(side, marginSide, overlayWidth, monitorSize)
+    readonly property rect cardRect: coversMonitor ? Qt.rect(cardX, marginTop, overlayWidth, overlayHeight)
+                                                   : Qt.rect(0, 0, overlayWidth, overlayHeight)
+    OverlayDrag { id: overlayDrag; window: win; handle: mover }
 
     // Editable copy of the search spec; `rev` bumps on every edit so bindings refresh.
     property var spec: null
@@ -100,37 +112,27 @@ Window {
     // Pinned: only Esc (or ✕) closes, so Space and clicking the game leave it open.
     Shortcut { sequences: Backend.pinned ? ["Escape"] : ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
-    // Window-style resize edge. Height (and width when the overlay is on the left) resize live,
-    // since the surface origin stays put. Growing a right-anchored overlay moves its origin,
-    // which KWin applies asynchronously, so that width is applied on release.
+    // Window-style resize edge, dragged like the handle (OverlayDrag).
     component Edge: MouseArea {
         property bool horiz: false
         property bool vert: false
-        property real px: 0
-        property real py: 0
-        property real startW: 0
-        property real startH: 0
         z: 20
         hoverEnabled: true
-        function clampW(w) { return Math.round(Math.max(300, Math.min(w, Screen.width))) }
-        function clampH(h) { return Math.round(Math.max(150, Math.min(h, Screen.height - win.marginTop - 40))) }
-        onPressed: (m) => {
-            const p = mapToItem(null, m.x, m.y)
-            px = p.x; py = p.y; startW = win.width; startH = win.height
+        // The card scrolls (a Flickable), which would take over a drag that goes up or down.
+        preventStealing: true
+        // Resize for the cursor moved (dx, dy) since the press. On the right-hand side the free
+        // edge is the left one: the margin keeps the right edge in place as the overlay grows.
+        function dragTo(dx, dy) {
+            const s = overlayDrag.start
+            if (horiz) Backend.overlayWidth = Backend.draggedWidth(s.x, s.width, dx, win.monitorSize)
+            if (vert) Backend.overlayMaxHeight = Backend.draggedHeight(s.y, s.height, dy, win.monitorSize)
         }
-        onPositionChanged: (m) => {
-            if (!pressed) return
-            const p = mapToItem(null, m.x, m.y)
-            if (vert) Backend.overlayMaxHeight = clampH(startH + p.y - py)
-            if (horiz && win.side === 0) Backend.overlayWidth = clampW(startW + p.x - px)
-        }
-        onReleased: (m) => {
-            const p = mapToItem(null, m.x, m.y)
-            if (horiz && win.side === 1) Backend.overlayWidth = clampW(startW + px - p.x)
-            Backend.saveOverlaySize()
-        }
+        onPressed: (m) => overlayDrag.begin(this, m)
+        onPositionChanged: (m) => overlayDrag.follow(this, m)
+        onReleased: overlayDrag.end(this)
+        onCanceled: overlayDrag.end(this)
         // Double-click: back to fitting the content height.
-        onDoubleClicked: if (vert) { Backend.overlayMaxHeight = 0; Backend.saveOverlaySize() }
+        onDoubleClicked: if (vert) { Backend.overlayMaxHeight = 0; Backend.saveOverlay() }
         Rectangle {
             anchors.fill: parent
             radius: 3
@@ -181,7 +183,10 @@ Window {
 
     Rectangle {
         id: card
-        anchors.fill: parent
+        x: win.cardRect.x
+        y: win.cardRect.y
+        width: win.cardRect.width
+        height: win.cardRect.height
         implicitHeight: col.implicitHeight + 24
         radius: 8
         color: pal.window
@@ -200,30 +205,56 @@ Window {
                 RowLayout {
                     Layout.fillWidth: true
                     MouseArea {
-                        // Moving a layer-shell surface = changing its margins. Applied once on release:
-                        // the compositor moves the surface asynchronously, so live updates feed back.
+                        // Drag handle (OverlayDrag). Arrow keys move the overlay too, Shift for
+                        // bigger steps, for anyone who can't drag precisely.
                         id: mover
                         Layout.preferredWidth: 22
                         Layout.fillHeight: true
                         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                         hoverEnabled: true
-                        property real px: 0
-                        property real py: 0
-                        onPressed: (m) => { const p = mapToItem(null, m.x, m.y); px = p.x; py = p.y }
-                        onReleased: (m) => {
-                            const p = mapToItem(null, m.x, m.y)
-                            const dx = p.x - px
-                            const dy = p.y - py
-                            const sideM = Backend.marginSide + (win.side === 1 ? -dx : dx)
-                            Backend.marginSide = Math.round(Math.max(0, Math.min(sideM, Screen.width - win.width)))
-                            Backend.marginTop = Math.round(Math.max(0, Math.min(Backend.marginTop + dy, Screen.height - 120)))
-                            Backend.saveOverlaySize()
+                        // As for the resize edges: the card's scrolling would take over the drag.
+                        preventStealing: true
+                        activeFocusOnTab: true
+                        Accessible.role: Accessible.Grip
+                        Accessible.name: "Move the overlay"
+                        Accessible.description: "Drag, or use the arrow keys"
+                        function dragTo(dx, dy) {
+                            const s = overlayDrag.start
+                            Backend.placeOverlay(Qt.point(s.x + dx, s.y + dy), win.monitorSize)
+                        }
+                        onPressed: (m) => {
+                            forceActiveFocus()
+                            overlayDrag.begin(this, m)
+                        }
+                        onPositionChanged: (m) => overlayDrag.follow(this, m)
+                        onReleased: overlayDrag.end(this)
+                        onCanceled: overlayDrag.end(this)
+                        // How far an arrow key moves the overlay, or null for other keys.
+                        function arrowStep(e) {
+                            const step = e.modifiers & Qt.ShiftModifier ? 50 : 10
+                            switch (e.key) {
+                            case Qt.Key_Left: return Qt.point(-step, 0)
+                            case Qt.Key_Right: return Qt.point(step, 0)
+                            case Qt.Key_Up: return Qt.point(0, -step)
+                            case Qt.Key_Down: return Qt.point(0, step)
+                            }
+                            return null
+                        }
+                        Keys.onPressed: (e) => {
+                            const d = arrowStep(e)
+                            if (d === null) return
+                            Backend.placeOverlay(Qt.point(win.cardX + d.x, win.marginTop + d.y), win.monitorSize)
+                            e.accepted = true
+                        }
+                        // Saved once the key is let go, not on every auto-repeat.
+                        Keys.onReleased: (e) => {
+                            if (arrowStep(e) !== null && !e.isAutoRepeat) Backend.saveOverlay()
                         }
                         Label {
                             anchors.centerIn: parent
                             text: "⠿"
                             font.pixelSize: 18
-                            color: mover.containsMouse || mover.pressed ? win.accent : theme.faintText
+                            color: mover.containsMouse || mover.pressed || mover.activeFocus ? win.accent : theme.faintText
                         }
                     }
                     Label {

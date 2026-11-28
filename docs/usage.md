@@ -11,8 +11,10 @@
 4. Close the overlay with **Esc** or **Space**, or by clicking back into the game.
 
 The overlay sits on top of the game, on the game's screen. Drag the ⠿ handle to move it and its
-free edges to resize it. To keep it open while you play, click the pin next to ✕: it then stays
-until you press ✕ or Esc, and remembers that setting.
+free edges to resize it. Let go over another monitor to move it there: it then opens on that
+monitor from then on. To move it with the keyboard, click the handle or Tab to it, then use the
+arrow keys: 10 pixels a press, 50 with Shift. To keep it open while you play, click the pin next
+to ✕: it then stays until you press ✕ or Esc, and remembers that setting.
 
 Path of Exile 1 and 2 are both supported, each with its own league. Switch game from the tray
 menu, in *Settings → Game*, or with the *Switch between PoE 1 and PoE 2* [shortcut](shortcuts.md).

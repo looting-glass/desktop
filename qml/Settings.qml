@@ -414,7 +414,7 @@ ApplicationWindow {
                         SpinBox { id: sideMargin; from: 0; to: 3000; stepSize: 10 }
                         Item {}
                         Label {
-                            text: "Tip: drag the ⠿ handle to move the overlay and its free edges to resize it."
+                            text: "Tip: drag the ⠿ handle to move the overlay, or click it and use the arrow keys, and drag its free edges to resize it."
                             color: theme.secondaryText
                             wrapMode: Text.Wrap
                             Layout.preferredWidth: 300

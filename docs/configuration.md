@@ -42,15 +42,17 @@ max_results = 20         # listings shown
 
 ```toml
 [overlay]
-side = "right"           # "left" or "right" of the game's screen
-margin_top = 80
-margin_side = 24
+screen = ""              # monitor it was moved to, like "DP-1"; "" = the game's
+side = "right"           # "left" or "right" of the screen
+margin_top = 80          # pixels from the screen's top edge
+margin_side = 24         # pixels from the screen's left or right edge
 width = 380
 max_height = 0           # 0 = fit the content, up to the screen height
 pinned = false           # true = stay open when you click the game (close with ✕ or Esc)
 ```
 
-Dragging and resizing the overlay updates these.
+Moving the overlay (dragging its handle, or the arrow keys on it) and resizing it update these.
+The margins count from the screen's edges, over any panels.
 
 ## Appearance
 
