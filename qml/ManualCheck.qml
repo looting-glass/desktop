@@ -12,7 +12,7 @@ ApplicationWindow {
     minimumWidth: 420
     minimumHeight: 340
     visible: false
-    KdeLook { target: win.palette }
+    AppTheme { id: theme; target: win.palette }
 
     function check() {
         const err = Backend.checkText(input.text)
@@ -61,13 +61,13 @@ ApplicationWindow {
                     Label { text: "Manual price check"; font.pointSize: Qt.application.font.pointSize * 1.35 }
                     Label {
                         text: "Checking against " + Backend.gameLabel
-                        opacity: 0.7
+                        color: theme.secondaryText
                     }
                 }
                 Item { Layout.fillWidth: true }
                 ToolButton {
-                    icon.name: Qt.platform.os === "linux" ? "configure" : ""
-                    icon.color: Qt.platform.os === "linux" ? undefined : win.palette.windowText
+                    icon.name: theme.desktopIcons ? "configure" : ""
+                    icon.color: theme.desktopIcons ? undefined : win.palette.windowText
                     icon.source: "qrc:/lootingglass/icons/settings.svg"
                     text: "Settings"
                     display: AbstractButton.IconOnly
@@ -80,7 +80,7 @@ ApplicationWindow {
             Label {
                 text: "Hover an item in game, press Ctrl+C (or Ctrl+Alt+C for full mod details), then paste it below."
                 wrapMode: Text.Wrap
-                opacity: 0.85
+                color: theme.secondaryText
                 Layout.fillWidth: true
             }
 
@@ -106,7 +106,7 @@ ApplicationWindow {
             Label {
                 id: error
                 visible: text !== ""
-                color: "#da4453"
+                color: theme.danger
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
@@ -115,17 +115,17 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Button {
                     text: "Paste"
-                    icon.name: Qt.platform.os === "linux" ? "edit-paste" : ""
+                    icon.name: theme.desktopIcons ? "edit-paste" : ""
                     onClicked: { input.selectAll(); input.paste() }
                 }
                 Button {
                     text: "Clear"
-                    icon.name: Qt.platform.os === "linux" ? "edit-clear" : ""
+                    icon.name: theme.desktopIcons ? "edit-clear" : ""
                     enabled: input.text !== ""
                     onClicked: input.clear()
                 }
                 Item { Layout.fillWidth: true }
-                Label { text: "Ctrl+Enter"; opacity: 0.5 }
+                Label { text: "Ctrl+Enter"; color: theme.faintText }
                 Button {
                     text: "Check price"
                     icon.source: "qrc:/lootingglass/icons/lootingglass.svg"

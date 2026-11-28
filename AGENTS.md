@@ -41,9 +41,13 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 - KDE Plasma (Wayland) is the tested platform; Hyprland, Sway, Umbriel and Windows are
   **experimental**. Keep that label in docs and code comments until someone has run them with
   the game.
-- Looks: on KDE the app follows the user's colour scheme (Breeze). Everywhere else it uses Qt
-  Quick's Fusion style with fixed colours copied from the KDE build (`qml/KdeLook.qml`), in both
-  light and dark system mode, so it matches the screenshots in `docs/screenshots`.
+- Looks: themes (*Settings → Appearance*, `src/theme/`) pick the colours; `qml/AppTheme.qml`
+  applies them to each window. The System theme keeps the desktop's palette: Breeze and the KDE
+  colour scheme on KDE. Every other theme uses Qt Quick's Fusion style, because Breeze ignores most
+  of an app-set palette; the style is chosen at start, so switching to or from System restarts.
+  Windows defaults to the dark Looting Glass theme, which matches the screenshots in
+  `docs/screenshots`. QML takes colours from the theme (`theme.danger`, `theme.secondaryText`, …),
+  never fixed values or `opacity` on text, so every theme stays readable.
 - Desktop-specific code lives in `src/platform/` (contract in `src/platform/mod.rs`) and the
   `#ifdef`s of `cpp/main.cpp`. QML uses only Qt Quick Controls, with bundled fallback icons in
   `qml/icons/`, so it runs on any platform.

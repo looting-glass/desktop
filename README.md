@@ -36,6 +36,8 @@ all use the desktop's native mechanisms.
 - **Map check** for PoE 1: mark the map mods you can't run, and see them in red on the next map.
 - **Manual check:** paste item text from a friend or a forum post.
 - **A proper overlay** on top of the game, plus a tray icon, native settings and update checks.
+- **Themes:** your desktop's colours, a built-in theme in light or dark, or your own, shared with a
+  short code.
 
 [Usage](docs/usage.md) describes them all.
 

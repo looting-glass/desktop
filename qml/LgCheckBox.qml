@@ -1,14 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.impl
+import dev.lootingglass
 
-// CheckBox that looks like KDE's Breeze checkbox everywhere. Off KDE its indicator is replaced
-// (Fusion draws dark-mode checkboxes on Windows as navy squares): a field-coloured box with a
-// soft outline and a tick. KDE keeps Breeze's own checkbox.
+// CheckBox that looks like KDE's Breeze checkbox everywhere. Under Fusion its indicator is
+// replaced (Fusion's sinks into dark backgrounds, and on Windows turns into a navy square): a
+// field-coloured box with a soft outline and a tick. Breeze keeps its own checkbox.
 CheckBox {
     id: control
 
-    Component.onCompleted: if (Qt.platform.os !== "linux") indicator = ownIndicator.createObject(control)
+    Component.onCompleted: if (!Backend.breezeStyle) indicator = ownIndicator.createObject(control)
 
     Component {
         id: ownIndicator

@@ -2,7 +2,7 @@
 
 Looting Glass runs on KDE Plasma 6 on Wayland, which is where it's tested. Hyprland, Sway, Umbriel
 and Windows support is **experimental**: it's written and built, but nobody has run it with the
-game yet. [Desktops](desktops.md) has the details, including why GNOME doesn't work yet.
+game yet. [Desktops](desktops.md) has the details, including why GNOME isn't supported.
 
 ## Linux
 
