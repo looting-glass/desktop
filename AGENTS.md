@@ -38,8 +38,9 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 
 ## Platforms
 
-- KDE Plasma (Wayland) is the tested platform; Hyprland and Windows are **experimental**.
-  Keep that label in docs and code comments until someone has run them with the game.
+- KDE Plasma (Wayland) is the tested platform; Hyprland, Sway, Umbriel and Windows are
+  **experimental**. Keep that label in docs and code comments until someone has run them with
+  the game.
 - Looks: on KDE the app follows the user's colour scheme (Breeze). Everywhere else it uses Qt
   Quick's Fusion style with fixed colours copied from the KDE build (`qml/KdeLook.qml`), in both
   light and dark system mode, so it matches the screenshots in `docs/screenshots`.

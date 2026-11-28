@@ -24,7 +24,7 @@ pub async fn run(tx: async_channel::Sender<Event>) -> Result<()> {
             let session = gs.create_session(Default::default()).await?;
             let shortcuts: Vec<NewShortcut> = SHORTCUT_DEFS
                 .iter()
-                .map(|(id, desc, trigger)| NewShortcut::new(*id, *desc).preferred_trigger(*trigger))
+                .map(|def| NewShortcut::new(def.id, def.description).preferred_trigger(def.preferred_trigger))
                 .collect();
             gs.bind_shortcuts(&session, &shortcuts, None, Default::default())
                 .await?

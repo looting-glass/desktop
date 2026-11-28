@@ -72,6 +72,16 @@ ids from the table above:
 
 *Settings → Shortcuts* lists the command for every action.
 
+If *Settings → Shortcuts* doesn't list those commands, your Umbriel registers the shortcuts for
+Looting Glass itself, and `lootingglass trigger` isn't listening. Set the keys in its
+`[global_shortcuts]` section instead:
+
+```toml
+[global_shortcuts."dev.lootingglass.LootingGlass"]
+"price-check" = "Ctrl+D"
+"toggle-game" = "F7"     # optional
+```
+
 ## Windows (experimental)
 
 Looting Glass registers the shortcuts itself. Type them into *Settings → Shortcuts*, such as

@@ -3,6 +3,7 @@
 //! decided once, from what the desktop offers (`facts`), by the pure `select::select`; the
 //! functions below delegate to that selection.
 
+mod cli;
 mod clipboard;
 mod facts;
 mod focus;

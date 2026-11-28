@@ -1,12 +1,11 @@
 //! Focus the game through Umbriel's IPC: find its window with `umbriel windows --json`, then
 //! `umbriel msg window-focus <id>`. EXPERIMENTAL, not yet tested on a real Umbriel session.
 
-use crate::platform::linux::GAME_TITLE;
+use crate::platform::linux::{GAME_TITLE, cli};
 use anyhow::{Context, Result, bail};
 use regex::Regex;
 use serde::Deserialize;
 use std::sync::LazyLock;
-use tokio::process::Command;
 
 pub async fn focus_game() {
     if let Err(e) = run().await {
@@ -15,14 +14,11 @@ pub async fn focus_game() {
 }
 
 async fn run() -> Result<()> {
-    let out = Command::new("umbriel").args(["windows", "--json"]).output().await.context("running umbriel")?;
-    let Some(id) = game_window_id(&String::from_utf8_lossy(&out.stdout))? else {
+    let listing = cli::run("umbriel", &["windows", "--json"]).await?;
+    let Some(id) = game_window_id(&listing)? else {
         bail!("the game window isn't open");
     };
-    let out = Command::new("umbriel").args(["msg", "window-focus", &id]).output().await.context("running umbriel")?;
-    if !out.status.success() {
-        bail!("umbriel msg window-focus {id} failed: {}", String::from_utf8_lossy(&out.stderr).trim());
-    }
+    cli::run("umbriel", &["msg", "window-focus", &id]).await?;
     Ok(())
 }
 

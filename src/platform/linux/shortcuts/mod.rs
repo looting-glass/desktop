@@ -12,14 +12,56 @@ use crate::Event;
 use crate::platform::{ShortcutCheck, ShortcutList, ShortcutRow};
 use anyhow::{Result, bail};
 
-/// Shortcut id, description (shown in the desktop's settings), preferred trigger; in settings order.
-const SHORTCUT_DEFS: &[(&str, &str, Option<&str>)] = &[
-    ("price-check", "Price check hovered item", Some("CTRL+D")),
-    ("item-info", "Open hovered item on poedb or the wiki", None),
-    ("toggle-game", "Switch between PoE 1 and PoE 2", None),
-    ("manual-check", "Open manual price check", None),
-    ("settings", "Open Looting Glass settings", None),
-    ("hide-overlay", "Hide price overlay", None),
+/// One of our global shortcuts.
+struct ShortcutDef {
+    /// The name the desktop and `lootingglass trigger` know it by.
+    id: &'static str,
+    /// Shown in the desktop's settings.
+    description: &'static str,
+    /// What it asks the app to do.
+    event: Event,
+    /// The key the desktop is asked to bind it to, in the portal's notation.
+    preferred_trigger: Option<&'static str>,
+}
+
+/// Our shortcuts, in settings order.
+const SHORTCUT_DEFS: &[ShortcutDef] = &[
+    ShortcutDef {
+        id: "price-check",
+        description: "Price check hovered item",
+        event: Event::PriceCheck,
+        preferred_trigger: Some("CTRL+D"),
+    },
+    ShortcutDef {
+        id: "item-info",
+        description: "Open hovered item on poedb or the wiki",
+        event: Event::OpenItemInfo,
+        preferred_trigger: None,
+    },
+    ShortcutDef {
+        id: "toggle-game",
+        description: "Switch between PoE 1 and PoE 2",
+        event: Event::ToggleGame,
+        preferred_trigger: None,
+    },
+    ShortcutDef {
+        id: "manual-check",
+        description: "Open manual price check",
+        event: Event::OpenManual,
+        preferred_trigger: None,
+    },
+    ShortcutDef {
+        id: "settings",
+        description: "Open Looting Glass settings",
+        event: Event::OpenSettings,
+        preferred_trigger: None,
+    },
+    ShortcutDef {
+        id: "hide-overlay",
+        description: "Hide price overlay",
+        event: Event::HideOverlay,
+        preferred_trigger: None,
+    },
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,21 +96,17 @@ impl Role for Shortcuts {
 
 /// What the shortcut with this id asks the app to do.
 fn event(id: &str) -> Option<Event> {
-    Some(match id {
-        "price-check" => Event::PriceCheck,
-        "toggle-game" => Event::ToggleGame,
-        "settings" => Event::OpenSettings,
-        "manual-check" => Event::OpenManual,
-        "hide-overlay" => Event::HideOverlay,
-        "item-info" => Event::OpenItemInfo,
-        _ => return None,
-    })
+    find(id).map(|def| def.event.clone())
+}
+
+fn find(id: &str) -> Option<&'static ShortcutDef> {
+    SHORTCUT_DEFS.iter().find(|def| def.id == id)
 }
 
 /// Hand the shortcut `id` to the running instance, for `lootingglass trigger <id>`. Blocking.
 pub fn trigger(id: &str) -> Result<()> {
     if event(id).is_none() {
-        let ids: Vec<&str> = SHORTCUT_DEFS.iter().map(|(id, ..)| *id).collect();
+        let ids: Vec<&str> = SHORTCUT_DEFS.iter().map(|def| def.id).collect();
         bail!("Unknown shortcut {id:?}. Use one of: {}.", ids.join(", "));
     }
     command::send(id)
@@ -118,10 +156,10 @@ impl Shortcuts {
         if self != Self::KGlobalAccel {
             bail!("This desktop's shortcuts can't be changed from Looting Glass.");
         }
-        let Some((_, description, _)) = SHORTCUT_DEFS.iter().find(|(i, ..)| *i == id) else {
+        let Some(def) = find(id) else {
             bail!("unknown shortcut {id}");
         };
-        kglobalaccel::set(id, description, key, true).await
+        kglobalaccel::set(id, def.description, key, true).await
     }
 
     /// How `key` reads ("Ctrl+D") and who else uses it, before it's saved.
@@ -167,7 +205,7 @@ fn unchecked(id: &str, key: i32) -> ShortcutCheck {
 fn rows(keys_of: impl Fn(&str) -> String) -> Vec<ShortcutRow> {
     SHORTCUT_DEFS
         .iter()
-        .map(|(id, description, _)| ShortcutRow { id: (*id).into(), description: (*description).into(), keys: keys_of(id) })
+        .map(|def| ShortcutRow { id: def.id.into(), description: def.description.into(), keys: keys_of(def.id) })
         .collect()
 }
 
@@ -187,10 +225,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_shortcut_has_an_event() {
-        for (id, ..) in SHORTCUT_DEFS {
-            assert!(event(id).is_some(), "{id}");
-        }
+    fn ids_are_unique() {
+        let ids: std::collections::HashSet<_> = SHORTCUT_DEFS.iter().map(|def| def.id).collect();
+        assert_eq!(ids.len(), SHORTCUT_DEFS.len());
+    }
+
+    #[test]
+    fn known_ids_have_their_event() {
+        assert!(matches!(event("price-check"), Some(Event::PriceCheck)));
+        assert!(matches!(event("hide-overlay"), Some(Event::HideOverlay)));
     }
 
     #[test]

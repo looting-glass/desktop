@@ -4,6 +4,7 @@
 
 use crate::Event;
 use anyhow::{Context, Result};
+use std::convert::Infallible;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -14,40 +15,74 @@ use tokio::net::{UnixListener, UnixStream};
 const MAX_MESSAGE: u64 = 64;
 /// How long a client gets to send its id; `trigger` sends it right after connecting.
 const READ_TIMEOUT: Duration = Duration::from_secs(1);
+/// Pause after a failed accept, such as running out of file descriptors, before trying again.
+const ACCEPT_RETRY: Duration = Duration::from_millis(200);
 
 fn socket_path() -> Result<PathBuf> {
     Ok(crate::instance_dir().context("no state directory for the trigger socket")?.join("trigger.sock"))
 }
 
-/// Take shortcut ids from `trigger` commands and forward their events.
+/// Take shortcut ids from `trigger` commands and forward their events for as long as the app
+/// runs.
 pub async fn run(tx: async_channel::Sender<Event>) -> Result<()> {
     let path = socket_path()?;
-    // We hold the single-instance lock, so a socket already there was left by a copy that crashed.
-    let _ = std::fs::remove_file(&path);
-    let listener = UnixListener::bind(&path).with_context(|| format!("Couldn't listen for shortcuts on {}", path.display()))?;
+    let Some(listener) = listen(&path).await? else {
+        // Only a dev run (`LOOTINGGLASS_DEMO`) gets here: it skips the single-instance lock and
+        // leaves the commands to the copy in the tray.
+        log::info!("another Looting Glass takes `lootingglass trigger` commands; this one won't");
+        return Ok(());
+    };
     log::info!("bind keys to `lootingglass trigger <id>` in your window manager; listening on {}", path.display());
-    serve(listener, tx).await
+    match serve(listener, tx).await {}
 }
 
-async fn serve(listener: UnixListener, tx: async_channel::Sender<Event>) -> Result<()> {
+/// Bind the socket, replacing one left by a copy that crashed. A socket that still answers
+/// belongs to a copy that's running, which keeps it: then there's nothing to bind.
+async fn listen(path: &Path) -> Result<Option<UnixListener>> {
+    if UnixStream::connect(path).await.is_ok() {
+        return Ok(None);
+    }
+    if let Some(dir) = path.parent() {
+        tokio::fs::create_dir_all(dir).await.with_context(|| format!("Couldn't create {}", dir.display()))?;
+    }
+    let _ = tokio::fs::remove_file(path).await;
+    let listener = UnixListener::bind(path).with_context(|| format!("Couldn't listen for shortcuts on {}", path.display()))?;
+    Ok(Some(listener))
+}
+
+async fn serve(listener: UnixListener, tx: async_channel::Sender<Event>) -> Infallible {
     loop {
-        let (stream, _) = listener.accept().await?;
-        tokio::spawn(receive(stream, tx.clone()));
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                tokio::spawn(receive(stream, tx.clone()));
+            }
+            Err(e) => {
+                log::warn!("trigger: {e}");
+                tokio::time::sleep(ACCEPT_RETRY).await;
+            }
+        }
     }
 }
 
+/// Read one shortcut id from the client and pass on its event.
 async fn receive(stream: UnixStream, tx: async_channel::Sender<Event>) {
-    let mut id = String::new();
+    let mut line = String::new();
     let mut reader = BufReader::new(stream).take(MAX_MESSAGE);
-    match tokio::time::timeout(READ_TIMEOUT, reader.read_line(&mut id)).await {
-        Ok(Ok(_)) => match super::event(id.trim_end()) {
-            Some(event) => {
-                let _ = tx.send(event).await;
-            }
-            None => log::warn!("trigger: unknown shortcut {id:?}"),
-        },
-        Ok(Err(e)) => log::warn!("trigger: {e}"),
-        Err(_) => log::warn!("trigger: no shortcut id within {READ_TIMEOUT:?}"),
+    match tokio::time::timeout(READ_TIMEOUT, reader.read_line(&mut line)).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => return log::warn!("trigger: {e}"),
+        Err(_) => return log::warn!("trigger: no shortcut id within {READ_TIMEOUT:?}"),
+    }
+    let id = line.trim_end();
+    // Nothing sent: another copy's `listen` checking whether we're running.
+    if id.is_empty() {
+        return;
+    }
+    let Some(event) = super::event(id) else {
+        return log::warn!("trigger: unknown shortcut {id:?}");
+    };
+    if let Err(e) = tx.try_send(event) {
+        log::warn!("trigger: couldn't pass on {id}: {e}");
     }
 }
 
@@ -69,16 +104,24 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU32, Ordering};
 
-    /// Serves a socket in a fresh temporary folder and hands `test` its path and the events.
-    fn with_listener(test: impl AsyncFnOnce(PathBuf, async_channel::Receiver<Event>)) {
+    /// A folder for one test's socket, under the system's temporary folder; not created yet.
+    fn scratch_dir() -> PathBuf {
         static RUN: AtomicU32 = AtomicU32::new(0);
-        let dir = std::env::temp_dir()
-            .join(format!("lootingglass-trigger-{}-{}", std::process::id(), RUN.fetch_add(1, Ordering::Relaxed)));
-        std::fs::create_dir_all(&dir).unwrap();
+        std::env::temp_dir()
+            .join(format!("lootingglass-trigger-{}-{}", std::process::id(), RUN.fetch_add(1, Ordering::Relaxed)))
+    }
+
+    fn block_on<T>(future: impl Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(future)
+    }
+
+    /// Serves a socket in a fresh folder and hands `test` its path and the events.
+    fn with_listener(test: impl AsyncFnOnce(PathBuf, async_channel::Receiver<Event>)) {
+        let dir = scratch_dir();
         let path = dir.join("trigger.sock");
-        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
+        block_on(async {
             let (tx, rx) = async_channel::bounded(4);
-            tokio::spawn(serve(UnixListener::bind(&path).unwrap(), tx));
+            tokio::spawn(serve(listen(&path).await.unwrap().unwrap(), tx));
             test(path.clone(), rx).await;
         });
         std::fs::remove_dir_all(dir).unwrap();
@@ -108,6 +151,23 @@ mod tests {
             write_raw(&path, b"toggle-game\n").await;
             assert!(matches!(rx.recv().await, Ok(Event::ToggleGame)));
         });
+    }
+
+    #[test]
+    fn a_running_copy_keeps_its_socket() {
+        with_listener(async |path, _| {
+            assert!(listen(&path).await.unwrap().is_none());
+        });
+    }
+
+    #[test]
+    fn a_crashed_copys_socket_is_replaced() {
+        let dir = scratch_dir();
+        let path = dir.join("trigger.sock");
+        std::fs::create_dir_all(&dir).unwrap();
+        drop(std::os::unix::net::UnixListener::bind(&path).unwrap());
+        assert!(block_on(listen(&path)).unwrap().is_some());
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
