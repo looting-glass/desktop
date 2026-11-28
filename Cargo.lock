@@ -1391,6 +1391,7 @@ dependencies = [
  "sha2",
  "tokio",
  "toml",
+ "wayland-client",
  "windows-sys 0.61.2",
  "wl-clipboard-rs",
 ]

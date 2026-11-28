@@ -30,6 +30,7 @@ toml = "1.2.1"
 ashpd = { version = "0.14.1", features = ["global_shortcuts", "remote_desktop", "screencast", "tokio"] }
 png = "0.17"
 ksni = "0.3.7"
+wayland-client = "0.31.15"
 wl-clipboard-rs = "0.9.5"
 
 # Windows platform backend (src/platform/windows.rs)
