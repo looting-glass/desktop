@@ -113,6 +113,13 @@ pub enum Side {
     Right,
 }
 
+impl Side {
+    /// The side from its number in QML (`Side as i32`).
+    pub fn from_index(index: i32) -> Self {
+        if index == Side::Left as i32 { Side::Left } else { Side::Right }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
@@ -204,6 +211,8 @@ impl Default for UpdatesConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct OverlayConfig {
+    /// The monitor it was moved to (its name, like "DP-1"); empty = the game's.
+    pub screen: String,
     pub side: Side,
     pub margin_top: i32,
     pub margin_side: i32,
@@ -216,7 +225,7 @@ pub struct OverlayConfig {
 
 impl Default for OverlayConfig {
     fn default() -> Self {
-        Self { side: Side::Right, margin_top: 80, margin_side: 24, width: 380, max_height: 0, pinned: false }
+        Self { screen: String::new(), side: Side::Right, margin_top: 80, margin_side: 24, width: 380, max_height: 0, pinned: false }
     }
 }
 
