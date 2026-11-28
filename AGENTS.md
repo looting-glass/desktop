@@ -1,8 +1,9 @@
 # Looting Glass: notes for agents
 
 Looting Glass is a native (Rust + Qt 6/QML) price checker for Path of Exile 1 and 2. `README.md`
-covers features, layout and the dev commands; this file holds the conventions that aren't
-written down anywhere else.
+is the short overview for GitHub visitors, `docs/` is the user guide (with the source layout and
+dev commands in `docs/development.md`), and this file holds the conventions that aren't written
+down anywhere else.
 
 ## Git
 
@@ -41,7 +42,7 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
   Keep that label in docs and code comments until someone has run them with the game.
 - Looks: on KDE the app follows the user's colour scheme (Breeze). Everywhere else it uses Qt
   Quick's Fusion style with fixed colours copied from the KDE build (`qml/KdeLook.qml`), in both
-  light and dark system mode, so it matches the README screenshots.
+  light and dark system mode, so it matches the screenshots in `docs/screenshots`.
 - Desktop-specific code lives in `src/platform/` (contract in `src/platform/mod.rs`) and the
   `#ifdef`s of `cpp/main.cpp`. QML uses only Qt Quick Controls, with bundled fallback icons in
   `qml/icons/`, so it runs on any platform.
@@ -87,21 +88,34 @@ changed code meets these; existing code is brought up to them when you touch it.
 - `cargo test` for the parser and hotkey logic.
 - `LOOTINGGLASS_DEMO=dev/<item>.txt cargo run` price-checks a sample without the game; add a
   `dev/` sample for any new item type you handle.
-- UI changes: compare before/after with `LOOTINGGLASS_SNAPSHOT=<dir>` (writes the README
-  screenshots).
+- UI changes: compare before/after with `LOOTINGGLASS_SNAPSHOT=<dir>` (writes the
+  `docs/screenshots`).
 - Repeated runs: the trade API rate-limits quickly. For UI work use `LOOTINGGLASS_MOCK=1` (canned
   responses, no network; extend `src/mock.rs` for new items); to replay real data, set
   `LOOTINGGLASS_HTTP_CACHE=<dir>` so replies are recorded once.
+
+## Docs
+
+`docs/` is the user guide, one page per topic, listed in `docs/README.md`. The website renders
+those pages at deploy time, so they are the only copy: don't repeat their content in `README.md`
+or on the website.
+
+- A change to user-facing behaviour (a feature, setting, shortcut, message, install step or
+  supported desktop) updates the matching `docs/` page in the same PR, the way UI changes
+  regenerate `docs/screenshots`. A new page goes into `docs/README.md` too, in reading order.
+- Links between pages are relative (`usage.md#map-check`), so they work on GitHub and the
+  website alike. Plain Markdown only: no GitHub-only syntax such as `> [!NOTE]`.
+- After it merges, start the website's Pages run (below) to publish the change right away.
 
 ## Screenshots
 
 The website ([looting-glass/looting-glass.github.io](https://github.com/looting-glass/looting-glass.github.io))
 uses the same `docs/screenshots`; it picks up changes daily or on a manual Pages run there.
-README screenshots come from `LOOTINGGLASS_SNAPSHOT`, cropped to the app with seller names
+Screenshots come from `LOOTINGGLASS_SNAPSHOT`, cropped to the app with seller names
 blurred. Show new screenshots to the maintainer before committing them.
 
 Any change to how the app looks (overlay, settings, manual check) regenerates the affected
-`docs/screenshots` in the same PR, so the README's screenshot section always matches the app.
+`docs/screenshots` in the same PR, so the README and docs always match the app.
 They show real listings: record the replies once with `LOOTINGGLASS_HTTP_CACHE` and retake from
 the cache. After it merges, start the website's Pages run
 (`gh workflow run Pages --repo looting-glass/looting-glass.github.io`) instead of
