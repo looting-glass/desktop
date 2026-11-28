@@ -8,7 +8,7 @@ use ashpd::zbus::Connection;
 
 const SERVICE: &str = "org.kde.kglobalaccel";
 const IFACE: &str = "org.kde.KGlobalAccel";
-const COMPONENT: &str = super::portal::APP_ID;
+const COMPONENT: &str = crate::platform::linux::APP_ID;
 const COMPONENT_NAME: &str = "Looting Glass";
 
 /// `(actionUnique, actionFriendly, componentUnique, componentFriendly, contextUnique,

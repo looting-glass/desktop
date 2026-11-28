@@ -35,9 +35,9 @@ async fn try_show(summary: &str, body: &str, on_click: Option<Event>) -> Result<
     let actions: Vec<&str> = if on_click.is_some() { vec!["default", "Open"] } else { vec![] };
     let mut hints: HashMap<&str, Variant> = HashMap::new();
     // Groups it under Looting Glass in the desktop's notification settings and history.
-    hints.insert("desktop-entry", Variant::from(super::portal::APP_ID));
+    hints.insert("desktop-entry", Variant::from(super::APP_ID));
     let id: u32 = proxy
-        .call("Notify", &("Looting Glass", 0u32, super::portal::APP_ID, summary, body, actions, hints, -1i32))
+        .call("Notify", &("Looting Glass", 0u32, super::APP_ID, summary, body, actions, hints, -1i32))
         .await?;
     if let (Some(mut clicks), Some(ev)) = (clicks, on_click) {
         tokio::spawn(async move {
