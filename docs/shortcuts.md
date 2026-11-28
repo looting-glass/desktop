@@ -81,5 +81,5 @@ the [`[shortcuts]` section](configuration.md#shortcuts-windows) of `config.toml`
 ## Other desktops
 
 Any other window manager without the GlobalShortcuts portal works the same way as Sway: bind a
-key to run `lootingglass trigger <id>`. GNOME isn't supported yet; [Desktops](desktops.md) says
-why.
+key to run `lootingglass trigger <id>`. GNOME isn't supported;
+[Desktops](desktops.md#why-gnome-isnt-supported) says why.
