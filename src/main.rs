@@ -14,6 +14,7 @@ mod ninja;
 mod platform;
 mod pseudo;
 mod ratelimit;
+mod theme;
 mod trade;
 mod update;
 
@@ -56,6 +57,11 @@ pub static CONFIG: LazyLock<Mutex<Config>> = LazyLock::new(|| {
     }
     Mutex::new(c)
 });
+/// Whether this run keeps the desktop's colours (`theme::Theme::follows_desktop`), and the style
+/// that goes with them. Both are set before the first window opens, so they hold until the app
+/// restarts.
+pub static DESKTOP_COLORS: OnceLock<bool> = OnceLock::new();
+pub static STYLE: OnceLock<theme::Style> = OnceLock::new();
 static EVENTS: OnceLock<async_channel::Sender<Event>> = OnceLock::new();
 static CHECK_GEN: AtomicU64 = AtomicU64::new(0);
 /// The running price search and bulk exchange lookup. A new check or re-search cancels the old
@@ -376,7 +382,7 @@ async fn run_search(spec: trade::Spec) {
 }
 
 unsafe extern "C" {
-    fn lootingglass_qt_main() -> i32;
+    fn lootingglass_qt_main(breeze: bool) -> i32;
 }
 
 /// Where the running instance keeps its lock and, on Linux, the socket `lootingglass trigger`
@@ -441,6 +447,9 @@ fn main() {
     }
     cxx_qt::init_crate!(cxx_qt_lib);
     cxx_qt::init_qml_module!("dev.lootingglass");
-    let code = unsafe { lootingglass_qt_main() };
+    let desktop_colors = *DESKTOP_COLORS.get_or_init(|| theme::Theme::from_config(&config().appearance).follows_desktop());
+    let fusion_preview = std::env::var_os("LOOTINGGLASS_FUSION").is_some();
+    let style = *STYLE.get_or_init(|| theme::Style::choose(cfg!(target_os = "linux"), desktop_colors, fusion_preview));
+    let code = unsafe { lootingglass_qt_main(style == theme::Style::Breeze) };
     std::process::exit(code);
 }

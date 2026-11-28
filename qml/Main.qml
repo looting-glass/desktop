@@ -93,12 +93,10 @@ Window {
     // Colours come from the window's palette, the same one its controls inherit, so the card and
     // the controls always agree (SystemPalette can differ from the Quick Controls palette).
     readonly property var pal: win.palette
-    // KDE: use the desktop's icon theme. Elsewhere use the bundled monochrome icons, tinted with
-    // the text colour (Windows' own icons don't follow its dark mode in tool buttons).
-    readonly property bool themeIcons: Qt.platform.os === "linux"
-    readonly property var iconTint: themeIcons ? undefined : pal.windowText
+    // Bundled icons are tinted with the text colour; the desktop's (theme.desktopIcons) bring their own.
+    readonly property var iconTint: theme.desktopIcons ? undefined : pal.windowText
     readonly property color accent: pal.highlight
-    KdeLook { target: win.palette }
+    AppTheme { id: theme; target: win.palette }
     // Pinned: only Esc (or ✕) closes, so Space and clicking the game leave it open.
     Shortcut { sequences: Backend.pinned ? ["Escape"] : ["Escape", "Space"]; onActivated: Backend.hideOverlay() }
 
@@ -158,7 +156,7 @@ Window {
             opacity: linkBtn.enabled ? 1 : 0.5
             Label { text: linkBtn.label; color: pal.buttonText }
             IconImage {
-                name: win.themeIcons ? "external-link-symbolic" : ""
+                name: theme.desktopIcons ? "external-link-symbolic" : ""
                 source: "qrc:/lootingglass/icons/external-link.svg"
                 color: pal.buttonText
                 sourceSize: Qt.size(14, 14)
@@ -172,12 +170,13 @@ Window {
         property alias text: lbl.text
         property bool accent: false
         property bool warn: false
+        property bool muted: false
         implicitWidth: lbl.implicitWidth + 14
         implicitHeight: lbl.implicitHeight + 6
         radius: 4
         color: "transparent"
-        border.color: warn ? "#e06c6c" : accent ? pal.highlight : pal.mid
-        Label { id: lbl; anchors.centerIn: parent; font.bold: true; font.pointSize: 8; color: warn ? "#e06c6c" : pal.windowText }
+        border.color: warn ? theme.danger : accent ? pal.highlight : pal.mid
+        Label { id: lbl; anchors.centerIn: parent; font.bold: true; font.pointSize: 8; color: warn ? theme.danger : muted ? theme.secondaryText : pal.windowText }
     }
 
     Rectangle {
@@ -224,8 +223,7 @@ Window {
                             anchors.centerIn: parent
                             text: "⠿"
                             font.pixelSize: 18
-                            color: mover.containsMouse || mover.pressed ? win.accent : pal.windowText
-                            opacity: mover.containsMouse || mover.pressed ? 1 : 0.5
+                            color: mover.containsMouse || mover.pressed ? win.accent : theme.faintText
                         }
                     }
                     Label {
@@ -237,7 +235,7 @@ Window {
                     }
                     ToolButton {
                         id: pinBtn
-                        icon.name: win.themeIcons ? "window-pin" : ""
+                        icon.name: theme.desktopIcons ? "window-pin" : ""
                         icon.color: win.iconTint
                         icon.source: "qrc:/lootingglass/icons/pin.svg"
                         // The style draws the checked (pinned) state as an active button.
@@ -261,7 +259,7 @@ Window {
                             color: win.accent
                         }
                     }
-                    ToolButton { id: closeBtn; icon.name: win.themeIcons ? "window-close" : ""; icon.color: win.iconTint; icon.source: "qrc:/lootingglass/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
+                    ToolButton { id: closeBtn; icon.name: theme.desktopIcons ? "window-close" : ""; icon.color: win.iconTint; icon.source: "qrc:/lootingglass/icons/close.svg"; focusPolicy: Qt.NoFocus; onClicked: Backend.hideOverlay() }
                 }
                 Label {
                     visible: Backend.overlayState !== "error"
@@ -285,13 +283,12 @@ Window {
                         anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 8 }
                         spacing: 2
                         RowLayout {
-                            Label { text: "poe.ninja"; font.pointSize: 8; font.bold: true; opacity: 0.7 }
+                            Label { text: "poe.ninja"; font.pointSize: 8; font.bold: true; color: theme.secondaryText }
                             Label { text: Backend.ninja; font.pointSize: 12; font.bold: true; Layout.fillWidth: true; elide: Text.ElideRight }
                         }
                         Label {
                             text: Backend.ninjaDetail
-                            opacity: 0.75
-                            color: Backend.ninjaDetail.startsWith("▼") ? "#e06c6c" : "#6cc070"
+                            color: Backend.ninjaDetail.startsWith("▼") ? theme.danger : theme.positive
                         }
                     }
                 }
@@ -313,7 +310,7 @@ Window {
                         anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 8 }
                         spacing: 2
                         RowLayout {
-                            Label { text: "Bulk exchange"; font.pointSize: 8; font.bold: true; opacity: 0.7; Layout.fillWidth: true }
+                            Label { text: "Bulk exchange"; font.pointSize: 8; font.bold: true; color: theme.secondaryText; Layout.fillWidth: true }
                             LinkButton { label: "Exchange"; url: exBox.ex ? exBox.ex.url : "" }
                         }
                         Label {
@@ -327,7 +324,7 @@ Window {
                             RowLayout {
                                 required property var modelData
                                 Label { text: modelData.ratio; Layout.fillWidth: true; elide: Text.ElideRight }
-                                Label { text: "stock " + modelData.stock; opacity: 0.6 }
+                                Label { text: "stock " + modelData.stock; color: theme.faintText }
                             }
                         }
                     }
@@ -342,7 +339,7 @@ Window {
                     Chip {
                         readonly property bool corrupted: win.hasSpec && win.spec.corrupted
                         warn: corrupted
-                        opacity: corrupted ? 1 : 0.7
+                        muted: !corrupted
                         text: corrupted ? "Corrupted" : "Not corrupted"
                     }
                     Chip { accent: true; text: win.enabledStats + " of " + (win.hasSpec ? win.spec.filters.length : 0) + " filters" }
@@ -350,7 +347,7 @@ Window {
                 Label {
                     visible: Backend.overlayState === "error" || Backend.overlayState === "searchError"
                     text: Backend.message
-                    color: "#e06c6c"
+                    color: theme.danger
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
                 }
@@ -364,10 +361,8 @@ Window {
                     readonly property var m: {
                         try { return Backend.mapInfo ? JSON.parse(Backend.mapInfo) : null } catch (e) { return null }
                     }
-                    readonly property color deadlyColor: "#e06c6c"
-                    readonly property color annoyingColor: "#e0b84a"
                     function levelColor(level) {
-                        return level === "deadly" ? deadlyColor : level === "annoying" ? annoyingColor : pal.windowText
+                        return level === "deadly" ? theme.danger : level === "annoying" ? theme.caution : pal.windowText
                     }
                     visible: m !== null && Backend.overlayState !== "error"
                     Layout.fillWidth: true
@@ -390,8 +385,7 @@ Window {
                             : annoying > 0 ? annoying + (annoying === 1 ? " annoying mod" : " annoying mods")
                             : "No marked mods"
                         font.bold: deadly + annoying > 0
-                        color: mapView.levelColor(deadly > 0 ? "deadly" : annoying > 0 ? "annoying" : "")
-                        opacity: deadly + annoying > 0 ? 1 : 0.6
+                        color: deadly > 0 ? theme.danger : annoying > 0 ? theme.caution : theme.faintText
                     }
                     Repeater {
                         model: mapView.m ? mapView.m.mods : []
@@ -439,7 +433,7 @@ Window {
                     Label {
                         text: "Click a mod to mark it. Marks are kept for your next maps."
                         font.pointSize: 8
-                        opacity: 0.6
+                        color: theme.faintText
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
@@ -521,7 +515,7 @@ Window {
                                     font.pointSize: 8
                                     font.bold: true
                                     font.capitalization: Font.AllUppercase
-                                    opacity: 0.7
+                                    color: theme.secondaryText
                                 }
                                 Rectangle {
                                     Layout.fillWidth: true
@@ -532,7 +526,7 @@ Window {
                                 Label {
                                     text: win.sectionCount(fsec.section)
                                     font.pointSize: 8
-                                    opacity: 0.6
+                                    color: theme.faintText
                                 }
                             }
                             MouseArea {
@@ -558,7 +552,7 @@ Window {
                             implicitHeight: frl.implicitHeight + 8
                             radius: 4
                             color: "transparent"
-                            AccentTint { anchors.fill: parent; accent: win.accent; active: frow.on }
+                            AccentTint { anchors.fill: parent; accent: win.accent; bar: theme.selectionBar; active: frow.on }
 
                             RowLayout {
                                 id: frl
@@ -577,7 +571,7 @@ Window {
                                     Label {
                                         text: frow.modelData.label
                                         wrapMode: Text.Wrap
-                                        opacity: frow.on ? 1 : 0.6
+                                        color: frow.on ? pal.windowText : theme.faintText
                                         Layout.fillWidth: true
                                     }
                                     RowLayout {
@@ -587,7 +581,7 @@ Window {
                                             text: frow.modelData.tag
                                             font.pointSize: 7
                                             font.capitalization: Font.AllUppercase
-                                            opacity: 0.5
+                                            color: theme.faintText
                                         }
                                         // Advanced item text: tier and roll range, top tier highlighted.
                                         Label {
@@ -595,14 +589,13 @@ Window {
                                             text: " · T" + frow.modelData.tier
                                             font.pointSize: 7
                                             font.bold: frow.modelData.tier === 1
-                                            color: frow.modelData.tier === 1 ? win.accent : pal.windowText
-                                            opacity: frow.modelData.tier === 1 ? 1 : 0.5
+                                            color: frow.modelData.tier === 1 ? win.accent : theme.faintText
                                         }
                                         Label {
                                             visible: frow.modelData.range != null
                                             text: " · " + frow.modelData.range
                                             font.pointSize: 7
-                                            opacity: 0.5
+                                            color: theme.faintText
                                         }
                                     }
                                 }
@@ -643,7 +636,7 @@ Window {
                     flat: true
                     focusPolicy: Qt.NoFocus
                     text: win.expanded ? "Collapse" : "Show filters"
-                    icon.name: !win.themeIcons ? "" : win.expanded ? "arrow-up" : "arrow-down"
+                    icon.name: !theme.desktopIcons ? "" : win.expanded ? "arrow-up" : "arrow-down"
                     icon.color: win.iconTint
                     icon.source: win.expanded ? "qrc:/lootingglass/icons/arrow-up.svg" : "qrc:/lootingglass/icons/arrow-down.svg"
                     Layout.alignment: Qt.AlignHCenter
@@ -658,11 +651,11 @@ Window {
                         text: Backend.overlayState === "loading"
                               ? (Backend.rateWait > 0 ? "Rate limit: waiting " + Backend.rateWait + " s…" : "Searching…")
                               : (Backend.overlayState === "result" ? Backend.message : "")
-                        opacity: 0.8
+                        color: theme.secondaryText
                     }
                     ToolButton {
                         focusPolicy: Qt.NoFocus
-                        icon.name: win.themeIcons ? "view-refresh" : ""
+                        icon.name: theme.desktopIcons ? "view-refresh" : ""
                         icon.color: win.iconTint
                         icon.source: "qrc:/lootingglass/icons/refresh.svg"
                         text: win.hasSpec && win.spec.online ? "Online" : "Any"
@@ -704,16 +697,16 @@ Window {
                             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
                             Label { text: modelData.price; font.bold: true; Layout.preferredWidth: 120; elide: Text.ElideRight }
                             Label { text: modelData.ilvl ? modelData.ilvl : "—"; Layout.preferredWidth: 36 }
-                            Label { text: modelData.age; opacity: 0.8; Layout.preferredWidth: 56 }
+                            Label { text: modelData.age; color: theme.secondaryText; Layout.preferredWidth: 56 }
                             Label {
                                 text: modelData.seller
-                                opacity: 0.6
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
-                                color: modelData.corrupted ? "#e06c6c" : pal.windowText
-                                // Snapshot mode: blur other players' account names.
+                                color: modelData.corrupted ? theme.danger : theme.faintText
+                                // Snapshot mode: blur other players' account names until no letter can be
+                                // made out (a lighter blur still showed some for README screenshots).
                                 layer.enabled: Backend.snapshotDir !== ""
-                                layer.effect: MultiEffect { blurEnabled: true; blurMax: 24; blur: 1.0 }
+                                layer.effect: MultiEffect { blurEnabled: true; blurMax: 40; blur: 1.0 }
                             }
                         }
                     }
@@ -721,7 +714,7 @@ Window {
                 Label {
                     visible: Backend.overlayState === "result" && win.rows.length === 0
                     text: "No listings found — try disabling some filters."
-                    opacity: 0.7
+                    color: theme.secondaryText
                 }
                 // Version footer: makes "which version is this?" answerable from any screenshot.
                 // A newer release shows up next to it; clicking it opens Settings → About.
@@ -730,15 +723,14 @@ Window {
                     Layout.fillWidth: true
                     Layout.topMargin: 2
                     // Close to the trade site's rate limit: say so before checks start waiting.
-                    // Amber pill (the map check's "annoying" colour); text in the normal text colour
-                    // so it stays readable in light mode too.
+                    // Pill in the caution colour (the map check's "annoying"); text in the normal
+                    // text colour so it stays readable in light mode too.
                     Rectangle {
                         id: rateWarn
-                        readonly property color amber: "#e0b84a"
                         visible: Backend.rateWarning !== ""
                         radius: height / 2
-                        color: Qt.rgba(amber.r, amber.g, amber.b, 0.18)
-                        border.color: amber
+                        color: Qt.rgba(theme.caution.r, theme.caution.g, theme.caution.b, 0.18)
+                        border.color: theme.caution
                         implicitHeight: warnRow.implicitHeight + 4
                         implicitWidth: warnRow.implicitWidth + 16
                         Layout.maximumWidth: implicitWidth
@@ -748,7 +740,7 @@ Window {
                             id: warnRow
                             spacing: 4
                             anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
-                            Label { text: "⚠"; font.bold: true; font.pointSize: 9; color: rateWarn.amber }
+                            Label { text: "⚠"; font.bold: true; font.pointSize: 9; color: theme.caution }
                             Label {
                                 text: Backend.rateWarning
                                 font.bold: true
@@ -762,7 +754,7 @@ Window {
                     Label {
                         text: "Looting Glass " + Backend.version
                         font.pointSize: 8.5
-                        opacity: 0.6
+                        color: theme.faintText
                     }
                     Label {
                         visible: Backend.updateVersion !== ""

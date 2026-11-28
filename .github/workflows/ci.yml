@@ -84,11 +84,11 @@ jobs:
             $env:QT_FORCE_STDERR_LOGGING = "1"
             $p = Start-Process target/debug/lootingglass.exe -PassThru -RedirectStandardError "shots/$mode.log"
             # Snapshot mode saves the overlay, manual check and settings within ~10 s.
-            for ($i = 0; $i -lt 45 -and (Get-ChildItem $out -Filter *.png).Count -lt 5; $i++) { Start-Sleep 1 }
+            for ($i = 0; $i -lt 45 -and (Get-ChildItem $out -Filter *.png).Count -lt 6; $i++) { Start-Sleep 1 }
             Stop-Process $p -ErrorAction SilentlyContinue
             "${mode}: $((Get-ChildItem $out -Filter *.png).Name -join ', ')"
           }
-          if ((Get-ChildItem shots -Recurse -Filter *.png).Count -lt 10) { Get-Content shots/*.log; exit 1 }
+          if ((Get-ChildItem shots -Recurse -Filter *.png).Count -lt 12) { Get-Content shots/*.log; exit 1 }
 
       - uses: actions/upload-artifact@v7
         if: always()

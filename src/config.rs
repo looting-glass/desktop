@@ -122,6 +122,7 @@ pub struct Config {
     pub poe2: GameConfig,
     pub trade: TradeConfig,
     pub overlay: OverlayConfig,
+    pub appearance: AppearanceConfig,
     pub updates: UpdatesConfig,
     pub links: LinksConfig,
     pub map_check: MapCheckConfig,
@@ -219,6 +220,36 @@ impl Default for OverlayConfig {
     }
 }
 
+/// Colours (Settings → Appearance); `theme::Theme` reads them.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AppearanceConfig {
+    /// "system" (the desktop's colours), a preset id like "looting-glass", or "custom".
+    pub theme: String,
+    /// Which variant of a preset: light, dark, or the one matching the system's mode.
+    pub mode: ColorMode,
+    /// The Custom theme's colours as a theme code (`lg1:1a1a24,8859a4,8859a4`).
+    pub colors: String,
+}
+
+/// Each platform keeps the look it had before themes: KDE follows its colour scheme; Windows
+/// shows the dark Looting Glass palette of the README screenshots, whatever the system mode.
+impl Default for AppearanceConfig {
+    fn default() -> Self {
+        let (theme, mode) = if cfg!(windows) { ("looting-glass", ColorMode::Dark) } else { ("system", ColorMode::System) };
+        Self { theme: theme.into(), mode, colors: String::new() }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ColorMode {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -227,6 +258,7 @@ impl Default for Config {
             poe2: GameConfig::default(),
             trade: TradeConfig::default(),
             overlay: OverlayConfig::default(),
+            appearance: AppearanceConfig::default(),
             updates: UpdatesConfig::default(),
             links: LinksConfig::default(),
             map_check: MapCheckConfig::default(),
@@ -352,6 +384,19 @@ mod tests {
         assert_eq!(old.poe1.league, "Standard");
         let off: Config = toml::from_str("[updates]\ncheck = false\n").unwrap();
         assert!(!off.updates.check);
+    }
+
+    #[test]
+    fn appearance_defaults_and_parses() {
+        let old: Config = toml::from_str("game = \"poe1\"\n").unwrap();
+        let expected = if cfg!(windows) { ("looting-glass", ColorMode::Dark) } else { ("system", ColorMode::System) };
+        assert_eq!((old.appearance.theme.as_str(), old.appearance.mode), expected, "configs from before themes");
+        let c: Config =
+            toml::from_str("[appearance]\ntheme = \"custom\"\nmode = \"light\"\ncolors = \"lg1:1a1a24,8859a4,8859a4\"\n")
+                .unwrap();
+        assert_eq!(c.appearance.theme, "custom");
+        assert_eq!(c.appearance.mode, ColorMode::Light);
+        assert_eq!(c.appearance.colors, "lg1:1a1a24,8859a4,8859a4");
     }
 
     #[test]

@@ -77,8 +77,8 @@ static void setupTray(QApplication &app)
 #endif
 
 // Without KDE's Breeze, use Qt Quick's Fusion style: unlike the native Windows controls it
-// draws everything from the system palette, so the overlay follows the system's light or dark
-// mode (and accent colour) consistently. Only the Qt Quick style changes: switching the widget
+// draws everything from the palette (the system's, or the theme's), so the overlay follows it
+// consistently. Only the Qt Quick style changes: switching the widget
 // style too would swap the app palette for Fusion's built-in light one.
 static void useFusion()
 {
@@ -86,7 +86,8 @@ static void useFusion()
         QQuickStyle::setStyle(QStringLiteral("Fusion"));
 }
 
-extern "C" int lootingglass_qt_main()
+// breeze: use KDE's Breeze style rather than Fusion (theme::Style, chosen in Rust).
+extern "C" int lootingglass_qt_main(bool breeze)
 {
     static int argc = 1;
     static char arg0[] = "lootingglass";
@@ -117,16 +118,10 @@ extern "C" int lootingglass_qt_main()
     app.setWindowIcon(QIcon::fromTheme(QStringLiteral("dev.lootingglass.LootingGlass"),
                                        QIcon(QStringLiteral(":/lootingglass/icons/lootingglass.svg"))));
     app.setQuitOnLastWindowClosed(false);
-#ifdef LOOTINGGLASS_LAYER_SHELL
-    // KDE's Breeze style (follows the user's colour scheme). LOOTINGGLASS_FUSION=1 previews the
-    // style other platforms get.
-    if (!qEnvironmentVariableIsEmpty("LOOTINGGLASS_FUSION"))
+    if (!breeze)
         useFusion();
     else if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE"))
         QQuickStyle::setStyle(QStringLiteral("org.kde.desktop"));
-#else
-    useFusion();
-#endif
 #ifdef LOOTINGGLASS_QT_TRAY
     setupTray(app);
 #endif

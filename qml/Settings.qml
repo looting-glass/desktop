@@ -15,7 +15,7 @@ ApplicationWindow {
     visible: false
 
     property var cfg: ({})
-    KdeLook { target: win.palette }
+    AppTheme { id: theme; target: win.palette }
     readonly property var statuses: ["online", "any", "securable"]
     // Only present in the config on platforms where Looting Glass registers hotkeys itself (Windows).
     readonly property bool ownShortcuts: cfg.shortcuts !== undefined
@@ -54,6 +54,7 @@ ApplicationWindow {
         top_.value = cfg.overlay.margin_top
         sideMargin.value = cfg.overlay.margin_side
         maxHeight.value = cfg.overlay.max_height
+        appearancePage.load(cfg.appearance)
         contact.text = cfg.contact
         checkUpdates.checked = cfg.updates.check
         if (ownShortcuts)
@@ -108,6 +109,7 @@ ApplicationWindow {
         c.overlay.margin_top = top_.value
         c.overlay.margin_side = sideMargin.value
         c.overlay.max_height = maxHeight.value
+        c.appearance = appearancePage.appearance()
         c.contact = contact.text
         c.updates.check = checkUpdates.checked
         if (ownShortcuts)
@@ -118,6 +120,7 @@ ApplicationWindow {
         pendingShortcuts = {}
         const err = Backend.saveConfig(JSON.stringify(c))
         saveStatus.text = err === "" ? "Saved." : "Error: " + err
+        return err === ""
     }
 
     onVisibleChanged: {
@@ -214,7 +217,7 @@ ApplicationWindow {
     }
 
     // Page background as a real item so it can be captured (LOOTINGGLASS_SNAPSHOT):
-    // saves the Game and Trade tabs as settings-game.png / settings-trade.png in `dir`.
+    // saves the pages in `shots` as settings-<page>.png in `dir`.
     function snapshot(dir) {
         win.width = 760
         win.height = 440
@@ -227,7 +230,9 @@ ApplicationWindow {
         id: snapTimer
         property string dir
         property int step: 0
-        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1], ["settings-about.png", win.visibleCategories.length - 1]]
+        readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1],
+            ["settings-appearance.png", win.visibleCategories.findIndex(c => c.name === "Appearance")],
+            ["settings-about.png", win.visibleCategories.length - 1]]
         interval: 800
         onTriggered: page.grabToImage(r => {
             r.saveToFile(dir + "/" + shots[step][0])
@@ -245,6 +250,7 @@ ApplicationWindow {
         { name: "Game", icon: "nav-game" },
         { name: "Trade", icon: "nav-trade" },
         { name: "Overlay", icon: "nav-overlay" },
+        { name: "Appearance", icon: "nav-appearance" },
         { name: "Shortcuts", icon: "nav-shortcuts" },
         { name: "Maps", icon: "nav-maps" },
         { name: "About", icon: "nav-about" },
@@ -305,6 +311,7 @@ ApplicationWindow {
                             leftInset: -8
                             background: AccentTint {
                                 accent: win.palette.highlight
+                                bar: theme.selectionBar
                                 active: navItem.ListView.isCurrentItem
                                 hovered: navItem.hovered
                             }
@@ -402,10 +409,16 @@ ApplicationWindow {
                         Item {}
                         Label {
                             text: "Tip: drag the ⠿ handle to move the overlay and its free edges to resize it."
-                            opacity: 0.7
+                            color: theme.secondaryText
                             wrapMode: Text.Wrap
                             Layout.preferredWidth: 300
                         }
+                    }
+
+                    AppearancePage {
+                        id: appearancePage
+                        appTheme: theme
+                        onSaveAndRestart: if (win.save()) Backend.restartApp()
                     }
 
                     // Linux: shortcuts live in the desktop (portal); show them with a button to edit.
@@ -436,7 +449,7 @@ ApplicationWindow {
                             Label {
                                 visible: win.ownShortcuts
                                 text: "Examples: Ctrl+D, Ctrl+Shift+F7, Alt+W. Leave empty to unassign."
-                                opacity: 0.7
+                                color: theme.secondaryText
                                 wrapMode: Text.Wrap
                                 Layout.preferredWidth: 200
                             }
@@ -466,7 +479,7 @@ ApplicationWindow {
                                     ? "Bind a key to each command you want in your window manager's config (Sway: bindsym, Umbriel: [keybinds]):"
                                     : "Your desktop manages these shortcuts."
                                 wrapMode: Text.Wrap
-                                opacity: 0.75
+                                color: theme.secondaryText
                                 Layout.fillWidth: true
                                 Layout.bottomMargin: 6
                             }
@@ -512,7 +525,7 @@ ApplicationWindow {
                                     Label {
                                         visible: scRow.pending !== undefined && scRow.pending.conflict !== ""
                                         text: scRow.pending ? scRow.pending.keys + " is used by " + scRow.pending.conflict + ". Save moves it here." : ""
-                                        color: "#e0b84a"
+                                        color: theme.caution
                                         font.pointSize: 8
                                         wrapMode: Text.Wrap
                                         Layout.fillWidth: true
@@ -536,7 +549,7 @@ ApplicationWindow {
                             Label {
                                 visible: text !== ""
                                 text: Backend.shortcutError || (scPage.sc ? scPage.sc.error : "")
-                                color: "#e06c6c"
+                                color: theme.danger
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                                 Layout.topMargin: 6
@@ -558,7 +571,7 @@ ApplicationWindow {
                         Label {
                             text: "The map check hotkey colours these mods on Path of Exile maps. Mark them from the overlay by clicking a mod, or paste a mod line here."
                             wrapMode: Text.Wrap
-                            opacity: 0.7
+                            color: theme.secondaryText
                             Layout.fillWidth: true
                         }
                         RowLayout {
@@ -600,7 +613,7 @@ ApplicationWindow {
                                             text: modelData[1] === "deadly" ? "DEADLY" : "ANNOYING"
                                             font.pointSize: 8
                                             font.bold: true
-                                            color: modelData[1] === "deadly" ? "#e06c6c" : "#e0b84a"
+                                            color: modelData[1] === "deadly" ? theme.danger : theme.caution
                                             Layout.preferredWidth: 70
                                         }
                                         Label { text: modelData[0]; elide: Text.ElideRight; Layout.fillWidth: true }
@@ -617,7 +630,7 @@ ApplicationWindow {
                                 Label {
                                     visible: { const m = win.mapMods(); return !m || m.deadly.length + m.annoying.length === 0 }
                                     text: "No marked mods yet."
-                                    opacity: 0.6
+                                    color: theme.faintText
                                 }
                             }
                         }
@@ -626,7 +639,7 @@ ApplicationWindow {
                     ColumnLayout {
                         spacing: 8
                         Label { text: "Looting Glass"; font.pointSize: Qt.application.font.pointSize * 1.6 }
-                        Label { text: "Version " + Backend.version; opacity: 0.7 }
+                        Label { text: "Version " + Backend.version; color: theme.secondaryText }
 
                         // Update notice: release notes and, where this copy can update itself, Install.
                         Frame {
@@ -658,27 +671,27 @@ ApplicationWindow {
                                     text: Backend.updateMode === "package"
                                         ? "Update it with your package manager."
                                         : "Download it from the release page."
-                                    opacity: 0.7
+                                    color: theme.secondaryText
                                 }
                                 RowLayout {
                                     Button {
                                         visible: Backend.updateMode === "install" && !Backend.updateReady
                                         enabled: !Backend.updateBusy
                                         text: "Install update"
-                                        icon.name: Qt.platform.os === "linux" ? "system-software-update" : ""
+                                        icon.name: theme.desktopIcons ? "system-software-update" : ""
                                         highlighted: true
                                         onClicked: Backend.installUpdate()
                                     }
                                     Button {
                                         visible: Backend.updateReady
                                         text: "Restart now"
-                                        icon.name: Qt.platform.os === "linux" ? "view-refresh" : ""
+                                        icon.name: theme.desktopIcons ? "view-refresh" : ""
                                         highlighted: true
                                         onClicked: Backend.restartApp()
                                     }
                                     Button {
                                         text: "Release page"
-                                        icon.name: Qt.platform.os === "linux" ? "internet-services" : ""
+                                        icon.name: theme.desktopIcons ? "internet-services" : ""
                                         onClicked: Qt.openUrlExternally(Backend.updateUrl)
                                     }
                                 }
@@ -699,7 +712,7 @@ ApplicationWindow {
                             Label {
                                 text: Backend.updateStatus !== "" ? Backend.updateStatus
                                     : Backend.lastChecked !== "" ? "Last checked " + Backend.lastChecked : ""
-                                opacity: 0.7
+                                color: theme.secondaryText
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
@@ -711,14 +724,14 @@ ApplicationWindow {
                         }
                         Label {
                             text: "Looting Glass is a fan-made tool, not affiliated with or endorsed by Grinding Gear Games. Licensed under GPL-3.0-or-later."
-                            opacity: 0.7
+                            color: theme.secondaryText
                             wrapMode: Text.Wrap
                             Layout.fillWidth: true
                         }
                         Label {
                             visible: Backend.snapshotDir === ""
                             text: "Config file: " + Backend.configPath()
-                            opacity: 0.7
+                            color: theme.secondaryText
                             wrapMode: Text.WrapAnywhere
                             Layout.fillWidth: true
                         }
@@ -732,9 +745,9 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.margins: 8
-                Label { id: saveStatus; opacity: 0.8; Layout.fillWidth: true }
-                Button { text: "Save"; icon.name: Qt.platform.os === "linux" ? "document-save" : ""; highlighted: true; onClicked: win.save() }
-                Button { text: "Close"; icon.name: Qt.platform.os === "linux" ? "dialog-close" : ""; onClicked: win.close() }
+                Label { id: saveStatus; color: theme.secondaryText; Layout.fillWidth: true }
+                Button { text: "Save"; icon.name: theme.desktopIcons ? "document-save" : ""; highlighted: true; onClicked: win.save() }
+                Button { text: "Close"; icon.name: theme.desktopIcons ? "dialog-close" : ""; onClicked: win.close() }
             }
         }
     }

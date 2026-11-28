@@ -53,6 +53,10 @@ pub mod qobject {
         #[qproperty(bool, update_busy)]
         #[qproperty(bool, update_ready)]
         #[qproperty(QString, last_checked)]
+        /// The theme's colours as JSON (`theme::Looks`).
+        #[qproperty(QString, theme_looks)]
+        /// The windows use KDE's Breeze style, not Fusion (`theme::Style`); fixed at start.
+        #[qproperty(bool, breeze_style)]
         type Backend = super::BackendRust;
 
         #[qinvokable]
@@ -61,6 +65,10 @@ pub mod qobject {
         fn config_path(self: &Backend) -> QString;
         #[qinvokable]
         fn save_config(self: Pin<&mut Backend>, json: &QString) -> QString;
+        #[qinvokable]
+        fn theme_preview(self: &Backend, appearance_json: &QString) -> QString;
+        #[qinvokable]
+        fn theme_code(self: &Backend, background: &QString, accent: &QString, selection_bar: &QString) -> QString;
         #[qinvokable]
         fn configure_shortcuts(self: &Backend);
         #[qinvokable]
@@ -111,6 +119,7 @@ pub mod qobject {
 }
 
 use crate::config::{Config, Game};
+use crate::theme::{self, Theme};
 use crate::{Event, config, rt, send_event};
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::QString;
@@ -162,6 +171,8 @@ pub struct BackendRust {
     update_busy: bool,
     update_ready: bool,
     last_checked: QString,
+    theme_looks: QString,
+    breeze_style: bool,
 }
 
 type UiFn = Box<dyn FnOnce(Pin<&mut qobject::Backend>) + Send>;
@@ -179,12 +190,18 @@ pub fn q(s: impl AsRef<str>) -> QString {
     QString::from(s.as_ref())
 }
 
-/// Push config-derived values (game label, overlay geometry) to QML.
+/// Push config-derived values (game label, overlay geometry, colours) to QML.
 pub fn apply_config(cfg: &Config) {
+    ui(config_values(cfg));
+}
+
+fn config_values(cfg: &Config) -> impl FnOnce(Pin<&mut qobject::Backend>) + Send + 'static {
     let label = q(format!("{} · {}", cfg.game.short(), cfg.league()));
     let o = cfg.overlay.clone();
     let info_label = q(cfg.links.site.label());
-    ui(move |mut b| {
+    let looks = Theme::from_config(&cfg.appearance).looks(cfg.appearance.mode);
+    let looks = q(serde_json::to_string(&looks).unwrap_or_default());
+    move |mut b| {
         b.as_mut().set_game_label(label);
         b.as_mut().set_info_label(info_label);
         b.as_mut().set_side(o.side as i32);
@@ -193,7 +210,8 @@ pub fn apply_config(cfg: &Config) {
         b.as_mut().set_margin_top(o.margin_top);
         b.as_mut().set_margin_side(o.margin_side);
         b.as_mut().set_pinned(o.pinned);
-    });
+        b.as_mut().set_theme_looks(looks);
+    }
 }
 
 impl cxx_qt::Initialize for qobject::Backend {
@@ -207,8 +225,10 @@ impl cxx_qt::Initialize for qobject::Backend {
             }
         }
         self.as_mut().set_version(q(env!("CARGO_PKG_VERSION")));
+        self.as_mut().set_breeze_style(crate::STYLE.get() == Some(&theme::Style::Breeze));
         let _ = UI.set(Mutex::new(self.qt_thread()));
-        apply_config(&config());
+        // Set right away rather than queued, so the windows open in their colours.
+        config_values(&config())(self.as_mut());
         crate::start_background();
     }
 }
@@ -240,6 +260,19 @@ impl qobject::Backend {
             }
             Err(e) => q(e.to_string()),
         }
+    }
+
+    /// Appearance settings not saved yet (JSON `config::AppearanceConfig`), as `theme::Preview`.
+    fn theme_preview(&self, appearance_json: &QString) -> QString {
+        let appearance = serde_json::from_str(&appearance_json.to_string()).unwrap_or_default();
+        let preview = theme::preview(&appearance, crate::DESKTOP_COLORS.get().copied().unwrap_or(true));
+        q(serde_json::to_string(&preview).unwrap_or_default())
+    }
+
+    /// The theme code for three colour fields, or an empty string while one isn't a colour.
+    fn theme_code(&self, background: &QString, accent: &QString, selection_bar: &QString) -> QString {
+        let code = theme::code(&background.to_string(), &accent.to_string(), &selection_bar.to_string());
+        q(code.unwrap_or_default())
     }
 
     fn configure_shortcuts(&self) {
