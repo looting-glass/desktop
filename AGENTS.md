@@ -38,8 +38,9 @@ PoE 1 and PoE 2 differ in item text, stat ids and trade API filter groups (`src/
 
 ## Platforms
 
-- KDE Plasma (Wayland) is the tested platform; Hyprland and Windows are **experimental**.
-  Keep that label in docs and code comments until someone has run them with the game.
+- KDE Plasma (Wayland) is the tested platform; Hyprland, Sway, Umbriel and Windows are
+  **experimental**. Keep that label in docs and code comments until someone has run them with
+  the game.
 - Looks: themes (*Settings → Appearance*, `src/theme/`) pick the colours; `qml/AppTheme.qml`
   applies them to each window. The System theme keeps the desktop's palette: Breeze and the KDE
   colour scheme on KDE. Every other theme uses Qt Quick's Fusion style, because Breeze ignores most

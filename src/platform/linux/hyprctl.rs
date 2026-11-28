@@ -1,8 +1,8 @@
 //! Hyprland's `hyprctl` dispatchers, which the `Hyprctl` key sender and focus providers use.
 //! EXPERIMENTAL, not yet tested on a real Hyprland session.
 
-use super::GAME_TITLE;
-use anyhow::{Context, Result, bail};
+use super::{GAME_TITLE, cli};
+use anyhow::{Result, bail};
 
 /// Hyprland window rule matching the game window.
 pub fn game_window() -> String {
@@ -10,12 +10,8 @@ pub fn game_window() -> String {
 }
 
 pub async fn dispatch(dispatcher: &str, args: &str) -> Result<()> {
-    let out = tokio::process::Command::new("hyprctl")
-        .args(["dispatch", dispatcher, args])
-        .output()
-        .await
-        .context("running hyprctl")?;
-    let reply = String::from_utf8_lossy(&out.stdout);
+    // hyprctl exits successfully even when the dispatcher fails, and says so instead of "ok".
+    let reply = cli::run("hyprctl", &["dispatch", dispatcher, args]).await?;
     if reply.trim() != "ok" {
         bail!("hyprctl dispatch {dispatcher} failed: {}", reply.trim());
     }

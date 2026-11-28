@@ -38,6 +38,25 @@ const KEYMAP: &str = r#"xkb_keymap {
 /// Control is the third of XKB's fixed real modifiers (Shift, Lock, Control, …).
 const CONTROL_MASK: u32 = 1 << 2;
 
+/// One key event of Ctrl+C, and the modifiers it leaves held, where it changes them.
+#[derive(Debug, PartialEq, Eq)]
+struct Step {
+    key: u32,
+    pressed: bool,
+    modifiers: Option<u32>,
+}
+
+/// Ctrl+C as virtual keyboard steps. Compositors that don't track modifiers from a virtual
+/// keyboard's keys (Smithay's, for one) need them spelled out, so the game sees Ctrl held while
+/// C goes down.
+fn copy_steps() -> impl Iterator<Item = Step> {
+    COPY_CHORD.into_iter().map(|(key, pressed)| Step {
+        key,
+        pressed,
+        modifiers: (key == KEY_LEFTCTRL).then_some(if pressed { CONTROL_MASK } else { 0 }),
+    })
+}
+
 /// Nothing to receive: we only send requests.
 struct NoEvents;
 
@@ -69,13 +88,11 @@ pub fn send_copy() -> Result<()> {
     keyboard.keymap(KeymapFormat::XkbV1.into(), keymap.as_fd(), KEYMAP.len() as u32 + 1);
 
     let start = Instant::now();
-    for (key, pressed) in COPY_CHORD {
+    for step in copy_steps() {
         let time = u32::try_from(start.elapsed().as_millis()).unwrap_or(u32::MAX);
-        keyboard.key(time, key, u32::from(pressed));
-        // Compositors that don't track modifiers from a virtual keyboard's keys (Smithay's, for
-        // one) need them spelled out, so the game sees Ctrl held while C goes down.
-        if key == KEY_LEFTCTRL {
-            keyboard.modifiers(if pressed { CONTROL_MASK } else { 0 }, 0, 0, 0);
+        keyboard.key(time, step.key, u32::from(step.pressed));
+        if let Some(depressed) = step.modifiers {
+            keyboard.modifiers(depressed, 0, 0, 0);
         }
         conn.flush()?;
         std::thread::sleep(KEY_GAP);
@@ -98,6 +115,20 @@ fn keymap_file() -> Result<File> {
 mod tests {
     use super::super::KEY_C;
     use super::*;
+
+    #[test]
+    fn ctrl_is_held_while_c_is_pressed() {
+        let step = |key, pressed, modifiers| Step { key, pressed, modifiers };
+        assert_eq!(
+            copy_steps().collect::<Vec<_>>(),
+            [
+                step(KEY_LEFTCTRL, true, Some(CONTROL_MASK)),
+                step(KEY_C, true, None),
+                step(KEY_C, false, None),
+                step(KEY_LEFTCTRL, false, Some(0)),
+            ]
+        );
+    }
 
     #[test]
     fn keymap_maps_the_chord_keys_to_ctrl_and_c() {
