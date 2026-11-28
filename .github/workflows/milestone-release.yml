@@ -1,0 +1,95 @@
+name: Milestone release
+
+# Releases are planned with milestones: when the last open issue of a milestone is closed
+# (completed or not planned), this merges the release PR, starts the Release workflow and closes
+# the milestone. The decision is .github/scripts/milestone_release.py; the steps here only carry
+# it out. The milestone is closed last, so if a step fails it stays open and the run can be
+# repeated by hand. Merging the release PR by hand still works too.
+#
+# Issues closed by a workflow (the workflow token) don't trigger this.
+on:
+  issues:
+    types: [closed]
+  # Checks a milestone by hand, by default only logging what it would do.
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: Milestone number (the end of its URL)
+        required: true
+        type: number
+      dry-run:
+        description: Only log what would happen; merge, start and close nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # merge the release PR
+  pull-requests: write
+  issues: write # close the milestone
+  actions: write # start the Release workflow
+
+jobs:
+  release:
+    # Most closed issues aren't in a milestone: skip those without starting a runner.
+    if: github.event.issue.milestone || inputs.milestone
+    # Two issues closed together both find their milestone empty; the second run waits and then
+    # finds it closed.
+    concurrency:
+      group: milestone-release-${{ github.event.issue.milestone.number || inputs.milestone }}
+    runs-on: ubuntu-latest
+    # Long enough to wait out a Release run that is building a release.
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      MILESTONE: ${{ github.event.issue.milestone.number || inputs.milestone }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # The PR that closes the last issue also starts a Release run on main, which adds that
+      # change to the release PR. Merging before that run is done would ship a release PR without
+      # it: a final feat: would go out as a patch release missing from the changelog.
+      - name: Wait for the release PR to include the latest change on main
+        run: |
+          sha=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+          for _ in $(seq 12); do
+            run=$(gh run list --workflow release-please.yml --event push --commit "$sha" --limit 1 \
+              --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$run" ] && break
+            sleep 10
+          done
+          if [ -z "$run" ]; then
+            echo "::error::Found no Release run for $sha on main; check that release-please.yml ran"
+            exit 1
+          fi
+          if ! gh run watch "$run" --exit-status --interval 10 > /dev/null; then
+            echo "::error::The Release run for $sha on main failed; finish it, then run this workflow by hand"
+            exit 1
+          fi
+
+      - name: Decide
+        id: plan
+        env:
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          gh api "repos/$GH_REPO/milestones/$MILESTONE" > "$RUNNER_TEMP/milestone.json"
+          gh pr list --state open --label "autorelease: pending" --json number,title \
+            > "$RUNNER_TEMP/release-prs.json"
+          python3 .github/scripts/milestone_release.py \
+            "$RUNNER_TEMP/milestone.json" "$RUNNER_TEMP/release-prs.json"
+
+      - name: Merge the release PR
+        if: steps.plan.outputs.release-pr
+        env:
+          RELEASE_PR: ${{ steps.plan.outputs.release-pr }}
+        run: gh pr merge "$RELEASE_PR" --squash
+
+      # A merge made with the workflow token doesn't start workflows, so the push to main alone
+      # wouldn't release; a workflow_dispatch does.
+      - name: Start the Release workflow
+        if: steps.plan.outputs.release-pr
+        run: gh workflow run release-please.yml --ref main
+
+      - name: Close the milestone
+        if: steps.plan.outputs.close-milestone == 'true'
+        run: gh api --method PATCH "repos/$GH_REPO/milestones/$MILESTONE" -f state=closed > /dev/null

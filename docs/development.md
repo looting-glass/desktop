@@ -12,7 +12,11 @@ cargo test
 ```
 
 Each module's unit tests sit in its `mod tests`, on real item text from `dev/*.txt` and canned
-API replies from `src/mock.rs`.
+API replies from `src/mock.rs`. The release automation's scripts have their own tests:
+
+```bash
+python3 -m unittest discover --start-directory .github/scripts
+```
 
 ## Running without the game
 
@@ -72,16 +76,33 @@ gh workflow run build.yml --ref <branch>
 
 ## Making a release
 
-Releases are automated with [release-please](https://github.com/googleapis/release-please).
+Releases are automated with [release-please](https://github.com/googleapis/release-please) and
+planned with milestones.
 
 1. Changes land on `main` as squash-merged PRs with
    [Conventional Commit](https://www.conventionalcommits.org) titles.
 2. After each merge, release-please keeps a release PR up to date: it bumps the version in
    `Cargo.toml` (`fix:` → patch, `feat:` → minor) and adds the changes to `CHANGELOG.md`.
-3. Merging the release PR tags `vX.Y.Z`, creates the GitHub release as a draft and runs the
+3. The issues that should ship together go into a milestone. When its last open issue is
+   closed (as completed or not planned), the
+   [Milestone release workflow](../.github/workflows/milestone-release.yml) merges the release
+   PR, starts the [Release workflow](../.github/workflows/release-please.yml) and closes the
+   milestone. The version comes from the commits, not the milestone's name. If there is nothing
+   to release (only `docs:`, `ci:` or `chore:` changes), it only closes the milestone. Put
+   issues in milestones, not PRs: GitHub counts an open PR as open work in its milestone, but
+   closing a PR doesn't start the workflow.
+4. The Release workflow tags `vX.Y.Z`, creates the GitHub release as a draft and runs the
    [Build workflow](../.github/workflows/build.yml).
-4. The Linux tarball and the Windows installer and zip, each with a SHA-256 checksum, are
+5. The Linux tarball and the Windows installer and zip, each with a SHA-256 checksum, are
    attached to the draft, and only then is it published. The update check and the website never
    see a release without its downloads.
 
-If a build fails, the release stays a draft; re-run the failed jobs to finish it.
+If a build fails, the release stays a draft; re-run the failed jobs to finish it. If the
+Milestone release run fails, the milestone stays open: fix the cause and run the workflow by
+hand for that milestone, first as a dry run, which only logs what it would do:
+
+```bash
+gh workflow run milestone-release.yml -f milestone=<number> -f dry-run=true
+```
+
+Merging the release PR by hand still releases right away, without a milestone.
