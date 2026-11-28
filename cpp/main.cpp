@@ -30,8 +30,11 @@ extern "C" int lootingglass_tray_update(char *buf, size_t len);
 // Tray actions understood by lootingglass_tray_action.
 enum TrayAction { OpenManual = 0, OpenSettings = 1, Quit = 2, OpenAbout = 3, CheckUpdates = 4, GamePoe1 = 10, GamePoe2 = 11 };
 
-// Set once the tray icon is showing; read from Rust's threads by lootingglass_tray_notify.
-static std::atomic<QSystemTrayIcon *> trayIcon = nullptr;
+// The tray icon, touched on the Qt thread only.
+static QSystemTrayIcon *trayIcon = nullptr;
+// Whether it can show messages; read from Rust's threads. Cleared on aboutToQuit, while the event
+// loop still runs, so nothing is posted once the application starts tearing down.
+static std::atomic<bool> trayReady = false;
 // TrayAction of the latest message, or -1. messageClicked doesn't say which message was
 // clicked, so an older one still on screen gets the latest one's action. Qt thread only.
 static int messageAction = -1;
@@ -40,13 +43,11 @@ static int messageAction = -1;
 // Returns false when there's no system tray to show it from.
 extern "C" bool lootingglass_tray_notify(const char *title, const char *body, int action)
 {
-    QSystemTrayIcon *tray = trayIcon.load();
-    if (!tray)
+    if (!trayReady)
         return false;
-    const QString t = QString::fromUtf8(title), b = QString::fromUtf8(body);
-    QMetaObject::invokeMethod(tray, [tray, t, b, action] {
+    QMetaObject::invokeMethod(qApp, [title = QString::fromUtf8(title), body = QString::fromUtf8(body), action] {
         messageAction = action;
-        tray->showMessage(t, b, tray->icon());
+        trayIcon->showMessage(title, body, trayIcon->icon());
     }, Qt::QueuedConnection);
     return true;
 }
@@ -99,9 +100,9 @@ static void setupTray(QApplication &app)
             lootingglass_tray_action(messageAction);
     });
     tray->show();
-    if (QSystemTrayIcon::isSystemTrayAvailable())
-        trayIcon = tray;
-    QObject::connect(tray, &QObject::destroyed, [] { trayIcon = nullptr; });
+    trayIcon = tray;
+    trayReady = QSystemTrayIcon::isSystemTrayAvailable();
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [] { trayReady = false; });
 }
 #endif
 

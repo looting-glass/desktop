@@ -246,10 +246,10 @@ fn status(msg: impl Into<String>, busy: bool) {
 /// once a day while `[updates] check` is on.
 pub async fn run() {
     LazyLock::force(&EXE);
-    if Install::detect() == Install::WindowsZip
-        && let Some(dir) = EXE.as_deref().and_then(Path::parent)
-    {
-        remove_old_files(dir);
+    if Install::detect() == Install::WindowsZip {
+        if let Some(dir) = EXE.as_deref().and_then(Path::parent) {
+            remove_old_files(dir);
+        }
     }
     announce_update().await;
     let delay = if crate::mock::enabled() { 1 } else { 30 };
