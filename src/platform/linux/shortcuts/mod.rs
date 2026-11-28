@@ -127,7 +127,7 @@ impl Shortcuts {
         }
     }
 
-    /// How the settings window names it.
+    /// How the settings window and the docs name it.
     pub fn label(self) -> &'static str {
         match self {
             Self::KGlobalAccel => "KDE shortcuts",
