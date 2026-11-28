@@ -10,7 +10,11 @@ fn main() {
             "qml/FormLabel.qml",
             "qml/AccentTint.qml",
             "qml/LgCheckBox.qml",
-            "qml/KdeLook.qml",
+            "qml/AppTheme.qml",
+            "qml/AppearancePage.qml",
+            "qml/ThemePreview.qml",
+            "qml/ThemeTile.qml",
+            "qml/ColorField.qml",
         ]),
     )
     .files(["src/bridge.rs"])

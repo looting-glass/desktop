@@ -1,11 +1,11 @@
 import QtQuick
 
-// The app's one "selected / enabled" look: a subtle tint of the accent with a solid accent bar
-// on the left. Used for checked filter rows and the selected settings page, so state reads the
-// same everywhere. Put it inside the item as a background (anchors.fill: parent).
+// The app's one "selected / enabled" look: a subtle tint of the accent with a solid bar on the
+// left. Used for checked filter rows and the selected settings page, so state reads the same
+// everywhere. Put it inside the item as a background (anchors.fill: parent).
 Rectangle {
-    // KDE: the theme's highlight. Elsewhere: a neutral tone from the text colour.
     required property color accent
+    required property color bar
     property bool active: false
     property bool hovered: false
 
@@ -17,6 +17,6 @@ Rectangle {
         anchors { left: parent.left; top: parent.top; bottom: parent.bottom; margins: 4 }
         width: 3
         radius: 1.5
-        color: parent.accent
+        color: parent.bar
     }
 }
