@@ -5,6 +5,7 @@ use super::facts::Facts;
 use super::focus::Focus;
 use super::keys::KeySender;
 use super::shortcuts::Shortcuts;
+use crate::platform::DesktopInfo;
 
 /// A job the app needs from the desktop, done by one of several interchangeable providers.
 pub trait Role: Copy + 'static {
@@ -49,6 +50,20 @@ pub struct Selection {
     /// Refocusing the game only helps, so a desktop without a way to do it gets `Focus::None`.
     pub focus: Focus,
     pub clipboard: Result<Clipboard, Missing>,
+}
+
+impl Selection {
+    /// What the settings window says about `desktop` (its `Facts::desktop` label). The clipboard
+    /// has one provider, so only its absence is worth a word.
+    pub fn describe(&self, desktop: &str) -> DesktopInfo {
+        let providers = [
+            ("Shortcuts", self.shortcuts.label()),
+            ("Copy", self.keys.map_or("none", KeySender::label)),
+            ("Focus", self.focus.label()),
+        ];
+        let missing = [self.keys.err(), self.clipboard.err()].into_iter().flatten().map(|m| m.to_string()).collect();
+        DesktopInfo::new(desktop, &providers, missing)
+    }
 }
 
 pub fn select(facts: &Facts) -> Selection {
@@ -247,5 +262,64 @@ mod tests {
         for global in [EXT_DATA_CONTROL, WLR_DATA_CONTROL] {
             assert_eq!(select(&facts("", &[global])).clipboard, Ok(Clipboard::DataControl), "{global}");
         }
+    }
+
+    fn describe(facts: &Facts) -> DesktopInfo {
+        select(facts).describe(&facts.desktop)
+    }
+
+    #[test]
+    fn kde_is_described_by_its_providers() {
+        assert_eq!(
+            describe(&kde()),
+            DesktopInfo {
+                summary: "Desktop: KDE · Shortcuts: KDE shortcuts · Copy: remote desktop portal · Focus: KWin script".into(),
+                missing: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn hyprland_is_described_by_its_providers() {
+        assert_eq!(
+            describe(&hyprland()),
+            DesktopInfo {
+                summary: "Desktop: Hyprland · Shortcuts: hyprland.conf · Copy: hyprctl · Focus: hyprctl".into(),
+                missing: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn sway_is_described_by_its_providers() {
+        assert_eq!(
+            describe(&sway()),
+            DesktopInfo {
+                summary: "Desktop: sway · Shortcuts: command · Copy: virtual keyboard · Focus: Sway IPC".into(),
+                missing: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn umbriel_is_described_by_its_providers() {
+        assert_eq!(
+            describe(&umbriel()),
+            DesktopInfo {
+                summary: "Desktop: Umbriel · Shortcuts: command · Copy: virtual keyboard · Focus: Umbriel IPC".into(),
+                missing: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn a_bare_compositor_says_what_it_cant_do() {
+        assert_eq!(
+            describe(&bare()),
+            DesktopInfo {
+                summary: "Desktop: unknown · Shortcuts: command · Copy: none · Focus: none".into(),
+                missing: vec![Missing::KEYS.to_string(), Missing::CLIPBOARD.to_string()],
+            }
+        );
     }
 }

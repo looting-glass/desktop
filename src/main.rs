@@ -114,6 +114,8 @@ pub fn start_background() {
     ratelimit::on_warning(|text| ui(move |b| b.set_rate_warning(q(text))));
     rt().spawn(async move {
         platform::init().await;
+        let desktop = q(serde_json::to_string(&platform::desktop_info().await).unwrap_or_default());
+        ui(move |b| b.set_desktop_info(desktop));
         platform::spawn_tray(config().game).await;
         tokio::spawn(update::run());
         tokio::spawn(async move {

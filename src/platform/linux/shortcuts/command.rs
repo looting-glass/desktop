@@ -3,6 +3,7 @@
 //! single-instance lock. The message is the id and a newline.
 
 use crate::Event;
+use crate::platform::BindHelp;
 use anyhow::{Context, Result};
 use std::convert::Infallible;
 use std::io::Write;
@@ -83,6 +84,15 @@ async fn receive(stream: UnixStream, tx: async_channel::Sender<Event>) {
     };
     if let Err(e) = tx.try_send(event) {
         log::warn!("trigger: couldn't pass on {id}: {e}");
+    }
+}
+
+/// The commands to bind keys to, one per shortcut.
+pub fn bind_help() -> BindHelp {
+    BindHelp {
+        text: "Bind a key to each command you want in your window manager's config (Sway: bindsym, Umbriel: [keybinds]):".into(),
+        snippet: super::snippet(|def| format!("lootingglass trigger {}", def.id)),
+        desktop_editor: false,
     }
 }
 
@@ -168,6 +178,13 @@ mod tests {
         drop(std::os::unix::net::UnixListener::bind(&path).unwrap());
         assert!(block_on(listen(&path)).unwrap().is_some());
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn bind_help_lists_a_command_per_shortcut() {
+        let snippet = bind_help().snippet;
+        assert_eq!(snippet.lines().count(), super::super::SHORTCUT_DEFS.len());
+        assert_eq!(snippet.lines().next(), Some("lootingglass trigger price-check   # Price check hovered item"));
     }
 
     #[test]

@@ -3,6 +3,7 @@
 
 use super::SHORTCUT_DEFS;
 use crate::Event;
+use crate::platform::BindHelp;
 use anyhow::{Context, Result};
 use ashpd::desktop::{
     Session,
@@ -56,4 +57,9 @@ pub async fn configure() -> bool {
         Some(sc) => sc.gs.configure_shortcuts(&sc.session, None, Default::default()).await.is_ok(),
         None => false,
     }
+}
+
+/// The keys are set in the desktop's own shortcut editor.
+pub fn bind_help() -> BindHelp {
+    BindHelp { text: "Your desktop manages these shortcuts.".into(), snippet: String::new(), desktop_editor: true }
 }

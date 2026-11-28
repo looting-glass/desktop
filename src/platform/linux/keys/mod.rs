@@ -46,6 +46,15 @@ impl Role for KeySender {
 }
 
 impl KeySender {
+    /// How the settings window names it.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Hyprctl => "hyprctl",
+            Self::RemoteDesktop => "remote desktop portal",
+            Self::VirtualKeyboard => "virtual keyboard",
+        }
+    }
+
     /// Get ready before the first price check, where that takes a while.
     pub fn warm_up(self) {
         match self {

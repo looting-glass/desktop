@@ -3,13 +3,14 @@
 //! by the user to `lootingglass trigger <id>` commands.
 
 mod command;
+mod hyprland_config;
 mod kglobalaccel;
 mod portal;
 
 use super::facts::Facts;
 use super::select::Role;
 use crate::Event;
-use crate::platform::{ShortcutCheck, ShortcutList, ShortcutRow};
+use crate::platform::{BindHelp, ShortcutCheck, ShortcutList, ShortcutRow};
 use anyhow::{Result, bail};
 
 /// One of our global shortcuts.
@@ -126,12 +127,33 @@ impl Shortcuts {
         }
     }
 
+    /// How the settings window names it.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::KGlobalAccel => "KDE shortcuts",
+            Self::HyprlandConfig => "hyprland.conf",
+            Self::Portal => "portal",
+            Self::Command => "command",
+        }
+    }
+
+    /// How the user binds our shortcuts with this provider.
+    fn bind_help(self) -> BindHelp {
+        match self {
+            Self::KGlobalAccel => kglobalaccel::bind_help(),
+            Self::HyprlandConfig => hyprland_config::bind_help(),
+            Self::Portal => portal::bind_help(),
+            Self::Command => command::bind_help(),
+        }
+    }
+
     /// Our shortcuts and their keys, for the settings window.
     pub async fn list(self) -> ShortcutList {
         match self {
             Self::KGlobalAccel => match kglobalaccel::list().await {
                 Ok(bound) => ShortcutList {
-                    mode: "kde",
+                    editable_here: true,
+                    bind_help: self.bind_help(),
                     rows: rows(|id| {
                         let keys = bound.iter().find(|(i, ..)| i == id).map(|(.., k)| k.as_slice()).unwrap_or_default();
                         keys.iter().map(|k| kglobalaccel::key_text(*k)).collect::<Vec<_>>().join(", ")
@@ -140,13 +162,12 @@ impl Shortcuts {
                 },
                 Err(e) => {
                     log::info!("kglobalaccel unavailable, using the portal's shortcut editor: {e:#}");
-                    portal_list("portal").await
+                    portal_list(Self::Portal).await
                 }
             },
-            Self::HyprlandConfig => portal_list("hyprland").await,
-            Self::Portal => portal_list("portal").await,
+            Self::HyprlandConfig | Self::Portal => portal_list(self).await,
             // The keys live in the window manager's config, which we don't read.
-            Self::Command => ShortcutList { mode: "command", rows: rows(|_| String::new()), error: String::new() },
+            Self::Command => ShortcutList { bind_help: self.bind_help(), rows: rows(|_| String::new()), ..Default::default() },
         }
     }
 
@@ -209,14 +230,22 @@ fn rows(keys_of: impl Fn(&str) -> String) -> Vec<ShortcutRow> {
         .collect()
 }
 
-async fn portal_list(mode: &'static str) -> ShortcutList {
+/// Config lines for our shortcuts, one per shortcut in settings order, each with its
+/// description as a comment.
+fn snippet(line: impl Fn(&ShortcutDef) -> String) -> String {
+    SHORTCUT_DEFS.iter().map(|def| format!("{}   # {}", line(def), def.description)).collect::<Vec<_>>().join("\n")
+}
+
+/// The portal's shortcuts and their keys, explained the way `provider` binds them.
+async fn portal_list(provider: Shortcuts) -> ShortcutList {
+    let bind_help = provider.bind_help();
     match portal::triggers().await {
         Ok(triggers) => ShortcutList {
-            mode,
+            bind_help,
             rows: rows(|id| triggers.get(id).cloned().unwrap_or_default()),
-            error: String::new(),
+            ..Default::default()
         },
-        Err(e) => ShortcutList { mode, rows: rows(|_| String::new()), error: format!("{e:#}") },
+        Err(e) => ShortcutList { bind_help, rows: rows(|_| String::new()), error: format!("{e:#}"), ..Default::default() },
     }
 }
 

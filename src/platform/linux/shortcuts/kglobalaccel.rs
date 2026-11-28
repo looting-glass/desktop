@@ -3,6 +3,7 @@
 //! in our own settings window. The same calls System Settings uses; changes show up there too.
 //! Keys are Qt key combinations (`Qt::CTRL | Qt::Key_D` = 0x04000044), as QML key events give them.
 
+use crate::platform::BindHelp;
 use anyhow::{Context, Result, bail};
 use ashpd::zbus::Connection;
 
@@ -99,6 +100,15 @@ pub async fn block(on: bool) -> Result<()> {
         .call_method(Some(SERVICE), "/kglobalaccel", Some(IFACE), "blockGlobalShortcuts", &(on,))
         .await?;
     Ok(())
+}
+
+/// The keys are recorded right in the settings window.
+pub fn bind_help() -> BindHelp {
+    BindHelp {
+        text: "Click a shortcut and press the keys you want (Esc cancels, Backspace clears). Save applies them; they're the same shortcuts as in System Settings.".into(),
+        snippet: String::new(),
+        desktop_editor: false,
+    }
 }
 
 const SHIFT: i32 = 0x0200_0000;

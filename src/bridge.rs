@@ -35,6 +35,7 @@ pub mod qobject {
         #[qproperty(QString, info_url)]
         #[qproperty(QString, info_label)]
         #[qproperty(QString, game_label)]
+        #[qproperty(QString, desktop_info)]
         #[qproperty(QString, shortcuts)]
         #[qproperty(QString, shortcut_error)]
         #[qproperty(QString, shortcut_check)]
@@ -152,6 +153,8 @@ pub struct BackendRust {
     info_url: QString,
     info_label: QString,
     game_label: QString,
+    /// How the app works with this desktop, as JSON (`platform::DesktopInfo`).
+    desktop_info: QString,
     /// Global shortcuts for the settings window, as JSON (`platform::ShortcutList`).
     shortcuts: QString,
     /// Why the last shortcut change didn't apply (e.g. the key is taken), or empty.

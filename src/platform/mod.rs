@@ -4,6 +4,7 @@
 //! Every backend must provide:
 //! - `async fn init()`                         — one-time setup (app registration, warm-ups)
 //! - `async fn run_shortcuts(Sender<Event>)`   — register global hotkeys, forward activations
+//! - `async fn desktop_info() -> DesktopInfo`  — how the app works with this desktop, for the settings window
 //! - `async fn shortcut_list() -> ShortcutList` — current bindings, for the settings window
 //! - `async fn check_shortcut(&str, i32)`      — a recorded key's text and who else uses it
 //! - `async fn set_shortcut(&str, i32)`        — bind a Qt key combination (KDE; elsewhere an error)
@@ -20,15 +21,48 @@
 //! The overlay window itself is set up in `cpp/main.cpp` (layer-shell on Linux), as is the
 //! Windows tray icon (QSystemTrayIcon).
 
+/// How the app does each job on this desktop, for the settings window.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct DesktopInfo {
+    /// "Desktop: Umbriel · Shortcuts: command · Copy: virtual keyboard · …"
+    pub summary: String,
+    /// What this desktop can't do, in words for the user.
+    pub missing: Vec<String>,
+}
+
+impl DesktopInfo {
+    /// `providers` are (role, provider) pairs, such as ("Copy", "virtual keyboard").
+    fn new(desktop: &str, providers: &[(&str, &str)], missing: Vec<String>) -> DesktopInfo {
+        let desktop = if desktop.is_empty() { "unknown" } else { desktop };
+        let summary = std::iter::once(format!("Desktop: {desktop}"))
+            .chain(providers.iter().map(|(role, provider)| format!("{role}: {provider}")))
+            .collect::<Vec<_>>()
+            .join(" · ");
+        DesktopInfo { summary, missing }
+    }
+}
+
 /// Global shortcuts as the settings window shows them.
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct ShortcutList {
-    /// "kde" (editable here), "hyprland" (bound in hyprland.conf), "portal" (the desktop's own
-    /// editor), "command" (keys bound to `lootingglass trigger <id>` in the window manager's
-    /// config) or "app" (Windows: the app registers them from the config).
-    pub mode: &'static str,
+    /// The keys can be changed in the settings window itself.
+    pub editable_here: bool,
+    /// How to bind the keys, from the shortcuts provider in use.
+    pub bind_help: BindHelp,
     pub rows: Vec<ShortcutRow>,
     pub error: String,
+}
+
+/// How to bind our shortcuts on this desktop, in its own terms.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct BindHelp {
+    /// What to do, in a sentence or two.
+    pub text: String,
+    /// Lines to add to the window manager's config, one per shortcut; empty when the keys are
+    /// set somewhere else.
+    pub snippet: String,
+    /// The desktop has its own shortcut editor, which `configure_shortcuts` opens.
+    pub desktop_editor: bool,
 }
 
 /// A key combination recorded in the settings window, before it's saved.

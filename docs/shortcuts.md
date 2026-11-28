@@ -14,6 +14,12 @@ GlobalShortcuts portal. Desktops without that portal bind a key to the command
 `lootingglass trigger <id>` instead, which hands the action to the running Looting Glass. How you
 change them depends on the desktop. The id is the name the desktop knows the action by.
 
+*Settings → Shortcuts* explains how to bind them on your desktop. Its bottom line says how
+Looting Glass does each job there, such as
+`Desktop: KDE · Shortcuts: KDE shortcuts · Copy: remote desktop portal · Focus: KWin script`,
+which is worth including in a bug report. If the desktop can't do something the hotkey price
+check needs, such as sending keys to the game, a note at the top says so.
+
 ## KDE Plasma
 
 Change them right in *Settings → Shortcuts*: click a shortcut, press the keys you want (Esc
@@ -22,6 +28,8 @@ name, and Save moves it over.
 
 These are the same shortcuts as in *System Settings → Shortcuts → Looting Glass*, so you can
 change them in either place.
+
+<img src="screenshots/settings-shortcuts.png" alt="Settings: shortcuts recorded right in the window on KDE" width="420">
 
 ## Hyprland (experimental)
 
@@ -72,9 +80,9 @@ ids from the table above:
 
 *Settings → Shortcuts* lists the command for every action.
 
-If *Settings → Shortcuts* doesn't list those commands, your Umbriel registers the shortcuts for
-Looting Glass itself, and `lootingglass trigger` isn't listening. Set the keys in its
-`[global_shortcuts]` section instead:
+If *Settings → Shortcuts* says `Shortcuts: portal` instead of `Shortcuts: command` at the bottom,
+your Umbriel registers the shortcuts for Looting Glass itself, and `lootingglass trigger` isn't
+listening. Set the keys in its `[global_shortcuts]` section instead:
 
 ```toml
 [global_shortcuts."dev.lootingglass.LootingGlass"]

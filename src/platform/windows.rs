@@ -115,9 +115,23 @@ pub fn trigger(_id: &str) -> Result<()> {
     bail!("On Windows, set hotkeys in Looting Glass's Settings → Shortcuts instead.")
 }
 
+/// Windows always works the same way: the app registers its own hotkeys and drives the game
+/// through the Win32 API.
+pub async fn desktop_info() -> super::DesktopInfo {
+    let providers = [("Shortcuts", "Windows hotkeys"), ("Copy", "SendInput"), ("Focus", "Win32")];
+    super::DesktopInfo::new("Windows", &providers, Vec::new())
+}
+
 /// Windows hotkeys are edited as text in the settings window (`[shortcuts]` in the config).
 pub async fn shortcut_list() -> super::ShortcutList {
-    super::ShortcutList { mode: "app", ..Default::default() }
+    super::ShortcutList {
+        editable_here: true,
+        bind_help: super::BindHelp {
+            text: "Examples: Ctrl+D, Ctrl+Shift+F7, Alt+W. Leave empty to unassign.".into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    }
 }
 
 pub async fn set_shortcut(_id: &str, _key: i32) -> anyhow::Result<()> {

@@ -238,6 +238,7 @@ ApplicationWindow {
         property int step: 0
         readonly property var shots: [["settings-game.png", 0], ["settings-trade.png", 1],
             ["settings-appearance.png", win.visibleCategories.findIndex(c => c.name === "Appearance")],
+            ["settings-shortcuts.png", win.visibleCategories.findIndex(c => c.name === "Shortcuts")],
             ["settings-about.png", win.visibleCategories.length - 1]]
         interval: 800
         onTriggered: page.grabToImage(r => {
@@ -427,13 +428,38 @@ ApplicationWindow {
                         onSaveAndRestart: if (win.save()) restartError = Backend.relaunch()
                     }
 
-                    // Linux: shortcuts live in the desktop (portal); show them with a button to edit.
-                    Item {
+                    // How Looting Glass works with this desktop, then its shortcuts.
+                    ColumnLayout {
+                        id: scPage
+                        spacing: 4
+                        readonly property var desktop: {
+                            try { return Backend.desktopInfo ? JSON.parse(Backend.desktopInfo) : null } catch (e) { return null }
+                        }
+                        readonly property var sc: {
+                            try { return Backend.shortcuts ? JSON.parse(Backend.shortcuts) : null } catch (e) { return null }
+                        }
+                        readonly property var rows: sc ? sc.rows : []
+                        readonly property bool editableHere: sc ? sc.editable_here : false
+                        readonly property var bindHelp: sc ? sc.bind_help : ({ text: "", snippet: "", desktop_editor: false })
+
+                        Repeater {
+                            model: scPage.desktop ? scPage.desktop.missing : []
+                            Label {
+                                required property string modelData
+                                text: modelData
+                                color: theme.caution
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                                Layout.bottomMargin: 6
+                            }
+                        }
+
                         // Windows: Looting Glass registers the hotkeys itself, so they're typed here
                         // and saved with the other settings.
                         FormPage {
-                            anchors.fill: parent
                             visible: win.ownShortcuts
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
                             Repeater {
                                 id: shortcutRows
                                 model: win.ownShortcuts ? win.shortcutFields : []
@@ -451,46 +477,33 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                            Item { visible: win.ownShortcuts }
+                            Item {}
                             Label {
-                                visible: win.ownShortcuts
-                                text: "Examples: Ctrl+D, Ctrl+Shift+F7, Alt+W. Leave empty to unassign."
+                                text: scPage.bindHelp.text
                                 color: theme.secondaryText
                                 wrapMode: Text.Wrap
                                 Layout.preferredWidth: 200
                             }
                         }
 
-                        // Linux: the desktop owns global shortcuts. On KDE they're edited right here
-                        // (kglobalaccel, applied at once); Hyprland binds them in hyprland.conf, and
-                        // window managers without the portal bind keys to `lootingglass trigger`.
+                        // Linux: the desktop owns global shortcuts. The shortcuts provider says how
+                        // they're bound: edited right here (KDE), in the desktop's own editor, or as
+                        // lines in the window manager's config.
                         ColumnLayout {
-                            id: scPage
-                            anchors.fill: parent
                             visible: !win.ownShortcuts
                             spacing: 4
-                            readonly property var sc: {
-                                try { return Backend.shortcuts ? JSON.parse(Backend.shortcuts) : null } catch (e) { return null }
-                            }
-                            readonly property string mode: sc ? sc.mode : ""
-                            readonly property var rows: sc ? sc.rows : []
-                            readonly property bool bindsInConfig: mode === "hyprland" || mode === "command"
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
 
                             Label {
-                                text: scPage.mode === "kde"
-                                    ? "Click a shortcut and press the keys you want (Esc cancels, Backspace clears). Save applies them; they're the same shortcuts as in System Settings."
-                                    : scPage.mode === "hyprland"
-                                    ? "Hyprland binds global shortcuts in hyprland.conf. Add a line for each one you want, with your own keys:"
-                                    : scPage.mode === "command"
-                                    ? "Bind a key to each command you want in your window manager's config (Sway: bindsym, Umbriel: [keybinds]):"
-                                    : "Your desktop manages these shortcuts."
+                                text: scPage.bindHelp.text
                                 wrapMode: Text.Wrap
                                 color: theme.secondaryText
                                 Layout.fillWidth: true
                                 Layout.bottomMargin: 6
                             }
                             Repeater {
-                                model: scPage.bindsInConfig ? [] : scPage.rows
+                                model: scPage.bindHelp.snippet === "" ? scPage.rows : []
                                 ColumnLayout {
                                     id: scRow
                                     required property var modelData
@@ -507,13 +520,13 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                         }
                                         KeyButton {
-                                            visible: scPage.mode === "kde"
+                                            visible: scPage.editableHere
                                             shortcutId: scRow.modelData.id
                                             keys: scRow.keys
                                             changed: scRow.pending !== undefined && scRow.pending.keys !== scRow.modelData.keys
                                         }
                                         ToolButton {
-                                            visible: scPage.mode === "kde"
+                                            visible: scPage.editableHere
                                             enabled: scRow.keys !== ""
                                             opacity: enabled ? 1 : 0
                                             icon.name: "edit-clear"
@@ -523,9 +536,9 @@ ApplicationWindow {
                                             onClicked: win.stageShortcut(scRow.modelData.id, 0, "", "")
                                         }
                                         Label {
-                                            visible: scPage.mode !== "kde"
+                                            visible: !scPage.editableHere
                                             text: scRow.modelData.keys || "unassigned"
-                                            opacity: scRow.modelData.keys ? 1 : 0.5
+                                            color: scRow.modelData.keys ? win.palette.windowText : theme.faintText
                                         }
                                     }
                                     Label {
@@ -539,18 +552,13 @@ ApplicationWindow {
                                 }
                             }
                             TextArea {
-                                visible: scPage.bindsInConfig
+                                visible: text !== ""
                                 readOnly: true
                                 selectByMouse: true
                                 font.family: "monospace"
                                 wrapMode: TextEdit.NoWrap
                                 Layout.fillWidth: true
-                                // Hyprland: price check gets its usual Ctrl+D, the rest a placeholder key to replace.
-                                text: scPage.rows.map(r => (scPage.mode === "command"
-                                    ? "lootingglass trigger " + r.id
-                                    : "bind = " + (r.id === "price-check" ? "CTRL, D" : ", KEY")
-                                        + ", global, dev.lootingglass.LootingGlass:" + r.id)
-                                    + "   # " + r.description).join("\n")
+                                text: scPage.bindHelp.snippet
                             }
                             Label {
                                 visible: text !== ""
@@ -561,13 +569,21 @@ ApplicationWindow {
                                 Layout.topMargin: 6
                             }
                             Button {
-                                visible: scPage.mode === "portal"
+                                visible: scPage.bindHelp.desktop_editor
                                 text: "Change shortcuts…"
                                 icon.name: "input-keyboard"
                                 onClicked: Backend.configureShortcuts()
                                 Layout.topMargin: 6
                             }
                             Item { Layout.fillHeight: true }
+                        }
+                        Label {
+                            visible: text !== ""
+                            text: scPage.desktop ? scPage.desktop.summary : ""
+                            color: theme.secondaryText
+                            font.pointSize: 8
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
                         }
                     }
 
