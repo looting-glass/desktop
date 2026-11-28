@@ -14,7 +14,7 @@ mod select;
 mod shortcuts;
 mod tray;
 
-use super::{ShortcutCheck, ShortcutList};
+use super::{DesktopInfo, ShortcutCheck, ShortcutList};
 use crate::Event;
 use anyhow::Result;
 use facts::Facts;
@@ -32,23 +32,34 @@ const APP_ID: &str = "dev.lootingglass.LootingGlass";
 /// browser tab, thanks to the anchors.
 const GAME_TITLE: &str = "^Path of Exile( 2)?$";
 
-/// The providers for this session, chosen on first use.
-async fn desktop() -> &'static Selection {
-    static SELECTION: OnceCell<Selection> = OnceCell::const_new();
-    SELECTION
+/// The desktop this session runs on and the providers chosen for it.
+struct Desktop {
+    /// `Facts::desktop`, for the settings window.
+    name: String,
+    selection: Selection,
+}
+
+/// Probed and chosen on first use.
+async fn desktop() -> &'static Desktop {
+    static DESKTOP: OnceCell<Desktop> = OnceCell::const_new();
+    DESKTOP
         .get_or_init(|| async {
             let facts = Facts::probe().await;
             log::debug!("{facts:?}");
             let selection = select::select(&facts);
             log::info!("desktop {:?}: {selection:?}", facts.desktop);
-            selection
+            Desktop { name: facts.desktop, selection }
         })
         .await
 }
 
+async fn selection() -> &'static Selection {
+    &desktop().await.selection
+}
+
 pub async fn init() {
     register_app().await;
-    if let Ok(keys) = desktop().await.keys {
+    if let Ok(keys) = selection().await.keys {
         keys.warm_up();
     }
 }
@@ -67,18 +78,18 @@ async fn register_app() {
 
 /// Give keyboard focus back to the game (after the overlay closes, before copying).
 pub async fn focus_game() {
-    desktop().await.focus.focus_game().await
+    selection().await.focus.focus_game().await
 }
 
 /// Make the game copy the hovered item and return the clipboard text.
 pub async fn copy_item() -> Result<String> {
-    let desktop = desktop().await;
-    let clipboard = desktop.clipboard?;
-    let keys = desktop.keys?;
+    let selection = selection().await;
+    let clipboard = selection.clipboard?;
+    let keys = selection.keys?;
     // Clear first so a missed keystroke can't silently return the previous item.
     tokio::task::spawn_blocking(move || clipboard.clear()).await?;
     // The overlay may have held keyboard focus; make sure Ctrl+C reaches the game.
-    desktop.focus.focus_game().await;
+    selection.focus.focus_game().await;
     tokio::time::sleep(Duration::from_millis(40)).await;
     keys.send_copy().await?;
     // Wine/XWayland can take a while to publish the selection; poll for up to 1.5s.
@@ -94,7 +105,7 @@ pub async fn copy_item() -> Result<String> {
 }
 
 pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
-    desktop().await.shortcuts.run(tx).await
+    selection().await.shortcuts.run(tx).await
 }
 
 /// Hand shortcut `id` to the running instance (`lootingglass trigger <id>`). Blocking.
@@ -105,27 +116,33 @@ pub fn trigger(id: &str) -> Result<()> {
 /// Shortcuts are bound in the desktop's settings (portal), nothing to reload.
 pub fn reload_shortcuts() {}
 
+/// How the app does each job on this desktop, for the settings window.
+pub async fn desktop_info() -> DesktopInfo {
+    let desktop = desktop().await;
+    desktop.selection.describe(&desktop.name)
+}
+
 /// Our global shortcuts for the settings window.
 pub async fn shortcut_list() -> ShortcutList {
-    desktop().await.shortcuts.list().await
+    selection().await.shortcuts.list().await
 }
 
 /// Bind `key` (a Qt key combination, 0 = none) to shortcut `id` (KDE only).
 pub async fn set_shortcut(id: &str, key: i32) -> Result<()> {
-    desktop().await.shortcuts.set(id, key).await
+    selection().await.shortcuts.set(id, key).await
 }
 
 /// How `key` reads ("Ctrl+D") and who else uses it, before it's saved (KDE only).
 pub async fn check_shortcut(id: &str, key: i32) -> ShortcutCheck {
-    desktop().await.shortcuts.check(id, key).await
+    selection().await.shortcuts.check(id, key).await
 }
 
 /// Pause global shortcuts while a new key combination is being recorded (KDE only).
 pub async fn block_shortcuts(on: bool) {
-    desktop().await.shortcuts.block(on).await
+    selection().await.shortcuts.block(on).await
 }
 
 /// Open the desktop's shortcut editor.
 pub async fn configure_shortcuts() {
-    desktop().await.shortcuts.configure().await
+    selection().await.shortcuts.configure().await
 }

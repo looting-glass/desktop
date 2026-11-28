@@ -38,6 +38,17 @@ impl Role for Focus {
 }
 
 impl Focus {
+    /// How the settings window names it.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Hyprctl => "hyprctl",
+            Self::KWinScript => "KWin script",
+            Self::SwayIpc => "Sway IPC",
+            Self::UmbrielIpc => "Umbriel IPC",
+            Self::None => "none",
+        }
+    }
+
     pub async fn focus_game(self) {
         match self {
             Self::Hyprctl => hyprctl::focus_game().await,
