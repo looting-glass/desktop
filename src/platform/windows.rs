@@ -5,6 +5,7 @@
 //! - copy_item: SendInput Ctrl+C to the game, then read the Win32 clipboard
 //! - focus:     SetForegroundWindow on the game window (class `POEWindowClass`)
 //! - tray:      QSystemTrayIcon in cpp/main.cpp, calling back into `lootingglass_tray_*` below
+//! - notify:    the tray icon's messages, shown as toasts
 //! - overlay:   frameless always-on-top Qt::Tool window (cpp/main.cpp); PoE must run in
 //!              windowed fullscreen, exclusive fullscreen can't be overlaid
 
@@ -12,6 +13,7 @@ use super::hotkey;
 use crate::Event;
 use crate::config::Game;
 use anyhow::{Result, bail};
+use std::ffi::{CString, c_char};
 use std::sync::OnceLock;
 use std::time::Duration;
 use windows_sys::Win32::Foundation::{HANDLE, HWND};
@@ -124,9 +126,23 @@ pub async fn set_shortcut(_id: &str, _key: i32) -> anyhow::Result<()> {
 
 pub async fn block_shortcuts(_on: bool) {}
 
-/// No desktop notifications on Windows yet: callers show the information in the app instead.
-pub async fn notify(_summary: &str, _body: &str, _on_click: Option<crate::Event>) -> bool {
-    false
+unsafe extern "C" {
+    /// Shows a tray balloon, which Windows 10 and 11 turn into a toast (cpp/main.cpp). `action` is
+    /// sent back through `lootingglass_tray_action` when it's clicked, or `NO_TRAY_ACTION`. False
+    /// when there's no system tray.
+    fn lootingglass_tray_notify(title: *const c_char, body: *const c_char, action: i32) -> bool;
+}
+
+/// A toast from the tray icon. Windows only tells us that *a* message was clicked, so a click
+/// sends the latest message's `on_click`.
+pub async fn notify(summary: &str, body: &str, on_click: Option<Event>) -> bool {
+    let (Ok(title), Ok(body)) = (CString::new(summary), CString::new(body)) else {
+        log::warn!("notification text contains a NUL byte: {summary:?}");
+        return false;
+    };
+    let action = on_click.as_ref().and_then(tray_action).unwrap_or(NO_TRAY_ACTION);
+    // SAFETY: both strings are NUL-terminated and live through the call; C++ copies them.
+    unsafe { lootingglass_tray_notify(title.as_ptr(), body.as_ptr(), action) }
 }
 
 pub async fn check_shortcut(id: &str, key: i32) -> super::ShortcutCheck {
@@ -259,19 +275,35 @@ extern "C" fn lootingglass_tray_update(buf: *mut u8, len: usize) -> i32 {
     1
 }
 
+/// Tray actions by their number in cpp/main.cpp's `TrayAction`.
+static TRAY_ACTIONS: [(i32, Event); 7] = [
+    (0, Event::OpenManual),
+    (1, Event::OpenSettings),
+    (2, Event::Quit),
+    (3, Event::OpenAbout),
+    (4, Event::CheckUpdates),
+    (10, Event::SetGame(Game::Poe1)),
+    (11, Event::SetGame(Game::Poe2)),
+];
+
+/// `TrayAction::NoAction`: a message that does nothing when clicked.
+const NO_TRAY_ACTION: i32 = -1;
+
+/// The `TrayAction` number that sends `ev`, if the tray has one.
+fn tray_action(ev: &Event) -> Option<i32> {
+    TRAY_ACTIONS.iter().find(|(_, e)| e == ev).map(|&(n, _)| n)
+}
+
+/// The event a `TrayAction` number sends.
+fn tray_event(action: i32) -> Option<&'static Event> {
+    TRAY_ACTIONS.iter().find(|&&(n, _)| n == action).map(|(_, e)| e)
+}
+
 #[unsafe(no_mangle)]
 extern "C" fn lootingglass_tray_action(action: i32) {
-    let ev = match action {
-        0 => Event::OpenManual,
-        1 => Event::OpenSettings,
-        2 => Event::Quit,
-        3 => Event::OpenAbout,
-        4 => Event::CheckUpdates,
-        10 => Event::SetGame(Game::Poe1),
-        11 => Event::SetGame(Game::Poe2),
-        _ => return,
-    };
-    crate::send_event(ev);
+    if let Some(ev) = tray_event(action) {
+        crate::send_event(ev.clone());
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -279,5 +311,21 @@ extern "C" fn lootingglass_tray_game() -> i32 {
     match crate::config().game {
         Game::Poe1 => 1,
         Game::Poe2 => 2,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tray_actions_map_both_ways() {
+        // A number or event listed twice would make one direction disagree with the other.
+        for (n, ev) in &TRAY_ACTIONS {
+            assert_eq!(tray_action(ev), Some(*n), "{ev:?}");
+            assert_eq!(tray_event(*n), Some(ev), "{n}");
+        }
+        assert_eq!(tray_action(&Event::PriceCheck), None);
+        assert_eq!(tray_event(NO_TRAY_ACTION), None);
     }
 }

@@ -9,6 +9,7 @@
 #include <QCursor>
 #include <QScreen>
 #ifdef LOOTINGGLASS_QT_TRAY
+#include <atomic>
 #include <QActionGroup>
 #include <QMenu>
 #include <QSystemTrayIcon>
@@ -26,8 +27,31 @@ extern "C" void lootingglass_tray_action(int action);
 extern "C" int lootingglass_tray_game();
 extern "C" int lootingglass_tray_update(char *buf, size_t len);
 
-// Tray actions understood by lootingglass_tray_action.
-enum TrayAction { OpenManual = 0, OpenSettings = 1, Quit = 2, OpenAbout = 3, CheckUpdates = 4, GamePoe1 = 10, GamePoe2 = 11 };
+// Tray actions understood by lootingglass_tray_action (TRAY_ACTIONS in windows.rs).
+enum TrayAction { NoAction = -1, OpenManual = 0, OpenSettings = 1, Quit = 2, OpenAbout = 3, CheckUpdates = 4, GamePoe1 = 10, GamePoe2 = 11 };
+
+// The tray icon, touched on the Qt thread only.
+static QSystemTrayIcon *trayIcon = nullptr;
+// Whether it can show messages; read from Rust's threads. Quitting from the app exits the process
+// directly; when the event loop ends some other way (Windows signing out), this is cleared on
+// aboutToQuit, so messages stop being posted before QApplication goes away.
+static std::atomic<bool> trayReady = false;
+// TrayAction of the latest message. messageClicked doesn't say which message was clicked, so an
+// older one still on screen gets the latest one's action. Qt thread only.
+static int messageAction = NoAction;
+
+// Called from Rust (any thread): show a message from the tray icon, a toast on Windows 10/11.
+// Returns false when there's no system tray to show it from.
+extern "C" bool lootingglass_tray_notify(const char *utf8Title, const char *utf8Body, int action)
+{
+    if (!trayReady)
+        return false;
+    QMetaObject::invokeMethod(qApp, [title = QString::fromUtf8(utf8Title), body = QString::fromUtf8(utf8Body), action] {
+        messageAction = action;
+        trayIcon->showMessage(title, body, trayIcon->icon());
+    }, Qt::QueuedConnection);
+    return true;
+}
 
 static void setupTray(QApplication &app)
 {
@@ -72,7 +96,14 @@ static void setupTray(QApplication &app)
         if (r == QSystemTrayIcon::Trigger)
             lootingglass_tray_action(OpenManual);
     });
+    QObject::connect(tray, &QSystemTrayIcon::messageClicked, [] {
+        if (messageAction != NoAction)
+            lootingglass_tray_action(messageAction);
+    });
     tray->show();
+    trayIcon = tray;
+    trayReady = QSystemTrayIcon::isSystemTrayAvailable();
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [] { trayReady = false; });
 }
 #endif
 
