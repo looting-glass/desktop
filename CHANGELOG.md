@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.0](https://github.com/looting-glass/desktop/compare/v0.9.3...v0.10.0) (2026-11-28)
+
+
+### Features
+
+* **appearance:** themes with custom colours ([#70](https://github.com/looting-glass/desktop/issues/70)) ([8422a78](https://github.com/looting-glass/desktop/commit/8422a78eb196b6dcb9ae844f5a7de446da56d9c4)), closes [#55](https://github.com/looting-glass/desktop/issues/55)
+* **linux:** Sway and Umbriel hotkeys, copying and refocusing ([#68](https://github.com/looting-glass/desktop/issues/68)) ([bb48b75](https://github.com/looting-glass/desktop/commit/bb48b75b005062d53f1bf49216343839c854190c))
+* **settings:** show how Looting Glass works with this desktop ([#74](https://github.com/looting-glass/desktop/issues/74)) ([1161df8](https://github.com/looting-glass/desktop/commit/1161df81426bf279d394b27fcf465d2e0ddea2db))
+* **windows:** update notifications as tray toasts ([#73](https://github.com/looting-glass/desktop/issues/73)) ([09c4b42](https://github.com/looting-glass/desktop/commit/09c4b426ef8d464be7492e401e644bc22b04ae4e))
+
+
+### Bug Fixes
+
+* **linux:** keep the trigger socket and compositor IPC running through errors ([#71](https://github.com/looting-glass/desktop/issues/71)) ([c800011](https://github.com/looting-glass/desktop/commit/c8000112f698159e85507d7461c3d2e13fad2f0b))
+* **update:** only offer a release once its downloads are attached ([#60](https://github.com/looting-glass/desktop/issues/60)) ([22e3a41](https://github.com/looting-glass/desktop/commit/22e3a412c0f220babd28b7787c8995cc88e7cf75))
+
 ## [0.9.3](https://github.com/looting-glass/desktop/compare/v0.9.2...v0.9.3) (2026-11-24)
 
 
