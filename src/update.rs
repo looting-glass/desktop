@@ -408,17 +408,23 @@ async fn try_install() -> Result<()> {
     Ok(())
 }
 
-/// Start the freshly installed copy and exit. The new process waits for this one's
-/// single-instance lock (`LOOTINGGLASS_RESTARTED`).
+/// Start the freshly installed copy and exit.
 pub fn restart() {
     let exe = match Install::detect() {
         Install::LinuxUser => dirs::home_dir().map(|h| h.join(".local/bin/lootingglass")),
         _ => EXE.clone(),
     };
     let Some(exe) = exe else { return };
-    match command(&exe).env("LOOTINGGLASS_RESTARTED", "1").spawn() {
+    let e = relaunch(&exe);
+    status(format!("Restart failed: {e}. Start Looting Glass again yourself."), false);
+}
+
+/// Starts `exe` and exits; returns only with the reason it couldn't be started. The new process
+/// waits for this one's single-instance lock (`LOOTINGGLASS_RESTARTED`).
+pub fn relaunch(exe: &std::path::Path) -> std::io::Error {
+    match command(exe).env("LOOTINGGLASS_RESTARTED", "1").spawn() {
         Ok(_) => std::process::exit(0),
-        Err(e) => status(format!("Restart failed: {e}. Start Looting Glass again yourself."), false),
+        Err(e) => e,
     }
 }
 

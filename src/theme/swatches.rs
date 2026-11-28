@@ -28,14 +28,17 @@ impl Swatches {
         let Some(list) = code.trim().strip_prefix(PREFIX) else {
             bail!("That isn't a Looting Glass theme code. Theme codes start with \"{PREFIX}\".");
         };
-        let colors = list
-            .split(',')
-            .map(|c| Color::parse(c).with_context(|| format!("\"{}\" isn't a colour like #8859a4.", c.trim())))
-            .collect::<anyhow::Result<Vec<_>>>()?;
+        let colors: Vec<&str> = list.split(',').collect();
         let [background, accent, selection_bar] = colors[..] else {
             bail!("A theme code has 3 colours; this one has {}.", colors.len());
         };
-        Ok(Self { background, accent, selection_bar })
+        Self::from_colors(background, accent, selection_bar)
+    }
+
+    /// Reads three colours like `#8859a4`, with a plain-language error for one that isn't.
+    pub fn from_colors(background: &str, accent: &str, selection_bar: &str) -> anyhow::Result<Self> {
+        let parse = |hex: &str| Color::parse(hex).with_context(|| format!("\"{}\" isn't a colour like #8859a4.", hex.trim()));
+        Ok(Self { background: parse(background)?, accent: parse(accent)?, selection_bar: parse(selection_bar)? })
     }
 }
 
@@ -78,6 +81,7 @@ mod tests {
         assert!(err("lg1:1a1a24,8859a4").contains("has 3 colours; this one has 2"));
         assert!(err("lg1:1a1a24,8859a4,b393d0,ffffff").contains("this one has 4"));
         assert!(err("lg1:1a1a24,purple,b393d0").contains("\"purple\" isn't a colour"));
-        assert!(err("lg1:").contains("\"\" isn't a colour"));
+        assert!(err("lg1:").contains("this one has 1"));
+        assert!(err("lg1:1a1a24,,8859a4").contains("\"\" isn't a colour"));
     }
 }

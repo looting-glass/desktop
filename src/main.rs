@@ -448,8 +448,12 @@ fn main() {
     cxx_qt::init_crate!(cxx_qt_lib);
     cxx_qt::init_qml_module!("dev.lootingglass");
     let desktop_colors = *DESKTOP_COLORS.get_or_init(|| theme::Theme::from_config(&config().appearance).follows_desktop());
-    let fusion_preview = std::env::var_os("LOOTINGGLASS_FUSION").is_some();
-    let style = *STYLE.get_or_init(|| theme::Style::choose(cfg!(target_os = "linux"), desktop_colors, fusion_preview));
+    // QT_QUICK_CONTROLS_STYLE beats our choice; LOOTINGGLASS_FUSION previews Fusion with any theme.
+    let forced = std::env::var("QT_QUICK_CONTROLS_STYLE")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| std::env::var_os("LOOTINGGLASS_FUSION").map(|_| "Fusion".to_string()));
+    let style = *STYLE.get_or_init(|| theme::Style::choose(cfg!(target_os = "linux"), desktop_colors, forced.as_deref()));
     let code = unsafe { lootingglass_qt_main(style == theme::Style::Breeze) };
     std::process::exit(code);
 }

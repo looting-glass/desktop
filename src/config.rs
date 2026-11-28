@@ -227,6 +227,7 @@ pub struct AppearanceConfig {
     /// "system" (the desktop's colours), a preset id like "looting-glass", or "custom".
     pub theme: String,
     /// Which variant of a preset: light, dark, or the one matching the system's mode.
+    #[serde(deserialize_with = "known_or_default")]
     pub mode: ColorMode,
     /// The Custom theme's colours as a theme code (`lg1:1a1a24,8859a4,8859a4`).
     pub colors: String,
@@ -239,6 +240,21 @@ impl Default for AppearanceConfig {
         let (theme, mode) = if cfg!(windows) { ("looting-glass", ColorMode::Dark) } else { ("system", ColorMode::System) };
         Self { theme: theme.into(), mode, colors: String::new() }
     }
+}
+
+/// Reads a setting written as a word, or keeps its default when the word isn't one it knows, so a
+/// typo in one key (`mode = "auto"`, after the page's *Auto*) doesn't throw away the whole file.
+fn known_or_default<'de, D, T>(d: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::de::DeserializeOwned + Default,
+{
+    use serde::de::IntoDeserializer;
+    let word = String::deserialize(d)?;
+    T::deserialize(word.as_str().into_deserializer()).or_else(|e: serde::de::value::Error| {
+        log::warn!("config: {e}; using the default");
+        Ok(T::default())
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -397,6 +413,11 @@ mod tests {
         assert_eq!(c.appearance.theme, "custom");
         assert_eq!(c.appearance.mode, ColorMode::Light);
         assert_eq!(c.appearance.colors, "lg1:1a1a24,8859a4,8859a4");
+        // An unknown mode keeps the rest of the config.
+        let typo: Config = toml::from_str("game = \"poe2\"\n[appearance]\nmode = \"auto\"\n").unwrap();
+        assert_eq!((typo.game, typo.appearance.mode), (Game::Poe2, ColorMode::System));
+        let from_qml: AppearanceConfig = serde_json::from_str(r#"{"theme":"frost","mode":"dark","colors":""}"#).unwrap();
+        assert_eq!(from_qml.mode, ColorMode::Dark);
     }
 
     #[test]

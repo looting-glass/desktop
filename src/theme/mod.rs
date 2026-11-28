@@ -3,6 +3,7 @@
 //! with while the system is in light mode and in dark mode, which QML picks from and applies.
 
 mod color;
+mod fade;
 mod palette;
 mod preset;
 mod signals;
@@ -11,6 +12,7 @@ mod swatches;
 
 use crate::config::{AppearanceConfig, ColorMode};
 use color::Color;
+use fade::{FAINT, SECONDARY, Shade};
 use palette::Palette;
 use preset::{PRESETS, Preset};
 use serde::Serialize;
@@ -62,19 +64,16 @@ impl Theme {
             })),
             Theme::Custom(s) => Some(*s),
         };
-        match swatches {
-            Some(s) => Look {
-                palette: Some(Palette::from_swatches(&s)),
-                selection_bar: Some(s.selection_bar),
-                signals: Signals::on(s.background),
-                swatches: s,
-            },
-            None => Look {
-                palette: None,
-                selection_bar: None,
-                signals: Signals::on(if system_dark { Color::BLACK } else { Color::WHITE }),
-                swatches: FALLBACK.swatches(system_dark),
-            },
+        let palette = swatches.as_ref().map(Palette::from_swatches);
+        let text_on = palette.as_ref().map(|p| (p.window_text, p.window));
+        let system_background = if system_dark { Color::BLACK } else { Color::WHITE };
+        Look {
+            selection_bar: swatches.map(|s| s.selection_bar),
+            signals: Signals::on(swatches.map_or(system_background, |s| s.background)),
+            secondary_text: SECONDARY.shade(text_on),
+            faint_text: FAINT.shade(text_on),
+            swatches: swatches.unwrap_or(FALLBACK.swatches(system_dark)),
+            palette,
         }
     }
 }
@@ -96,6 +95,10 @@ pub struct Look {
     pub selection_bar: Option<Color>,
     #[serde(flatten)]
     pub signals: Signals,
+    /// Less important text (`fade::SECONDARY`).
+    pub secondary_text: Shade,
+    /// Least important text that must still be read (`fade::FAINT`).
+    pub faint_text: Shade,
     /// The colours this look is made of, which Custom starts from when chosen. The System
     /// theme has none of its own and offers Looting Glass's.
     pub swatches: Swatches,
@@ -165,11 +168,7 @@ pub fn preview(a: &AppearanceConfig, running_follows_desktop: bool) -> Preview {
 
 /// The theme code for three `#rrggbb` colours, or why there's none.
 pub fn code(background: &str, accent: &str, selection_bar: &str) -> anyhow::Result<String> {
-    let parse = |hex: &str| {
-        Color::parse(hex).ok_or_else(|| anyhow::anyhow!("\"{}\" isn't a colour like #8859a4.", hex.trim()))
-    };
-    let s = Swatches { background: parse(background)?, accent: parse(accent)?, selection_bar: parse(selection_bar)? };
-    Ok(s.to_string())
+    Ok(Swatches::from_colors(background, accent, selection_bar)?.to_string())
 }
 
 #[cfg(test)]
@@ -215,7 +214,8 @@ mod tests {
         for look in [&looks.light, &looks.dark] {
             assert_eq!(look.palette.as_ref().unwrap().window, s.background);
             assert_eq!(look.selection_bar, Some(s.selection_bar));
-            assert_eq!(look.signals, Signals::on(Color::WHITE), "light background, light signals");
+            assert_eq!(look.signals, Signals::on(s.background), "signals for the custom background");
+            assert!(matches!(look.faint_text, Shade::Color(_)), "faded text worked out for it");
         }
     }
 
@@ -226,6 +226,7 @@ mod tests {
         assert_eq!(looks.light.selection_bar, None);
         assert_eq!(looks.dark.signals, Signals::on(Color::BLACK), "the desktop's mode, not the preset mode");
         assert_eq!(looks.dark.swatches, FALLBACK.dark, "Custom starts from Looting Glass");
+        assert_eq!(looks.dark.secondary_text, Shade::Fade(0.75), "QML fades the desktop's text");
     }
 
     #[test]
@@ -235,6 +236,8 @@ mod tests {
         assert_eq!(dark["palette"]["window"], "#1a1a24");
         assert_eq!(dark["palette"]["highlight"], "#8859a4");
         assert!(dark["palette"]["placeholderText"].is_string());
+        assert!(dark["palette"]["disabled"]["text"].is_string());
+        assert!(dark["secondaryText"].is_string());
         assert_eq!(dark["selectionBar"], "#8859a4");
         assert_eq!(dark["danger"], "#e06c6c");
         assert_eq!(dark["swatches"]["selectionBar"], "#8859a4");
@@ -245,7 +248,7 @@ mod tests {
     #[test]
     fn preview_reports_bad_colours_and_restarts() {
         let p = preview(&appearance("custom", ColorMode::System, "lg1:12"), true);
-        assert!(p.error.unwrap().contains("isn't a colour"));
+        assert!(p.error.unwrap().contains("has 3 colours"));
         assert!(p.needs_restart, "leaving the desktop's colours");
         let p = preview(&appearance("exile", ColorMode::Dark, "lg1:12"), false);
         assert_eq!(p.error, None, "custom colours only matter for Custom");

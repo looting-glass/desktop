@@ -102,6 +102,8 @@ pub mod qobject {
         fn install_update(self: &Backend);
         #[qinvokable]
         fn restart_app(self: &Backend);
+        #[qinvokable]
+        fn relaunch(self: &Backend) -> QString;
 
         #[qsignal]
         fn open_settings(self: Pin<&mut Backend>);
@@ -382,6 +384,15 @@ impl qobject::Backend {
 
     fn restart_app(&self) {
         crate::update::restart();
+    }
+
+    /// Starts this copy again (for a theme that changes the style), or says why it couldn't.
+    fn relaunch(&self) -> QString {
+        let e = match std::env::current_exe() {
+            Ok(exe) => crate::update::relaunch(&exe),
+            Err(e) => e,
+        };
+        q(format!("Couldn't restart Looting Glass: {e}. Start it again yourself."))
     }
 
     fn search(&self, spec: &QString) {

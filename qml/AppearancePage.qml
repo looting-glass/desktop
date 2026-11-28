@@ -24,8 +24,11 @@ RowLayout {
     property string colors: ""
 
     readonly property var preview: JSON.parse(Backend.themePreview(JSON.stringify(appearance())))
-    readonly property bool systemDark: Qt.styleHints.colorScheme === Qt.ColorScheme.Dark
-    readonly property var look: systemDark ? preview.looks.dark : preview.looks.light
+    readonly property var look: appTheme.dark ? preview.looks.dark : preview.looks.light
+    // Why the theme code can't be used, or empty; Settings won't save until it's fixed.
+    readonly property string error: preview.error || ""
+    // Why Save and restart couldn't restart, or empty.
+    property string restartError: ""
     readonly property bool custom: themeId === "custom"
     readonly property bool preset: !custom && themeId !== "system"
 
@@ -113,7 +116,7 @@ RowLayout {
                 ThemeTile {
                     required property var modelData
                     label: modelData.label
-                    swatches: modelData.swatches ? (page.systemDark ? modelData.swatches.dark : modelData.swatches.light) : null
+                    swatches: modelData.swatches ? (page.appTheme.dark ? modelData.swatches.dark : modelData.swatches.light) : null
                     editable: modelData.id === "custom"
                     chosen: page.themeId === modelData.id
                     onClicked: page.chooseTheme(modelData.id)
@@ -152,7 +155,7 @@ RowLayout {
                 onTextEdited: {
                     page.themeId = "custom"
                     page.colors = text.trim()
-                    if (page.preview.error === null)
+                    if (page.error === "")
                         page.showSwatches()
                 }
             }
@@ -162,14 +165,14 @@ RowLayout {
             }
         }
         Label {
-            visible: page.preview.error !== null
-            text: page.preview.error || ""
+            visible: page.error !== ""
+            text: page.error
             color: page.look.danger
             wrapMode: Text.Wrap
             Layout.preferredWidth: 268
         }
         Label {
-            visible: themeId !== "system" && page.preview.error === null
+            visible: themeId !== "system" && page.error === ""
             text: "Share the code, or paste someone's here to use their theme."
             color: page.appTheme.secondaryText
             wrapMode: Text.Wrap
@@ -188,6 +191,13 @@ RowLayout {
                 Layout.preferredWidth: 268
             }
             Button { text: "Save and restart"; onClicked: page.saveAndRestart() }
+            Label {
+                visible: page.restartError !== ""
+                text: page.restartError
+                color: page.look.danger
+                wrapMode: Text.Wrap
+                Layout.preferredWidth: 268
+            }
         }
     }
 

@@ -86,7 +86,8 @@ static void useFusion()
         QQuickStyle::setStyle(QStringLiteral("Fusion"));
 }
 
-// breeze: use KDE's Breeze style rather than Fusion (theme::Style, chosen in Rust).
+// breeze: use KDE's Breeze style rather than Fusion (theme::Style, chosen in Rust). A
+// QT_QUICK_CONTROLS_STYLE set by the user is left in place either way.
 extern "C" int lootingglass_qt_main(bool breeze)
 {
     static int argc = 1;

@@ -94,6 +94,12 @@ ApplicationWindow {
     }
 
     function save() {
+        // An unreadable theme code would be saved and then quietly shown as Looting Glass.
+        if (appearancePage.error !== "") {
+            nav.currentIndex = visibleCategories.findIndex(cat => cat.name === "Appearance")
+            saveStatus.text = "Not saved: the theme code isn't valid."
+            return false
+        }
         const c = cfg
         c.game = game.currentIndex === 1 ? "poe2" : "poe1"
         c.poe1.league = league1.editText.trim() || "Standard"
@@ -418,7 +424,7 @@ ApplicationWindow {
                     AppearancePage {
                         id: appearancePage
                         appTheme: theme
-                        onSaveAndRestart: if (win.save()) Backend.restartApp()
+                        onSaveAndRestart: if (win.save()) restartError = Backend.relaunch()
                     }
 
                     // Linux: shortcuts live in the desktop (portal); show them with a button to edit.

@@ -53,6 +53,20 @@ impl Color {
     pub fn is_dark(self) -> bool {
         self.contrast(Color::WHITE) > self.contrast(Color::BLACK)
     }
+
+    /// White or black, whichever reads better on this colour.
+    pub fn contrasting(self) -> Color {
+        if self.is_dark() { Color::WHITE } else { Color::BLACK }
+    }
+
+    /// This colour, moved towards `target` in 5% steps until it has `min_contrast` against `bg`;
+    /// `target` itself when no step gets there.
+    pub fn until_readable(self, target: Color, bg: Color, min_contrast: f32) -> Color {
+        (0..=20)
+            .map(|step| self.mix(target, step as f32 / 20.0))
+            .find(|c| c.contrast(bg) >= min_contrast)
+            .unwrap_or(target)
+    }
 }
 
 impl fmt::Display for Color {
@@ -87,6 +101,20 @@ mod tests {
         assert_eq!(c.mix(Color::WHITE, 0.0), c);
         assert_eq!(c.mix(Color::WHITE, 1.0), Color::WHITE);
         assert_eq!(Color::BLACK.mix(Color::WHITE, 0.5), Color::hex(0x808080));
+    }
+
+    #[test]
+    fn moves_only_as_far_as_readable() {
+        let bg = Color::hex(0x1a1a24);
+        let red = Color::hex(0xe06c6c);
+        assert_eq!(red.until_readable(Color::WHITE, bg, 4.5), red, "already readable");
+        let dim = Color::hex(0x603030);
+        let lifted = dim.until_readable(Color::WHITE, bg, 4.5);
+        assert!(lifted.contrast(bg) >= 4.5 && lifted != Color::WHITE);
+        // #777 can't reach 7:1 with anything; the target is the best there is.
+        assert_eq!(dim.until_readable(Color::WHITE, Color::hex(0x777777), 7.0), Color::WHITE);
+        assert_eq!(bg.contrasting(), Color::WHITE);
+        assert_eq!(Color::hex(0xf3f1f7).contrasting(), Color::BLACK);
     }
 
     #[test]
