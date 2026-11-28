@@ -9,6 +9,9 @@ name: Release
 on:
   push:
     branches: [main]
+  # The Milestone release workflow merges the release PR with the workflow token, whose pushes
+  # don't start workflows, and starts this one by hand instead.
+  workflow_dispatch:
 
 permissions:
   contents: write

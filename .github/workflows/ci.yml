@@ -20,6 +20,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The release automation's decisions (.github/scripts): plain Python, no dependencies.
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test
+        run: python3 -m unittest discover --start-directory .github/scripts
+
   linux:
     runs-on: ubuntu-latest
     container: archlinux:latest

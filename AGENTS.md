@@ -19,8 +19,11 @@ down anywhere else.
   as a draft, builds the Linux and Windows downloads, attaches them and then publishes it. A
   release left as a draft means a build failed: re-run the failed jobs of the Release run.
   Leave the version and changelog to it.
-- Releases are batched: the release PR stays open and collects several features and fixes.
-  Merge it only when the maintainer says it's time for a release, not after every feature.
+- Releases are batched with **milestones**: the release PR stays open and collects several
+  features and fixes, and a completed milestone releases it. When the last open issue of a
+  milestone is closed, the Milestone release workflow merges the release PR, starts the Release
+  workflow and closes the milestone. Leave the release PR to it: the maintainer decides what
+  ships by what goes into the milestone.
 - The website shows the latest release's changelog and download links, and a daily deploy
   picks up new releases. The Release workflow deploys it right after attaching the downloads
   (needs the `SITE_DEPLOY_TOKEN` secret: a fine-grained token with Actions read/write on
