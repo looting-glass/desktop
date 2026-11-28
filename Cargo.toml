@@ -22,7 +22,7 @@ reqwest = { version = "0.13.5", default-features = false, features = ["json", "r
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sha2 = "0.11.1"
-tokio = { version = "1", features = ["rt-multi-thread", "time", "sync", "process"] }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "sync", "process", "net"] }
 toml = "1.2.1"
 
 # Linux/KDE platform backend (src/platform/linux)
@@ -32,6 +32,8 @@ png = "0.17"
 ksni = "0.3.7"
 wayland-client = "0.31.15"
 wl-clipboard-rs = "0.9.5"
+wayland-protocols-misc = { version = "0.3.12", features = ["client"] }
+rustix = { version = "1.1.6", features = ["fs"] }
 
 # Windows platform backend (src/platform/windows.rs)
 [target.'cfg(windows)'.dependencies]

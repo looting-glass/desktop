@@ -1,16 +1,13 @@
 //! Ctrl+C through the RemoteDesktop portal's keyboard (keyboard only, no screen sharing).
 
+use super::{COPY_CHORD, KEY_GAP};
 use anyhow::{Context, Result};
 use ashpd::desktop::{
     PersistMode, Session,
     remote_desktop::{DeviceType, KeyState, RemoteDesktop, SelectDevicesOptions},
 };
 use std::path::PathBuf;
-use std::time::Duration;
 use tokio::sync::Mutex;
-
-const KEY_LEFTCTRL: i32 = 29;
-const KEY_C: i32 = 46;
 
 struct Keyboard {
     rd: RemoteDesktop,
@@ -45,16 +42,11 @@ async fn open_keyboard() -> Result<Keyboard> {
     Ok(Keyboard { rd, session })
 }
 
-async fn press(kb: &Keyboard, keys: &[i32]) -> Result<()> {
-    // Games often sample key state once per frame, so space events out by more than a frame.
-    const GAP: Duration = Duration::from_millis(25);
-    for &k in keys {
-        kb.rd.notify_keyboard_keycode(&kb.session, k, KeyState::Pressed, Default::default()).await?;
-        tokio::time::sleep(GAP).await;
-    }
-    for &k in keys.iter().rev() {
-        kb.rd.notify_keyboard_keycode(&kb.session, k, KeyState::Released, Default::default()).await?;
-        tokio::time::sleep(GAP).await;
+async fn press_copy(kb: &Keyboard) -> Result<()> {
+    for (key, pressed) in COPY_CHORD {
+        let state = if pressed { KeyState::Pressed } else { KeyState::Released };
+        kb.rd.notify_keyboard_keycode(&kb.session, key as i32, state, Default::default()).await?;
+        tokio::time::sleep(KEY_GAP).await;
     }
     Ok(())
 }
@@ -67,7 +59,7 @@ pub async fn send_copy() -> Result<()> {
         if guard.is_none() {
             *guard = Some(open_keyboard().await.context("RemoteDesktop portal refused keyboard access")?);
         }
-        match press(guard.as_ref().unwrap(), &[KEY_LEFTCTRL, KEY_C]).await {
+        match press_copy(guard.as_ref().unwrap()).await {
             Ok(()) => return Ok(()),
             Err(e) if attempt == 0 => {
                 log::warn!("keyboard session lost, reconnecting: {e}");

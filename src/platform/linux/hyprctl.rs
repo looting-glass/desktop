@@ -1,11 +1,13 @@
 //! Hyprland's `hyprctl` dispatchers, which the `Hyprctl` key sender and focus providers use.
 //! EXPERIMENTAL, not yet tested on a real Hyprland session.
 
+use super::GAME_TITLE;
 use anyhow::{Context, Result, bail};
 
-/// Hyprland window rule matching the PoE 1 / PoE 2 game window (not e.g. a "Trade - Path of
-/// Exile" browser tab, thanks to the anchors).
-pub const GAME_WINDOW: &str = "title:^(Path of Exile( 2)?)$";
+/// Hyprland window rule matching the game window.
+pub fn game_window() -> String {
+    format!("title:{GAME_TITLE}")
+}
 
 pub async fn dispatch(dispatcher: &str, args: &str) -> Result<()> {
     let out = tokio::process::Command::new("hyprctl")

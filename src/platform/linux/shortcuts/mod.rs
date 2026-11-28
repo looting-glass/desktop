@@ -1,6 +1,8 @@
-//! Global hotkeys: registered through the GlobalShortcuts portal everywhere, and on KDE also
-//! listed and edited in our own settings window through kglobalaccel.
+//! Global hotkeys: registered through the GlobalShortcuts portal where there is one (on KDE
+//! also listed and edited in our own settings window through kglobalaccel), and elsewhere bound
+//! by the user to `lootingglass trigger <id>` commands.
 
+mod command;
 mod kglobalaccel;
 mod portal;
 
@@ -29,30 +31,61 @@ pub enum Shortcuts {
     HyprlandConfig,
     /// The portal's shortcuts, edited in the desktop's own shortcut settings.
     Portal,
+    /// Keys the user binds to `lootingglass trigger <id>` in the window manager's config (Sway
+    /// `bindsym`, Umbriel `[keybinds]`). Every window manager can run a command on a key, so
+    /// this works wherever there's no portal.
+    Command,
 }
 
 impl Role for Shortcuts {
-    const PRIORITY: &'static [Self] = &[Self::KGlobalAccel, Self::HyprlandConfig, Self::Portal];
+    const PRIORITY: &'static [Self] = &[Self::KGlobalAccel, Self::HyprlandConfig, Self::Portal, Self::Command];
 
     fn available(self, facts: &Facts) -> bool {
-        facts.global_shortcuts_portal.is_some()
-            && match self {
-                // KWin's portal backend is what stores our shortcuts in kglobalaccel.
-                Self::KGlobalAccel => facts.kwin && facts.kglobalaccel,
-                Self::HyprlandConfig => facts.hyprland_ipc,
-                Self::Portal => true,
-            }
+        let portal = facts.global_shortcuts_portal.is_some();
+        match self {
+            // KWin's portal backend is what stores our shortcuts in kglobalaccel.
+            Self::KGlobalAccel => portal && facts.kwin && facts.kglobalaccel,
+            Self::HyprlandConfig => portal && facts.hyprland_ipc,
+            Self::Portal => portal,
+            Self::Command => true,
+        }
     }
+}
+
+/// What the shortcut with this id asks the app to do.
+fn event(id: &str) -> Option<Event> {
+    Some(match id {
+        "price-check" => Event::PriceCheck,
+        "toggle-game" => Event::ToggleGame,
+        "settings" => Event::OpenSettings,
+        "manual-check" => Event::OpenManual,
+        "hide-overlay" => Event::HideOverlay,
+        "item-info" => Event::OpenItemInfo,
+        _ => return None,
+    })
+}
+
+/// Hand the shortcut `id` to the running instance, for `lootingglass trigger <id>`. Blocking.
+pub fn trigger(id: &str) -> Result<()> {
+    if event(id).is_none() {
+        let ids: Vec<&str> = SHORTCUT_DEFS.iter().map(|(id, ..)| *id).collect();
+        bail!("Unknown shortcut {id:?}. Use one of: {}.", ids.join(", "));
+    }
+    command::send(id)
 }
 
 impl Shortcuts {
     /// Register the shortcuts and forward their activations until the portal closes.
     pub async fn run(self, tx: async_channel::Sender<Event>) -> Result<()> {
-        if self == Self::KGlobalAccel {
-            // 0.8/0.9 had a separate map check shortcut; maps are now checked by the price check.
-            let _ = kglobalaccel::forget("map-check").await;
+        match self {
+            Self::KGlobalAccel => {
+                // 0.8/0.9 had a separate map check shortcut; maps are now checked by the price check.
+                let _ = kglobalaccel::forget("map-check").await;
+                portal::run(tx).await
+            }
+            Self::HyprlandConfig | Self::Portal => portal::run(tx).await,
+            Self::Command => command::run(tx).await,
         }
-        portal::run(tx).await
     }
 
     /// Our shortcuts and their keys, for the settings window.
@@ -74,6 +107,8 @@ impl Shortcuts {
             },
             Self::HyprlandConfig => portal_list("hyprland").await,
             Self::Portal => portal_list("portal").await,
+            // The keys live in the window manager's config, which we don't read.
+            Self::Command => ShortcutList { mode: "command", rows: rows(|_| String::new()), error: String::new() },
         }
     }
 
@@ -124,12 +159,12 @@ impl Shortcuts {
 }
 
 /// A recorded key, passed back as it is where nothing can check it.
-pub fn unchecked(id: &str, key: i32) -> ShortcutCheck {
+fn unchecked(id: &str, key: i32) -> ShortcutCheck {
     ShortcutCheck { id: id.into(), key, ..Default::default() }
 }
 
 /// One row per shortcut, in settings order, with the keys `keys_of` gives for its id.
-pub fn rows(keys_of: impl Fn(&str) -> String) -> Vec<ShortcutRow> {
+fn rows(keys_of: impl Fn(&str) -> String) -> Vec<ShortcutRow> {
     SHORTCUT_DEFS
         .iter()
         .map(|(id, description, _)| ShortcutRow { id: (*id).into(), description: (*description).into(), keys: keys_of(id) })
@@ -144,5 +179,30 @@ async fn portal_list(mode: &'static str) -> ShortcutList {
             error: String::new(),
         },
         Err(e) => ShortcutList { mode, rows: rows(|_| String::new()), error: format!("{e:#}") },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_shortcut_has_an_event() {
+        for (id, ..) in SHORTCUT_DEFS {
+            assert!(event(id).is_some(), "{id}");
+        }
+    }
+
+    #[test]
+    fn unknown_ids_have_none() {
+        for id in ["", "map-check", "Price-Check", "price-check\n"] {
+            assert!(event(id).is_none(), "{id:?}");
+        }
+    }
+
+    #[test]
+    fn trigger_rejects_unknown_ids_before_connecting() {
+        let e = trigger("pricecheck").unwrap_err().to_string();
+        assert!(e.starts_with("Unknown shortcut \"pricecheck\". Use one of: price-check, item-info,"), "{e}");
     }
 }

@@ -96,8 +96,9 @@ all use the desktop's native mechanisms.
 
 ### Requirements
 
-- KDE Plasma 6 on Wayland (tested). Hyprland support is **experimental and untested**; see [Hyprland](#hyprland-experimental). GNOME isn't supported: it lacks layer-shell and
-  background clipboard access. Sway lacks the GlobalShortcuts portal.
+- KDE Plasma 6 on Wayland (tested). Hyprland support is **experimental and untested**; see [Hyprland](#hyprland-experimental). Sway and Umbriel support is
+  **experimental and untested** too: bind keys to the `lootingglass trigger <id>` commands listed in *Settings → Shortcuts*.
+  GNOME isn't supported: it lacks layer-shell and background clipboard access.
 - Windows 10 or 11 is **experimental and untested**; see [Windows](#windows-experimental).
 - On Hyprland: `xdg-desktop-portal-hyprland` and a tray (e.g. Waybar's tray module) for the icon
 - Qt 6 with Qt Quick, plus `layer-shell-qt`, `kirigami` and `qqc2-desktop-style`
@@ -320,11 +321,11 @@ injection and always-on-top windows. Looting Glass uses the native equivalents i
 
 | Need | How Looting Glass does it |
 |---|---|
-| Hotkeys while the game is focused | XDG **GlobalShortcuts** portal (bound in System Settings) |
-| Make the game copy the hovered item | KDE: XDG **RemoteDesktop** portal, keyboard only (you approve it once). Hyprland: `hyprctl dispatch sendshortcut` |
+| Hotkeys while the game is focused | XDG **GlobalShortcuts** portal (bound in System Settings). Without the portal (Sway, Umbriel): keys bound to `lootingglass trigger <id>` in the window manager's config |
+| Make the game copy the hovered item | KDE: XDG **RemoteDesktop** portal, keyboard only (you approve it once). Hyprland: `hyprctl dispatch sendshortcut`. Sway, Umbriel: a Wayland **virtual keyboard** |
 | Read the clipboard without focus | Wayland **data-control** protocol |
 | Overlay above a fullscreen game | **wlr-layer-shell** via KDE's LayerShellQt |
-| Give focus back to the game | KDE: a one-shot KWin script. Hyprland: `hyprctl dispatch focuswindow` |
+| Give focus back to the game | KDE: a one-shot KWin script. Hyprland: `hyprctl dispatch focuswindow`. Sway: `swaymsg focus`. Umbriel: `umbriel msg window-focus` |
 | Tray icon | StatusNotifierItem |
 
 ## Development
@@ -347,7 +348,7 @@ LOOTINGGLASS_HTTP_CACHE=/tmp/ll-cache LOOTINGGLASS_DEMO=dev/boots.txt cargo run 
 | `src/ninja.rs` | poe.ninja prices for stackables |
 | `src/update.rs` | Update check (GitHub releases) and self-update per install type |
 | `src/platform/` | Desktop integration: hotkeys, copying the item, focus, tray |
-| `src/platform/linux/` | KDE/Wayland backend: portals, data-control clipboard, KWin, SNI tray |
+| `src/platform/linux/` | Wayland backend: portals, data-control clipboard, virtual keyboard, KWin/Hyprland/Sway/Umbriel IPC, SNI tray |
 | `src/platform/windows.rs` | Windows backend (experimental): RegisterHotKey, SendInput, Win32 clipboard |
 | `src/bridge.rs` | cxx-qt `Backend` object the QML binds to |
 | `qml/` | Overlay and settings views |

@@ -36,15 +36,7 @@ pub async fn run(tx: async_channel::Sender<Event>) -> Result<()> {
 
     let mut stream = sc.gs.receive_activated().await?;
     while let Some(a) = stream.next().await {
-        let ev = match a.shortcut_id() {
-            "price-check" => Event::PriceCheck,
-            "toggle-game" => Event::ToggleGame,
-            "settings" => Event::OpenSettings,
-            "manual-check" => Event::OpenManual,
-            "hide-overlay" => Event::HideOverlay,
-            "item-info" => Event::OpenItemInfo,
-            _ => continue,
-        };
+        let Some(ev) = super::event(a.shortcut_id()) else { continue };
         let _ = tx.send(ev).await;
     }
     Ok(())

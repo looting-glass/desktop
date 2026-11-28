@@ -10,6 +10,7 @@
 //! - `async fn block_shortcuts(bool)`          — pause global shortcuts while recording keys
 //! - `async fn configure_shortcuts()`          — open the desktop's hotkey editor
 //! - `fn reload_shortcuts()`                   — config changed; re-register app-owned hotkeys
+//! - `fn trigger(&str) -> Result<()>`          — `lootingglass trigger <id>`: hand a shortcut to the running instance
 //! - `async fn notify(&str, &str, Option<Event>) -> bool` — desktop notification (false: none shown)
 //! - `async fn copy_item() -> Result<String>`  — make the game copy the hovered item, return its text
 //! - `async fn focus_game()`                   — give keyboard focus back to the game
@@ -23,7 +24,8 @@
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct ShortcutList {
     /// "kde" (editable here), "hyprland" (bound in hyprland.conf), "portal" (the desktop's own
-    /// editor) or "app" (Windows: the app registers them from the config).
+    /// editor), "command" (keys bound to `lootingglass trigger <id>` in the window manager's
+    /// config) or "app" (Windows: the app registers them from the config).
     pub mode: &'static str,
     pub rows: Vec<ShortcutRow>,
     pub error: String,

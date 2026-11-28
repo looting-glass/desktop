@@ -27,6 +27,10 @@ pub use tray::{set_game as set_tray_game, set_update as set_tray_update, spawn a
 /// Our app id, as the portals, kglobalaccel and the notification server know us.
 const APP_ID: &str = "dev.lootingglass.LootingGlass";
 
+/// The game window's title as a regex: PoE 1 or PoE 2, but not e.g. a "Trade - Path of Exile"
+/// browser tab, thanks to the anchors.
+const GAME_TITLE: &str = "^Path of Exile( 2)?$";
+
 /// The providers for this session, chosen on first use.
 async fn desktop() -> &'static Selection {
     static SELECTION: OnceCell<Selection> = OnceCell::const_new();
@@ -89,7 +93,12 @@ pub async fn copy_item() -> Result<String> {
 }
 
 pub async fn run_shortcuts(tx: async_channel::Sender<Event>) -> Result<()> {
-    desktop().await.shortcuts?.run(tx).await
+    desktop().await.shortcuts.run(tx).await
+}
+
+/// Hand shortcut `id` to the running instance (`lootingglass trigger <id>`). Blocking.
+pub fn trigger(id: &str) -> Result<()> {
+    shortcuts::trigger(id)
 }
 
 /// Shortcuts are bound in the desktop's settings (portal), nothing to reload.
@@ -97,35 +106,25 @@ pub fn reload_shortcuts() {}
 
 /// Our global shortcuts for the settings window.
 pub async fn shortcut_list() -> ShortcutList {
-    match desktop().await.shortcuts {
-        Ok(shortcuts) => shortcuts.list().await,
-        Err(missing) => ShortcutList { mode: "portal", rows: shortcuts::rows(|_| String::new()), error: missing.to_string() },
-    }
+    desktop().await.shortcuts.list().await
 }
 
 /// Bind `key` (a Qt key combination, 0 = none) to shortcut `id` (KDE only).
 pub async fn set_shortcut(id: &str, key: i32) -> Result<()> {
-    desktop().await.shortcuts?.set(id, key).await
+    desktop().await.shortcuts.set(id, key).await
 }
 
 /// How `key` reads ("Ctrl+D") and who else uses it, before it's saved (KDE only).
 pub async fn check_shortcut(id: &str, key: i32) -> ShortcutCheck {
-    match desktop().await.shortcuts {
-        Ok(shortcuts) => shortcuts.check(id, key).await,
-        Err(_) => shortcuts::unchecked(id, key),
-    }
+    desktop().await.shortcuts.check(id, key).await
 }
 
 /// Pause global shortcuts while a new key combination is being recorded (KDE only).
 pub async fn block_shortcuts(on: bool) {
-    if let Ok(shortcuts) = desktop().await.shortcuts {
-        shortcuts.block(on).await
-    }
+    desktop().await.shortcuts.block(on).await
 }
 
 /// Open the desktop's shortcut editor.
 pub async fn configure_shortcuts() {
-    if let Ok(shortcuts) = desktop().await.shortcuts {
-        shortcuts.configure().await
-    }
+    desktop().await.shortcuts.configure().await
 }
