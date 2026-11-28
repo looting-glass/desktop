@@ -1,6 +1,6 @@
 [package]
 name = "lootingglass"
-version = "0.9.3"
+version = "0.9.4"
 edition = "2024"
 license = "GPL-3.0-or-later"
 description = "Wayland-native price checker for Path of Exile 1 & 2"
