@@ -5,11 +5,16 @@
 
 mod cli;
 mod clipboard;
+#[cfg(test)]
+mod desktops;
 mod facts;
+#[cfg(test)]
+mod fixtures;
 mod focus;
 mod hyprctl;
 mod keys;
 mod notify;
+mod overlay;
 mod select;
 mod shortcuts;
 mod tray;

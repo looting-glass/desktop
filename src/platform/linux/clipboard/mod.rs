@@ -26,6 +26,13 @@ impl Role for Clipboard {
 }
 
 impl Clipboard {
+    /// How the settings window and the docs name it.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::DataControl => "data-control",
+        }
+    }
+
     /// Empty the clipboard. Blocking.
     pub fn clear(self) {
         match self {

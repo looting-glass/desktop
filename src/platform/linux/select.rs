@@ -4,6 +4,7 @@ use super::clipboard::Clipboard;
 use super::facts::Facts;
 use super::focus::Focus;
 use super::keys::KeySender;
+use super::overlay::Overlay;
 use super::shortcuts::Shortcuts;
 use crate::platform::DesktopInfo;
 
@@ -28,6 +29,8 @@ impl Missing {
     pub const KEYS: Missing = Missing(
         "This desktop can't send keys to the game, so the hotkey price check is unavailable. Use the manual check.",
     );
+    pub const OVERLAY: Missing =
+        Missing("This desktop doesn't let apps keep a window above the game, so the prices would end up hidden behind it.");
     pub const CLIPBOARD: Missing = Missing(
         "This desktop doesn't let apps read the clipboard in the background, so the hotkey price check is unavailable. Use the manual check.",
     );
@@ -44,6 +47,7 @@ impl std::error::Error for Missing {}
 /// The provider chosen for each role.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Selection {
+    pub overlay: Result<Overlay, Missing>,
     /// Every desktop can at least run `lootingglass trigger` on a key (`Shortcuts::Command`).
     pub shortcuts: Shortcuts,
     pub keys: Result<KeySender, Missing>,
@@ -52,22 +56,67 @@ pub struct Selection {
     pub clipboard: Result<Clipboard, Missing>,
 }
 
+/// A role as the settings window and the docs name it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Job {
+    Overlay,
+    Shortcuts,
+    Copy,
+    Clipboard,
+    Focus,
+}
+
+impl Job {
+    /// In the order the settings line and the docs table list them.
+    pub const ALL: [Job; 5] = [Self::Overlay, Self::Shortcuts, Self::Copy, Self::Clipboard, Self::Focus];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Overlay => "Overlay",
+            Self::Shortcuts => "Shortcuts",
+            Self::Copy => "Copy",
+            Self::Clipboard => "Clipboard",
+            Self::Focus => "Focus",
+        }
+    }
+
+    /// Whether the desktop decides which of several providers does this job. The settings line
+    /// names only these; a job with a single provider is worth a word only when it's missing.
+    fn has_alternatives(self) -> bool {
+        match self {
+            Self::Shortcuts | Self::Copy | Self::Focus => true,
+            Self::Overlay | Self::Clipboard => false,
+        }
+    }
+}
+
 impl Selection {
-    /// What the settings window says about `desktop` (its `Facts::desktop` label). The clipboard
-    /// has one provider, so only its absence is worth a word.
+    /// The name of the provider doing `job`, or why this desktop can't do it.
+    pub fn provider(&self, job: Job) -> Result<&'static str, Missing> {
+        match job {
+            Job::Overlay => self.overlay.map(Overlay::label),
+            Job::Shortcuts => Ok(self.shortcuts.label()),
+            Job::Copy => self.keys.map(KeySender::label),
+            Job::Clipboard => self.clipboard.map(Clipboard::label),
+            Job::Focus => Ok(self.focus.label()),
+        }
+    }
+
+    /// What the settings window says about `desktop` (its `Facts::desktop` label).
     pub fn describe(&self, desktop: &str) -> DesktopInfo {
-        let providers = [
-            ("Shortcuts", self.shortcuts.label()),
-            ("Copy", self.keys.map_or("none", KeySender::label)),
-            ("Focus", self.focus.label()),
-        ];
-        let missing = [self.keys.err(), self.clipboard.err()].into_iter().flatten().map(|m| m.to_string()).collect();
+        let providers: Vec<(&str, &str)> = Job::ALL
+            .into_iter()
+            .filter(|job| job.has_alternatives())
+            .map(|job| (job.name(), self.provider(job).unwrap_or("none")))
+            .collect();
+        let missing = Job::ALL.into_iter().filter_map(|job| self.provider(job).err()).map(|m| m.to_string()).collect();
         DesktopInfo::new(desktop, &providers, missing)
     }
 }
 
 pub fn select(facts: &Facts) -> Selection {
     Selection {
+        overlay: pick(facts).ok_or(Missing::OVERLAY),
         shortcuts: pick(facts).unwrap_or(Shortcuts::Command),
         keys: pick(facts).ok_or(Missing::KEYS),
         focus: pick(facts).unwrap_or(Focus::None),
@@ -77,73 +126,15 @@ pub fn select(facts: &Facts) -> Selection {
 
 #[cfg(test)]
 mod tests {
+    use super::super::fixtures::*;
     use super::*;
-
-    const LAYER_SHELL: &str = "zwlr_layer_shell_v1";
-    const EXT_DATA_CONTROL: &str = "ext_data_control_manager_v1";
-    const WLR_DATA_CONTROL: &str = "zwlr_data_control_manager_v1";
-    const VIRTUAL_KEYBOARD: &str = "zwp_virtual_keyboard_manager_v1";
-
-    fn facts(desktop: &str, globals: &[&str]) -> Facts {
-        Facts {
-            desktop: desktop.into(),
-            wayland_globals: globals.iter().map(|g| g.to_string()).collect(),
-            ..Facts::default()
-        }
-    }
-
-    /// Plasma 6, as probed on a real session (ext data-control only, no wlr).
-    fn kde() -> Facts {
-        Facts {
-            global_shortcuts_portal: Some(2),
-            remote_desktop_portal: Some(2),
-            kwin: true,
-            kglobalaccel: true,
-            ..facts("KDE", &[LAYER_SHELL, EXT_DATA_CONTROL])
-        }
-    }
-
-    /// xdg-desktop-portal-hyprland: GlobalShortcuts, but no RemoteDesktop.
-    fn hyprland() -> Facts {
-        Facts {
-            global_shortcuts_portal: Some(1),
-            hyprland_ipc: true,
-            ..facts("Hyprland", &[LAYER_SHELL, EXT_DATA_CONTROL, WLR_DATA_CONTROL, VIRTUAL_KEYBOARD])
-        }
-    }
-
-    /// xdg-desktop-portal-wlr: neither GlobalShortcuts nor RemoteDesktop.
-    fn sway() -> Facts {
-        Facts { sway_ipc: true, ..facts("sway", &[LAYER_SHELL, EXT_DATA_CONTROL, WLR_DATA_CONTROL, VIRTUAL_KEYBOARD]) }
-    }
-
-    /// Umbriel's docs don't say whether its shortcut bridge is the GlobalShortcuts portal.
-    fn umbriel() -> Facts {
-        Facts {
-            umbriel_ipc: true,
-            ..facts("Umbriel", &[LAYER_SHELL, EXT_DATA_CONTROL, WLR_DATA_CONTROL, VIRTUAL_KEYBOARD])
-        }
-    }
-
-    /// Mutter has no layer-shell or data-control; GlobalShortcuts arrived in GNOME 48.
-    fn gnome_47() -> Facts {
-        Facts { remote_desktop_portal: Some(2), ..facts("GNOME", &[]) }
-    }
-
-    fn gnome_48() -> Facts {
-        Facts { global_shortcuts_portal: Some(1), ..gnome_47() }
-    }
-
-    /// A compositor with only the core protocols and no portals (cage, weston).
-    fn bare() -> Facts {
-        facts("", &[])
-    }
 
     #[test]
     fn kde_edits_shortcuts_here_and_copies_through_the_portal() {
         assert_eq!(
             select(&kde()),
             Selection {
+                overlay: Ok(Overlay::LayerShell),
                 shortcuts: Shortcuts::KGlobalAccel,
                 keys: Ok(KeySender::RemoteDesktop),
                 focus: Focus::KWinScript,
@@ -163,6 +154,7 @@ mod tests {
         assert_eq!(
             select(&hyprland()),
             Selection {
+                overlay: Ok(Overlay::LayerShell),
                 shortcuts: Shortcuts::HyprlandConfig,
                 keys: Ok(KeySender::Hyprctl),
                 focus: Focus::Hyprctl,
@@ -184,6 +176,7 @@ mod tests {
         assert_eq!(
             select(&sway()),
             Selection {
+                overlay: Ok(Overlay::LayerShell),
                 shortcuts: Shortcuts::Command,
                 keys: Ok(KeySender::VirtualKeyboard),
                 focus: Focus::SwayIpc,
@@ -197,6 +190,7 @@ mod tests {
         assert_eq!(
             select(&umbriel()),
             Selection {
+                overlay: Ok(Overlay::LayerShell),
                 shortcuts: Shortcuts::Command,
                 keys: Ok(KeySender::VirtualKeyboard),
                 focus: Focus::UmbrielIpc,
@@ -221,16 +215,16 @@ mod tests {
     #[test]
     fn a_wlroots_compositor_without_ipc_still_copies_but_cant_refocus() {
         // river, Wayfire: the user clicks the game themselves after the overlay closes.
-        let facts = Facts { sway_ipc: false, ..sway() };
-        let selection = select(&facts);
+        let selection = select(&wlroots());
         assert_eq!((selection.keys, selection.focus), (Ok(KeySender::VirtualKeyboard), Focus::None));
     }
 
     #[test]
-    fn gnome_47_can_send_keys_but_not_read_the_clipboard() {
+    fn gnome_47_can_send_keys_but_not_keep_the_overlay_on_top_or_read_the_clipboard() {
         assert_eq!(
             select(&gnome_47()),
             Selection {
+                overlay: Err(Missing::OVERLAY),
                 shortcuts: Shortcuts::Command,
                 keys: Ok(KeySender::RemoteDesktop),
                 focus: Focus::None,
@@ -249,6 +243,7 @@ mod tests {
         assert_eq!(
             select(&bare()),
             Selection {
+                overlay: Err(Missing::OVERLAY),
                 shortcuts: Shortcuts::Command,
                 keys: Err(Missing::KEYS),
                 focus: Focus::None,
@@ -318,7 +313,7 @@ mod tests {
             describe(&bare()),
             DesktopInfo {
                 summary: "Desktop: unknown · Shortcuts: command · Copy: none · Focus: none".into(),
-                missing: vec![Missing::KEYS.to_string(), Missing::CLIPBOARD.to_string()],
+                missing: vec![Missing::OVERLAY.to_string(), Missing::KEYS.to_string(), Missing::CLIPBOARD.to_string()],
             }
         );
     }

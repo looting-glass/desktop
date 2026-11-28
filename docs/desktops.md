@@ -2,25 +2,28 @@
 
 ## Supported desktops
 
-<!-- The table planned in issue #64 (step 4), generated from the platform providers'
-     requirements, replaces this list. -->
+<!-- Generated from src/platform/linux/desktops.rs by `LOOTINGGLASS_UPDATE_DOCS=1 cargo test desktops_table` -->
+| Desktop | Overlay | Shortcuts | Copy | Clipboard | Focus | Status |
+|---|---|---|---|---|---|---|
+| KDE Plasma 6 | layer-shell | [KDE shortcuts](shortcuts.md#kde-plasma) | remote desktop portal | data-control | KWin script | Supported and tested. |
+| Hyprland | layer-shell | [hyprland.conf](shortcuts.md#hyprland-experimental) | hyprctl | data-control | hyprctl | **Experimental**: not yet run with the game. |
+| Sway | layer-shell | [command](shortcuts.md#sway-experimental) | virtual keyboard | data-control | Sway IPC | **Experimental**: not yet run with the game. |
+| Umbriel | layer-shell | [command](shortcuts.md#umbriel-experimental) | virtual keyboard | data-control | Umbriel IPC | **Experimental**: not yet run with the game. |
+| river, Wayfire | layer-shell | [command](shortcuts.md#other-desktops) | virtual keyboard | data-control | none | **Experimental**: not yet run with the game. |
+| GNOME | **missing** | portal | remote desktop portal | **missing** | none | **Not supported**: GNOME doesn't let apps show prices over the game, read what the game copied or switch you back to it. [Why GNOME isn't supported](#why-gnome-isnt-supported) explains. |
+<!-- End of the generated table -->
 
-| Desktop | Status |
-|---|---|
-| KDE Plasma 6 (Wayland) | Supported and tested. |
-| Hyprland | **Experimental**: written against Hyprland's documented `hyprctl` dispatchers and portal, but not yet run with the game. |
-| Sway | **Experimental**: written against Sway's IPC and the virtual-keyboard protocol, but not yet run with the game. Hotkeys are keys you bind to `lootingglass trigger` ([Shortcuts](shortcuts.md#sway-experimental)). |
-| Umbriel | **Experimental**: written against Umbriel's documented IPC and the virtual-keyboard protocol, but not yet run with the game. Hotkeys are keys you bind to `lootingglass trigger` ([Shortcuts](shortcuts.md#umbriel-experimental)). |
-| Windows 10 and 11 | **Experimental**: built and packaged in CI, but not yet run with the game. |
-| GNOME | **Not supported**: GNOME doesn't allow three things Looting Glass needs. [Why GNOME isn't supported](#why-gnome-isnt-supported) explains. |
+Windows 10 and 11 are **experimental**: built and packaged in CI, but not yet run with the game.
+There, Looting Glass registers the hotkeys itself ([Shortcuts](shortcuts.md#windows-experimental)).
 
-Looting Glass picks how it does each job (hotkeys, copying the item, reading the clipboard,
-refocusing the game) by what the desktop can do rather than by its name. On a desktop that can't
-do one of them, it says which one is missing and suggests the manual check.
+Looting Glass picks how it does each job (showing the overlay over the game, shortcuts, copying
+the item, reading the clipboard, refocusing the game) by what the desktop can do rather than by
+its name. The table shows what it picks on each desktop, in the words *Settings → Shortcuts* uses.
+**missing** means the desktop doesn't allow that job, and Settings says so too. Focus *none* means
+Looting Glass can't switch you back to the game, so you click it yourself.
 
-Other wlroots compositors, such as river and Wayfire, get the same virtual keyboard and
-`lootingglass trigger` hotkeys, but can't give focus back to the game: click it after the overlay
-closes. A desktop stays experimental until someone has run it with the game.
+A desktop stays experimental until someone has run it with the game. If you play on one of
+them, a report of how it went, good or bad, is very welcome.
 
 ## Why GNOME isn't supported
 

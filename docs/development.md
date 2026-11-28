@@ -18,6 +18,14 @@ API replies from `src/mock.rs`. The release automation's scripts have their own 
 python3 -m unittest discover --start-directory .github/scripts
 ```
 
+The "Supported desktops" table in [Desktops](desktops.md) is rendered from the desktops listed in
+`src/platform/linux/desktops.rs` and what Looting Glass picks on each. `cargo test` fails when the
+committed table no longer matches; after changing a provider or that list, regenerate it with:
+
+```bash
+LOOTINGGLASS_UPDATE_DOCS=1 cargo test desktops_table
+```
+
 ## Running without the game
 
 These environment variables let you work on Looting Glass without Path of Exile running, and
