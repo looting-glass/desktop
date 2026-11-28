@@ -10,8 +10,9 @@
 | Open hovered item on poedb or the wiki | unassigned | `item-info` |
 
 On Linux the shortcuts belong to the desktop, which registers them for Looting Glass through the
-GlobalShortcuts portal. How you change them depends on the desktop. The id is the name the desktop
-knows the action by.
+GlobalShortcuts portal. Desktops without that portal bind a key to the command
+`lootingglass trigger <id>` instead, which hands the action to the running Looting Glass. How you
+change them depends on the desktop. The id is the name the desktop knows the action by.
 
 ## KDE Plasma
 
@@ -39,6 +40,38 @@ bind = , F7, global, dev.lootingglass.LootingGlass:toggle-game     # optional
 If a bind does nothing, run `hyprctl globalshortcuts` to see the exact names your portal
 registered.
 
+## Sway (experimental)
+
+> Sway support is experimental: nobody has run it with the game yet. Bug reports and fixes are
+> very welcome.
+
+Sway has no GlobalShortcuts portal, so bind keys to `lootingglass trigger <id>` in
+`~/.config/sway/config`, using the ids from the table above, then reload Sway:
+
+```
+bindsym Ctrl+d exec lootingglass trigger price-check
+bindsym F7 exec lootingglass trigger toggle-game     # optional
+```
+
+*Settings → Shortcuts* lists the command for every action. If Sway can't find `lootingglass`,
+use the full path, such as `~/.local/bin/lootingglass` after `install.sh`.
+
+## Umbriel (experimental)
+
+> Umbriel support is experimental: nobody has run it with the game yet. Bug reports and fixes are
+> very welcome.
+
+Bind keys to `lootingglass trigger <id>` in the `[keybinds]` table of Umbriel's config, using the
+ids from the table above:
+
+```toml
+[keybinds]
+"Ctrl+D" = "spawn lootingglass trigger price-check"
+"F7" = "spawn lootingglass trigger toggle-game"     # optional
+```
+
+*Settings → Shortcuts* lists the command for every action.
+
 ## Windows (experimental)
 
 Looting Glass registers the shortcuts itself. Type them into *Settings → Shortcuts*, such as
@@ -47,5 +80,6 @@ the [`[shortcuts]` section](configuration.md#shortcuts-windows) of `config.toml`
 
 ## Other desktops
 
-Sway, Umbriel and GNOME aren't supported yet; [Desktops](desktops.md) says why and what's
-planned. Each will get its own section here when it is.
+Any other window manager without the GlobalShortcuts portal works the same way as Sway: bind a
+key to run `lootingglass trigger <id>`. GNOME isn't supported yet; [Desktops](desktops.md) says
+why.

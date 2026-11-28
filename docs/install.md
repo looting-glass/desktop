@@ -1,14 +1,15 @@
 # Install
 
-Looting Glass runs on KDE Plasma 6 on Wayland, which is where it's tested. Hyprland and Windows
-support is **experimental**: it's written and built, but nobody has run it with the game yet.
-[Desktops](desktops.md) has the details, including why GNOME, Sway and Umbriel don't work yet.
+Looting Glass runs on KDE Plasma 6 on Wayland, which is where it's tested. Hyprland, Sway, Umbriel
+and Windows support is **experimental**: it's written and built, but nobody has run it with the
+game yet. [Desktops](desktops.md) has the details, including why GNOME doesn't work yet.
 
 ## Linux
 
 All Linux installs need Qt 6 with Qt Quick, plus `layer-shell-qt`, `kirigami` and
 `qqc2-desktop-style`. Most Plasma 6 desktops already have them. On Hyprland you also need
-`xdg-desktop-portal-hyprland` and a tray, such as Waybar's tray module, for the icon.
+`xdg-desktop-portal-hyprland`. On Hyprland, Sway and Umbriel you need a tray, such as Waybar's
+tray module, for the icon.
 
 Once it's installed, start **Looting Glass** from the application launcher. It lives in the
 system tray.

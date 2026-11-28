@@ -3,6 +3,8 @@
 
 mod hyprctl;
 mod kwin_script;
+mod sway_ipc;
+mod umbriel_ipc;
 
 use super::facts::Facts;
 use super::select::Role;
@@ -13,17 +15,23 @@ pub enum Focus {
     Hyprctl,
     /// A one-shot KWin script.
     KWinScript,
+    /// Sway's IPC, through `swaymsg`.
+    SwayIpc,
+    /// Umbriel's IPC, through the `umbriel` command.
+    UmbrielIpc,
     /// No way to refocus the game: the user clicks it themselves.
     None,
 }
 
 impl Role for Focus {
-    const PRIORITY: &'static [Self] = &[Self::Hyprctl, Self::KWinScript];
+    const PRIORITY: &'static [Self] = &[Self::Hyprctl, Self::KWinScript, Self::SwayIpc, Self::UmbrielIpc];
 
     fn available(self, facts: &Facts) -> bool {
         match self {
             Self::Hyprctl => facts.hyprland_ipc,
             Self::KWinScript => facts.kwin,
+            Self::SwayIpc => facts.sway_ipc,
+            Self::UmbrielIpc => facts.umbriel_ipc,
             Self::None => true,
         }
     }
@@ -34,6 +42,8 @@ impl Focus {
         match self {
             Self::Hyprctl => hyprctl::focus_game().await,
             Self::KWinScript => kwin_script::focus_game().await,
+            Self::SwayIpc => sway_ipc::focus_game().await,
+            Self::UmbrielIpc => umbriel_ipc::focus_game().await,
             Self::None => {}
         }
     }

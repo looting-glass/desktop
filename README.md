@@ -9,8 +9,8 @@ Hover an item in game, press a hotkey, and Looting Glass shows what it is worth:
 official trade site, poe.ninja prices for currency and other stackables, and filters you can tweak
 on the spot. One app for both games, with a league per game.
 
-Built for KDE Plasma on Wayland with Rust and Qt 6, with experimental Hyprland and Windows
-support. No Electron, no browser, no XWayland. Global hotkeys, the overlay and clipboard access
+Built for KDE Plasma on Wayland with Rust and Qt 6, with experimental Hyprland, Sway, Umbriel and
+Windows support. No Electron, no browser, no XWayland. Global hotkeys, the overlay and clipboard access
 all use the desktop's native mechanisms.
 
 **Website and documentation:** [looting-glass.github.io](https://looting-glass.github.io/), with an

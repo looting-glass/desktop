@@ -47,7 +47,7 @@ LOOTINGGLASS_SNAPSHOT=/tmp/shots LOOTINGGLASS_DEMO=dev/boots.txt cargo run
 | `src/ninja.rs` | poe.ninja prices for stackables |
 | `src/update.rs` | Update check (GitHub releases) and self-update per install type |
 | `src/platform/` | Desktop integration: hotkeys, copying the item, focus, tray |
-| `src/platform/linux/` | Linux backend: portals, data-control clipboard, KWin, Hyprland, SNI tray |
+| `src/platform/linux/` | Linux backend: portals, data-control clipboard, virtual keyboard, KWin, Hyprland, Sway and Umbriel IPC, SNI tray |
 | `src/platform/windows.rs` | Windows backend (experimental): RegisterHotKey, SendInput, Win32 clipboard |
 | `src/bridge.rs` | cxx-qt `Backend` object the QML binds to |
 | `qml/` | Overlay, manual check and settings views |

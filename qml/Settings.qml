@@ -443,7 +443,8 @@ ApplicationWindow {
                         }
 
                         // Linux: the desktop owns global shortcuts. On KDE they're edited right here
-                        // (kglobalaccel, applied at once); Hyprland binds them in hyprland.conf.
+                        // (kglobalaccel, applied at once); Hyprland binds them in hyprland.conf, and
+                        // window managers without the portal bind keys to `lootingglass trigger`.
                         ColumnLayout {
                             id: scPage
                             anchors.fill: parent
@@ -454,12 +455,15 @@ ApplicationWindow {
                             }
                             readonly property string mode: sc ? sc.mode : ""
                             readonly property var rows: sc ? sc.rows : []
+                            readonly property bool bindsInConfig: mode === "hyprland" || mode === "command"
 
                             Label {
                                 text: scPage.mode === "kde"
                                     ? "Click a shortcut and press the keys you want (Esc cancels, Backspace clears). Save applies them; they're the same shortcuts as in System Settings."
                                     : scPage.mode === "hyprland"
                                     ? "Hyprland binds global shortcuts in hyprland.conf. Add a line for each one you want, with your own keys:"
+                                    : scPage.mode === "command"
+                                    ? "Bind a key to each command you want in your window manager's config (Sway: bindsym, Umbriel: [keybinds]):"
                                     : "Your desktop manages these shortcuts."
                                 wrapMode: Text.Wrap
                                 opacity: 0.75
@@ -467,7 +471,7 @@ ApplicationWindow {
                                 Layout.bottomMargin: 6
                             }
                             Repeater {
-                                model: scPage.mode === "hyprland" ? [] : scPage.rows
+                                model: scPage.bindsInConfig ? [] : scPage.rows
                                 ColumnLayout {
                                     id: scRow
                                     required property var modelData
@@ -516,15 +520,18 @@ ApplicationWindow {
                                 }
                             }
                             TextArea {
-                                visible: scPage.mode === "hyprland"
+                                visible: scPage.bindsInConfig
                                 readOnly: true
                                 selectByMouse: true
                                 font.family: "monospace"
                                 wrapMode: TextEdit.NoWrap
                                 Layout.fillWidth: true
-                                // Price check gets its usual Ctrl+D; the rest a placeholder key to replace.
-                                text: scPage.rows.map(r => "bind = " + (r.id === "price-check" ? "CTRL, D" : ", KEY")
-                                    + ", global, dev.lootingglass.LootingGlass:" + r.id + "   # " + r.description).join("\n")
+                                // Hyprland: price check gets its usual Ctrl+D, the rest a placeholder key to replace.
+                                text: scPage.rows.map(r => (scPage.mode === "command"
+                                    ? "lootingglass trigger " + r.id
+                                    : "bind = " + (r.id === "price-check" ? "CTRL, D" : ", KEY")
+                                        + ", global, dev.lootingglass.LootingGlass:" + r.id)
+                                    + "   # " + r.description).join("\n")
                             }
                             Label {
                                 visible: text !== ""

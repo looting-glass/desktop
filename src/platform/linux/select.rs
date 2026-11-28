@@ -24,8 +24,6 @@ fn pick<R: Role>(facts: &Facts) -> Option<R> {
 pub struct Missing(&'static str);
 
 impl Missing {
-    pub const SHORTCUTS: Missing =
-        Missing("This desktop has no global shortcuts portal, so Looting Glass can't register hotkeys.");
     pub const KEYS: Missing = Missing(
         "This desktop can't send keys to the game, so the hotkey price check is unavailable. Use the manual check.",
     );
@@ -45,7 +43,8 @@ impl std::error::Error for Missing {}
 /// The provider chosen for each role.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Selection {
-    pub shortcuts: Result<Shortcuts, Missing>,
+    /// Every desktop can at least run `lootingglass trigger` on a key (`Shortcuts::Command`).
+    pub shortcuts: Shortcuts,
     pub keys: Result<KeySender, Missing>,
     /// Refocusing the game only helps, so a desktop without a way to do it gets `Focus::None`.
     pub focus: Focus,
@@ -54,7 +53,7 @@ pub struct Selection {
 
 pub fn select(facts: &Facts) -> Selection {
     Selection {
-        shortcuts: pick(facts).ok_or(Missing::SHORTCUTS),
+        shortcuts: pick(facts).unwrap_or(Shortcuts::Command),
         keys: pick(facts).ok_or(Missing::KEYS),
         focus: pick(facts).unwrap_or(Focus::None),
         clipboard: pick(facts).ok_or(Missing::CLIPBOARD),
@@ -100,11 +99,15 @@ mod tests {
 
     /// xdg-desktop-portal-wlr: neither GlobalShortcuts nor RemoteDesktop.
     fn sway() -> Facts {
-        facts("sway", &[LAYER_SHELL, EXT_DATA_CONTROL, WLR_DATA_CONTROL, VIRTUAL_KEYBOARD])
+        Facts { sway_ipc: true, ..facts("sway", &[LAYER_SHELL, EXT_DATA_CONTROL, WLR_DATA_CONTROL, VIRTUAL_KEYBOARD]) }
     }
 
+    /// Umbriel's docs don't say whether its shortcut bridge is the GlobalShortcuts portal.
     fn umbriel() -> Facts {
-        facts("Umbriel", &[LAYER_SHELL, EXT_DATA_CONTROL, WLR_DATA_CONTROL, VIRTUAL_KEYBOARD])
+        Facts {
+            umbriel_ipc: true,
+            ..facts("Umbriel", &[LAYER_SHELL, EXT_DATA_CONTROL, WLR_DATA_CONTROL, VIRTUAL_KEYBOARD])
+        }
     }
 
     /// Mutter has no layer-shell or data-control; GlobalShortcuts arrived in GNOME 48.
@@ -126,7 +129,7 @@ mod tests {
         assert_eq!(
             select(&kde()),
             Selection {
-                shortcuts: Ok(Shortcuts::KGlobalAccel),
+                shortcuts: Shortcuts::KGlobalAccel,
                 keys: Ok(KeySender::RemoteDesktop),
                 focus: Focus::KWinScript,
                 clipboard: Ok(Clipboard::DataControl),
@@ -137,7 +140,7 @@ mod tests {
     #[test]
     fn kde_without_kglobalaccel_uses_the_portal_editor() {
         let facts = Facts { kglobalaccel: false, ..kde() };
-        assert_eq!(select(&facts).shortcuts, Ok(Shortcuts::Portal));
+        assert_eq!(select(&facts).shortcuts, Shortcuts::Portal);
     }
 
     #[test]
@@ -145,7 +148,7 @@ mod tests {
         assert_eq!(
             select(&hyprland()),
             Selection {
-                shortcuts: Ok(Shortcuts::HyprlandConfig),
+                shortcuts: Shortcuts::HyprlandConfig,
                 keys: Ok(KeySender::Hyprctl),
                 focus: Focus::Hyprctl,
                 clipboard: Ok(Clipboard::DataControl),
@@ -162,20 +165,50 @@ mod tests {
     }
 
     #[test]
-    fn sway_and_umbriel_only_have_the_clipboard_so_far() {
-        for facts in [sway(), umbriel()] {
-            assert_eq!(
-                select(&facts),
-                Selection {
-                    shortcuts: Err(Missing::SHORTCUTS),
-                    keys: Err(Missing::KEYS),
-                    focus: Focus::None,
-                    clipboard: Ok(Clipboard::DataControl),
-                },
-                "{}",
-                facts.desktop
-            );
-        }
+    fn sway_takes_commands_and_types_on_a_virtual_keyboard() {
+        assert_eq!(
+            select(&sway()),
+            Selection {
+                shortcuts: Shortcuts::Command,
+                keys: Ok(KeySender::VirtualKeyboard),
+                focus: Focus::SwayIpc,
+                clipboard: Ok(Clipboard::DataControl),
+            }
+        );
+    }
+
+    #[test]
+    fn umbriel_takes_commands_and_types_on_a_virtual_keyboard() {
+        assert_eq!(
+            select(&umbriel()),
+            Selection {
+                shortcuts: Shortcuts::Command,
+                keys: Ok(KeySender::VirtualKeyboard),
+                focus: Focus::UmbrielIpc,
+                clipboard: Ok(Clipboard::DataControl),
+            }
+        );
+    }
+
+    #[test]
+    fn a_global_shortcuts_portal_beats_commands() {
+        let facts = Facts { global_shortcuts_portal: Some(1), ..umbriel() };
+        assert_eq!(select(&facts).shortcuts, Shortcuts::Portal);
+    }
+
+    #[test]
+    fn a_remote_desktop_portal_beats_the_virtual_keyboard() {
+        // A KDE session that also lists virtual keyboards keeps the tested portal path.
+        let facts = Facts { wayland_globals: [LAYER_SHELL, EXT_DATA_CONTROL, VIRTUAL_KEYBOARD].map(String::from).into(), ..kde() };
+        assert_eq!(select(&facts).keys, Ok(KeySender::RemoteDesktop));
+    }
+
+    #[test]
+    fn a_wlroots_compositor_without_ipc_still_copies_but_cant_refocus() {
+        // river, Wayfire: the user clicks the game themselves after the overlay closes.
+        let facts = Facts { sway_ipc: false, ..sway() };
+        let selection = select(&facts);
+        assert_eq!((selection.keys, selection.focus), (Ok(KeySender::VirtualKeyboard), Focus::None));
     }
 
     #[test]
@@ -183,7 +216,7 @@ mod tests {
         assert_eq!(
             select(&gnome_47()),
             Selection {
-                shortcuts: Err(Missing::SHORTCUTS),
+                shortcuts: Shortcuts::Command,
                 keys: Ok(KeySender::RemoteDesktop),
                 focus: Focus::None,
                 clipboard: Err(Missing::CLIPBOARD),
@@ -193,15 +226,15 @@ mod tests {
 
     #[test]
     fn gnome_48_adds_portal_shortcuts() {
-        assert_eq!(select(&gnome_48()).shortcuts, Ok(Shortcuts::Portal));
+        assert_eq!(select(&gnome_48()).shortcuts, Shortcuts::Portal);
     }
 
     #[test]
-    fn bare_compositor_has_nothing() {
+    fn bare_compositor_only_takes_commands() {
         assert_eq!(
             select(&bare()),
             Selection {
-                shortcuts: Err(Missing::SHORTCUTS),
+                shortcuts: Shortcuts::Command,
                 keys: Err(Missing::KEYS),
                 focus: Focus::None,
                 clipboard: Err(Missing::CLIPBOARD),

@@ -108,6 +108,11 @@ pub fn reload_shortcuts() {
     }
 }
 
+/// Windows registers its own hotkeys, so there's no `lootingglass trigger` to hand them over.
+pub fn trigger(_id: &str) -> Result<()> {
+    bail!("On Windows, set hotkeys in Looting Glass's Settings → Shortcuts instead.")
+}
+
 /// Windows hotkeys are edited as text in the settings window (`[shortcuts]` in the config).
 pub async fn shortcut_list() -> super::ShortcutList {
     super::ShortcutList { mode: "app", ..Default::default() }

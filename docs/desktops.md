@@ -9,19 +9,19 @@
 |---|---|
 | KDE Plasma 6 (Wayland) | Supported and tested. |
 | Hyprland | **Experimental**: written against Hyprland's documented `hyprctl` dispatchers and portal, but not yet run with the game. |
+| Sway | **Experimental**: written against Sway's IPC and the virtual-keyboard protocol, but not yet run with the game. Hotkeys are keys you bind to `lootingglass trigger` ([Shortcuts](shortcuts.md#sway-experimental)). |
+| Umbriel | **Experimental**: written against Umbriel's documented IPC and the virtual-keyboard protocol, but not yet run with the game. Hotkeys are keys you bind to `lootingglass trigger` ([Shortcuts](shortcuts.md#umbriel-experimental)). |
 | Windows 10 and 11 | **Experimental**: built and packaged in CI, but not yet run with the game. |
-| Sway | Not yet: the overlay and the clipboard work, but there's no GlobalShortcuts portal for the hotkeys, and Looting Glass can't send Ctrl+C to the game there yet. |
-| Umbriel | Not yet: as on Sway, the overlay and the clipboard work, but the hotkeys and sending Ctrl+C to the game don't yet. |
 | GNOME | Not yet: Mutter has no layer-shell for the overlay and doesn't let apps read the clipboard in the background. GNOME 48 and later have the GlobalShortcuts portal. |
 
 Looting Glass picks how it does each job (hotkeys, copying the item, reading the clipboard,
 refocusing the game) by what the desktop can do rather than by its name. On a desktop that can't
 do one of them, it says which one is missing and suggests the manual check.
 
-More desktops are planned in [issue #64](https://github.com/looting-glass/desktop/issues/64):
-Sway and Umbriel through the virtual-keyboard protocol and a `lootingglass trigger` command that
-any window manager can bind to a key, and GNOME after that. A desktop stays experimental until
-someone has run it with the game.
+Other wlroots compositors, such as river and Wayfire, get the same virtual keyboard and
+`lootingglass trigger` hotkeys, but can't give focus back to the game: click it after the overlay
+closes. GNOME is planned next in [issue #64](https://github.com/looting-glass/desktop/issues/64).
+A desktop stays experimental until someone has run it with the game.
 
 ## How it works on Wayland
 
@@ -31,14 +31,15 @@ XWayland:
 
 | Need | How Looting Glass does it |
 |---|---|
-| Hotkeys while the game is focused | XDG **GlobalShortcuts** portal |
-| Make the game copy the hovered item | KDE: XDG **RemoteDesktop** portal, keyboard only (you approve it once). Hyprland: `hyprctl dispatch sendshortcut` |
+| Hotkeys while the game is focused | XDG **GlobalShortcuts** portal. Without one (Sway, Umbriel): keys bound to `lootingglass trigger <id>` in the window manager's config |
+| Make the game copy the hovered item | KDE: XDG **RemoteDesktop** portal, keyboard only (you approve it once). Hyprland: `hyprctl dispatch sendshortcut`. Sway, Umbriel: a Wayland **virtual keyboard** |
 | Read the clipboard without focus | Wayland **data-control** protocol |
 | Overlay above a fullscreen game | **wlr-layer-shell**, through KDE's LayerShellQt |
-| Give focus back to the game | KDE: a one-shot KWin script. Hyprland: `hyprctl dispatch focuswindow` |
+| Give focus back to the game | KDE: a one-shot KWin script. Hyprland: `hyprctl dispatch focuswindow`. Sway: `swaymsg focus`. Umbriel: `umbriel msg window-focus` |
 | Tray icon | StatusNotifierItem |
 
-On Hyprland, copying and refocusing go through `hyprctl`, so no permission dialog appears.
+On Hyprland, Sway and Umbriel no permission dialog appears: copying and refocusing go through the
+compositor's IPC or its virtual keyboard.
 
 On Windows the same jobs use the Win32 API: `RegisterHotKey` for hotkeys, `SendInput` to copy
 the item, the Win32 clipboard, and a top-most window for the overlay.

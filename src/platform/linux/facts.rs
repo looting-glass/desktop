@@ -19,6 +19,10 @@ pub struct Facts {
     pub remote_desktop_portal: Option<u32>,
     /// Hyprland's IPC (`HYPRLAND_INSTANCE_SIGNATURE`), which `hyprctl` talks to.
     pub hyprland_ipc: bool,
+    /// Sway's IPC (`SWAYSOCK`), which `swaymsg` talks to.
+    pub sway_ipc: bool,
+    /// Umbriel's IPC (`UMBRIEL_SOCKET`), which the `umbriel` command talks to.
+    pub umbriel_ipc: bool,
     /// KWin on the session bus (`org.kde.KWin`), which runs our focus script.
     pub kwin: bool,
     /// KDE's shortcut service on the session bus (`org.kde.kglobalaccel`).
@@ -43,6 +47,8 @@ impl Facts {
             desktop: std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default(),
             wayland_globals,
             hyprland_ipc: std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some(),
+            sway_ipc: std::env::var_os("SWAYSOCK").is_some(),
+            umbriel_ipc: std::env::var_os("UMBRIEL_SOCKET").is_some(),
             ..Facts::default()
         };
         match Connection::session().await {

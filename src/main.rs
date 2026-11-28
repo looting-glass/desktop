@@ -379,6 +379,12 @@ unsafe extern "C" {
     fn lootingglass_qt_main() -> i32;
 }
 
+/// Where the running instance keeps its lock and, on Linux, the socket `lootingglass trigger`
+/// talks to.
+pub fn instance_dir() -> Option<std::path::PathBuf> {
+    dirs::state_dir().or_else(dirs::data_local_dir).map(|d| d.join("lootingglass"))
+}
+
 /// Holds an exclusive lock on `instance.lock` for the life of the process, so a second copy
 /// (autostart plus a manual start, say) exits instead of fighting the first for the hotkey.
 /// The OS drops the lock when the process ends, crashes included. Returns false if another
@@ -387,7 +393,7 @@ fn single_instance() -> bool {
     if ["LOOTINGGLASS_DEMO", "LOOTINGGLASS_SNAPSHOT"].iter().any(|v| std::env::var_os(v).is_some()) {
         return true;
     }
-    let Some(dir) = dirs::state_dir().or_else(dirs::data_local_dir).map(|d| d.join("lootingglass")) else {
+    let Some(dir) = instance_dir() else {
         return true;
     };
     let _ = std::fs::create_dir_all(&dir);
@@ -421,6 +427,14 @@ fn single_instance() -> bool {
 
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    let mut args = std::env::args().skip(1);
+    if args.next().as_deref() == Some("trigger") {
+        if let Err(e) = platform::trigger(&args.next().unwrap_or_default()) {
+            eprintln!("{e:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if !single_instance() {
         log::info!("Looting Glass is already running; exiting.");
         return;
